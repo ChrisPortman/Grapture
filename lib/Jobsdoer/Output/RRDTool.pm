@@ -9,7 +9,7 @@ use warnings;
 use Data::Dumper;
 use RRDTool::OO;
 
-my $RRDFILELOC = '/home/chris/cvs/development/job-distribution/rrds/';
+my $RRDFILELOC = '/home/chris/git/Grasshopper/rrds/';
 
 sub new {
     my $class  = ref $_[0] || $_[0];

@@ -195,11 +195,10 @@ package Jobsdoer::Doer::FetchSnmp;
 use lib '../../';
 use strict;
 use warnings;
-use Jobsdoer::Doer::FetchSnmp::Munge;
 use Net::SNMP;
 use Data::Dumper;
 
-my $debug = 0;
+my $debug = 1;
 
 sub new {
     my $class = shift;
@@ -276,7 +275,7 @@ sub run {
     my %mapResultsHash;
     my @mapResults;
     
-    debug( "\t- Starting SNMP fetch for $target\n" );
+    debug( "\t- Starting SNMP fetch for $target with community string $community\n" );
 
     #Create the SNMP session to the device.
     my ( $session, $error ) = Net::SNMP->session(
@@ -302,12 +301,13 @@ sub run {
     #get all the map tables.
     for my $mapBase ( keys %maps ) {
         debug( "\t- Getting maptable $mapBase..." );
-        my $result = $session->get_table( -baseoid         => $mapBase,
-                                          -maxrepetitions  => 10, );
+        my $result = $session->get_table( '-baseoid'         => $mapBase,
+                                          '-maxrepetitions'  => 10, );
 
         unless ($result) {
 			debug( " FAILED\n" );
             if ( $error = $session->error() ) {
+				debug ("$error\n");
                 $self->{'_error'} = $error;
             }
             $session->close();

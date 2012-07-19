@@ -8,9 +8,9 @@ use DBI;
 
 my $fifo = '/tmp/pollermaster.cmd';
 
-my $dbh = DBI->connect("DBI:Pg:dbname=monitoring;host=127.0.0.1",
-	                       "monitoring",
-	                       "12345",
+my $dbh = DBI->connect("DBI:Pg:dbname=grasshopper;host=127.0.0.1",
+	                       "grasshopper",
+	                       "hoppergrass",
 	                       #{'RaiseError' => 1},
 	                      );
 	
@@ -19,8 +19,8 @@ if ( not $dbh ) { return; };
 my $getSchedQuery = 'select 
                      a.target,  a.device,      a.metric, a.valbase,
 	                 a.mapbase, a.counterbits, a.max,    a.category,
-	                 a.module, a.output, 
-	                 a.valtype
+	                 a.module, a.output, a.valtype, b.snmpcommunity,
+	                 b.snmpversion
                      from targetmetrics a 
                      join targets b on a.target = b.target
                      order by a.target, a.metric --';
@@ -57,8 +57,8 @@ while ($run) {
 				'output'      => $job->{'output'},
 				'methodInput' => {
 					'target'    => $target,
-					'version'   => $version,
-					'community' => $community,
+					'version'   => $job->{'snmpversion'},
+					'community' => $job->{'snmpcommunity'},
 					'metrics'   => [],
 				},
 			}

@@ -239,18 +239,18 @@ sub begin :Private {
     my ( $self, $c) = @_;
     my $tree;
 
-    unless ($c->session->{'tree'}) {
-		print "Getting root tree from DB!!!!!\n";
-		$tree = $c->model('Postgres')->getTargetTree;
-		$c->session('tree' => $tree);
-	}
-	else {
-		$tree = $c->session->{'tree'};
-	}
-	
-	$c->stash( 'debug'    => Dumper($tree),
-	           'tree'     => $tree,
-	         );	
+    #~ unless ($c->session->{'tree'}) {
+		#~ print "Getting root tree from DB!!!!!\n";
+		#~ $tree = $c->model('Postgres')->getTargetTree;
+		#~ $c->session('tree' => $tree);
+	#~ }
+	#~ else {
+		#~ $tree = $c->session->{'tree'};
+	#~ }
+	#~ 
+	#~ $c->stash( 'debug'    => Dumper($tree),
+	           #~ 'tree'     => $tree,
+	         #~ );	
 	
 }
 

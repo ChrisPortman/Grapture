@@ -8,9 +8,9 @@ use DBI;
 
 my $fifo = '/tmp/pollermaster.cmd';
 
-my $dbh = DBI->connect("DBI:Pg:dbname=monitoring;host=127.0.0.1",
-	                       "monitoring",
-	                       "12345",
+my $dbh = DBI->connect("DBI:Pg:dbname=grasshopper;host=127.0.0.1",
+	                       "grasshopper",
+	                       "hoppergrass",
 	                       #{'RaiseError' => 1},
 	                      );
 	

@@ -243,6 +243,9 @@ sub runDiscParams {
 				    and $deviceHash{'graphdef'}    = $metricDef->{'graphdef'};
      			$metricDef->{'valtype'}
 	  				and $deviceHash{'valtype'}     = $metricDef->{'valtype'};
+     			$metricDef->{'graphgroup'}
+	  				and $deviceHash{'graphgroup'}  = $metricDef->{'graphgroup'};
+	  				
 	  			
 				push @return, \%deviceHash;
 			}
@@ -294,6 +297,9 @@ sub runDiscParams {
 				and $deviceHash{'graphdef'}    = $metricDef->{'graphdef'};
 			$metricDef->{'valtype'}
 				and $deviceHash{'valtype'}     = $metricDef->{'valtype'};
+			$metricDef->{'graphgroup'}
+  				and $deviceHash{'graphgroup'}  = $metricDef->{'graphgroup'};
+
 				
 		    push @return, \%deviceHash;
 		}

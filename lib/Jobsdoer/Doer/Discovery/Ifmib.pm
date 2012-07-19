@@ -11,7 +11,7 @@ sub discover {
 	#they will overwrite the 32 bit ones and be used in preference.
 	[
 	    #32 bit counters
-	    {
+	    { #Interface Octets (~Bytes) in
 			 'metric'      => 'OctetsIn',
    	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
 	         'valbase'     => '1.3.6.1.2.1.2.2.1.10',
@@ -22,8 +22,9 @@ sub discover {
              'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
              'graphdef'    => 'IntOctsInOut',
              'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceTraffic',
 		},
-		{
+		{ #Interface Octets (~Bytes) out
 			 'metric'      => 'OctetsOut',
    	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
 	         'valbase'     => '1.3.6.1.2.1.2.2.1.16',
@@ -34,10 +35,39 @@ sub discover {
              'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
              'graphdef'    => 'IntOctsInOut',
              'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceTraffic',
+  		},
+
+	    { #Interface Errors in
+			 'metric'      => 'ErrorsIn',
+   	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
+	         'valbase'     => '1.3.6.1.2.1.2.2.1.14',
+	         'counterbits' => '32',
+	         'munge'       => 'perSecond',
+	         'category'    => 'Interfaces',
+             'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
+             'graphdef'    => 'IntOctsInOut',
+             'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceErrors',
 		},
+		{ #Interface Errors out
+			 'metric'      => 'ErrorsOut',
+   	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
+	         'valbase'     => '1.3.6.1.2.1.2.2.1.20',
+	         'counterbits' => '32',
+	         'munge'       => 'perSecond',
+	         'category'    => 'Interfaces',
+             'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
+             'graphdef'    => 'IntOctsInOut',
+             'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceErrors',
+  		},
+
+
+
 		
 		#64 bit counters
-	    {
+	    { #Interface Octets (~Bytes) in
 			 'metric'      => 'OctetsIn',
    	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
 	         'valbase'     => '1.3.6.1.2.1.31.1.1.1.6',
@@ -48,8 +78,9 @@ sub discover {
              'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
              'graphdef'    => 'IntOctsInOut',
              'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceTraffic',
 		},
-		{
+		{ #Interface Octets (~Bytes) out
 			 'metric'      => 'OctetsOut',
    	         'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
 	         'valbase'     => '1.3.6.1.2.1.31.1.1.1.10',
@@ -60,6 +91,7 @@ sub discover {
              'exclregex'   => ['^lo$', '^unrouted', '^Loopback', '^Null'],
              'graphdef'    => 'IntOctsInOut',
              'valtype'     => 'counter',
+             'graphgroup'  => 'InterfaceTraffic',
 		},
 
 	];

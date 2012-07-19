@@ -30,9 +30,9 @@ sub run {
 	#print Dumper($self->{'resultset'});
 	
 	
-    my $dbh = DBI->connect("DBI:Pg:dbname=monitoring;host=127.0.0.1",
-	                       "monitoring",
-	                       "12345",
+    my $dbh = DBI->connect("DBI:Pg:dbname=grasshopper;host=127.0.0.1",
+	                       "grasshopper",
+	                       "hoppergrass",
 	                       {
 							  #'RaiseError' => 1,
 							   'PrintError' => 0,
@@ -42,18 +42,18 @@ sub run {
 	if ( not $dbh ) { return; };
 	
 	my $addMetricsQuery = 'insert into targetmetrics 
-	                       ( target,  device,      metric, valbase,
-	                         mapbase, counterbits, max,    category,
-	                         module,  munge,       output, graphdef, valtype
+	                       ( target,  device,      metric,  valbase,
+	                         mapbase, counterbits, max,     category,
+	                         module,  output,      valtype, graphgroup
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
 	                       
 	my $updMetricsQuery = 'update targetmetrics set
 	                       valbase = ?,     mapbase = ?, 
 	                       counterbits = ?, max = ?,
 	                       category = ?,    module = ?,  
-	                       munge = ?,       output = ?, 
-	                       graphdef = ?,    valtype = ?
+	                       output = ?,      valtype = ?
+	                       graphgroup = ?
 	                       where  
 	                       target = ? and device = ? and metric = ? --';
 
@@ -84,17 +84,17 @@ sub run {
 		    $result->{'valbase'},     $result->{'mapbase'},
 		    $result->{'counterbits'}, $result->{'max'},
 		    $result->{'category'},    'FetchSnmp',
-		    $result->{'munge'},       'Graphite',
-		    $result->{'graphdef'},    $result->{'valtype'}
+		    'RRDTool',                $result->{'valtype'},
+		    $result->{'graphgroup'}
 		)
 		or
 		$sthupdmet->execute(      $result->{'valbase'},
 	        $result->{'mapbase'}, $result->{'counterbits'}, 
 	        $result->{'max'},     $result->{'category'},
-	        'FetchSnmp',          $result->{'munge'},
-	        'Graphite',           $result->{'graphdef'},
-	        $result->{'valtype'}, $result->{'target'},
-	        $result->{'device'},  $result->{'metric'},
+	        'FetchSnmp',          'RRDTool',           
+	        $result->{'valtype'}, $result->{'graphgroup'}, 
+	        $result->{'target'},  $result->{'device'},  
+	        $result->{'metric'},
 	    );
 	}
 

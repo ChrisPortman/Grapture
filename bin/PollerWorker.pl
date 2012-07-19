@@ -125,7 +125,8 @@ sub parseConfig {
     $config{'Poller'} = {};
     $config{'Tubes'}  = [];
 
-    my $hostname = hostname();
+    my $hostname = hostname()
+      or warn "Could not get hostname: $!\n";
     chomp($hostname);
 
     #Parse the Poller settings (Beanstalk server port etc)
@@ -154,11 +155,8 @@ sub parseConfig {
 
         if ( $pollers{$hostname} ) {
             push @{ $config{'Tubes'} }, lc($tube);
+            print "Subscribing to tube $tube\n";
         }
-        else {
-            print $pollers{$hostname} . "\n";
-        }
-
     }
 
     return wantarray ? %config : \%config;

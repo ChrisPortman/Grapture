@@ -16,6 +16,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
 	    {
 			 'metric'      => 'Load-5',
@@ -24,6 +25,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
 	    {
 			 'metric'      => 'Load-15',
@@ -32,6 +34,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
 	    {
 			 'metric'      => 'CpuUserTime',
@@ -42,6 +45,7 @@ sub discover {
              'valtype'     => 'counter',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPUUsage',
 		},
 	    {
 			 'metric'      => 'CpuSystemTime',
@@ -52,6 +56,7 @@ sub discover {
              'valtype'     => 'counter',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPUUsage',
 		},
 	    {
 			 'metric'      => 'CpuIdleTime',
@@ -62,6 +67,7 @@ sub discover {
              'valtype'     => 'counter',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPUUsage',
 		},
 	    {
 			 'metric'      => 'CpuKernelTime',
@@ -72,6 +78,7 @@ sub discover {
              'valtype'     => 'counter',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPUUsage',
 		},
 	    {
 			 'metric'      => 'CpuWaitTime',
@@ -82,6 +89,7 @@ sub discover {
              'valtype'     => 'counter',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPUUsage',
 		},
 	    {
 			 'metric'      => 'MemUsedKB',
@@ -92,6 +100,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'Memory',
+             'graphgroup'  => 'MemoryUsage',
 		},
 	    {
 			 'metric'      => 'MemCachedKB',
@@ -100,6 +109,8 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'Memory',
+             'graphgroup'  => 'CPUUsage',
+             'graphgroup'  => 'MemoryUsage',
 		},
 	    {
 			 'metric'      => 'MemBufferedKB',
@@ -108,6 +119,8 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'Memory',
+             'graphgroup'  => 'CPUUsage',
+             'graphgroup'  => 'MemoryUsage',
 		},
     ];
 

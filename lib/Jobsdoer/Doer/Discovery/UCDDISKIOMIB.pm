@@ -18,6 +18,7 @@ sub discover {
 	         'counterbits' => '32',
              'graphdef'    => 'LinuxDriveWRCount',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOCount',
 	    },
   	    {
 			 'metric'      => 'IOCountWrites',
@@ -28,6 +29,7 @@ sub discover {
 	         'counterbits' => '32',
              'graphdef'    => 'LinuxDriveWRCount',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOCount',
 	    },
   	    {
 			 'metric'      => 'IOBytesRead',
@@ -38,6 +40,7 @@ sub discover {
 	         'counterbits' => '32',
              'graphdef'    => 'LinuxDriveWRBytes',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOBytes',
 	    },
   	    {
 			 'metric'      => 'IOBytesWriten',
@@ -48,6 +51,7 @@ sub discover {
 	         'counterbits' => '32',
 	         'graphdef'    => 'LinuxDriveWRBytes',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOBytes',
 	    },
 
         #64bit counters
@@ -60,6 +64,7 @@ sub discover {
 	         'counterbits' => '64',
 	         'graphdef'    => 'LinuxDriveWRBytes',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOBytes',
 	    },
   	    {
 			 'metric'      => 'IOBytesWriten',
@@ -70,6 +75,7 @@ sub discover {
 	         'counterbits' => '64',
 	         'graphdef'    => 'LinuxDriveWRBytes',
              'valtype'     => 'counter',
+             'graphgroup'  => 'StorageIOBytes',
 	    },
 	];
 

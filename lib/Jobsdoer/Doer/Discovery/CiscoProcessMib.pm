@@ -15,6 +15,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
         {
 			 'metric'      => 'CPU_Use_1min',
@@ -23,6 +24,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
         {
 			 'metric'      => 'CPU_Use_5min',
@@ -31,6 +33,7 @@ sub discover {
              'valtype'     => 'gauge',
              'category'    => 'System',
              'device'      => 'CPU',
+             'graphgroup'  => 'CPULoad',
 		},
     ];
     

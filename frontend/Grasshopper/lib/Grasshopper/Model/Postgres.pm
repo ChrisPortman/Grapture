@@ -7,9 +7,9 @@ use parent 'Catalyst::Model::DBI';
 use Data::Dumper;
 
 __PACKAGE__->config(
-    dsn           => 'DBI:Pg:dbname=monitoring;host=127.0.0.1',
-    user          => 'monitoring',
-    password      => '12345',
+    dsn           => 'DBI:Pg:dbname=grasshopper;host=127.0.0.1',
+    user          => 'grasshopper',
+    password      => 'hoppergrass',
     options       => {},
 );
 
@@ -189,6 +189,8 @@ sub getMetricGrp {
 	my $target = shift || return;
 	my $dev    = shift || return;
 	my $metric = shift || return;
+	
+	$dev =~ s|_|/|g;
 	
 	my $dbh = $self->dbh;
 	

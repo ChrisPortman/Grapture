@@ -28,8 +28,8 @@ it under the same terms as Perl itself.
 
 __PACKAGE__->meta->make_immutable;
 
-my $RRD_BASE_DIR = '/home/chris/cvs/development/job-distribution/rrds/';
-my $GPH_BASE_DIR = '/home/chris/cvs/development/job-distribution/frontend/Grasshopper/root/static/rrds/';
+my $RRD_BASE_DIR = '/home/chris/git/Grasshopper/rrds';
+my $GPH_BASE_DIR = '/home/chris/git/Grasshopper/frontend/Grasshopper/root/static/rrds/';
 my $IMAGE_HEIGHT = 200;
 my $IMAGE_WIDTH  = 700;
 

@@ -220,7 +220,7 @@ function loadGraphs(node, record, item, index, event) {
 	var device      = record.data.title;
 	
 	//remove unfrendly chars from the device
-	device = device.replace(/\//,'_');
+	device = device.replace(/\//g,'_');
 	
 	Ext.Ajax.request({
 		url: '/rest/graphdata/'+target+'/'+category+'/'+device,
@@ -240,10 +240,11 @@ function buildGraphs(response,target,device, graphsPanel) {
 		var bigGraphPh = group;
 		var smlGraphPh = group+'-ov';
 		
-		console.log('Building Panel defs:');
-	    console.log('Big graph container: ' + bigGraphPh);
-	    console.log('Sml graph container: ' + smlGraphPh);
-        
+		//Having to stash the data somewhere globally accessable seems
+		//yucky however I cant find a good way of passing it to the 
+		//call back.
+		GH[group] = rrdData[group];
+		
         panels.push(
 			{
 				xtype  : 'panel',
@@ -256,7 +257,8 @@ function buildGraphs(response,target,device, graphsPanel) {
 				listeners: {
 					afterrender: {
 						scope: this,
-						fn: function(){ renderGraph(bigGraphPh, smlGraphPh, rrdData[group]); },
+						//fn: function(){ renderGraph(bigGraphPh, smlGraphPh, rrdData[group]); },
+						fn: renderGraph,
 					},
 				},
 			}
@@ -264,13 +266,23 @@ function buildGraphs(response,target,device, graphsPanel) {
 	}
 	graphsPanel.removeAll();
 	graphsPanel.setTitle( device + ' Performance Graphs');
-	console.log( panels );
 	graphsPanel.add( panels );
 }
 
-function renderGraph(bigGraphPh, smlGraphPh, data) {
- 
-    function getData(start, end) {
+//call back fired after a graph pannel loads.  Is responcible for 
+//rendering a graph inside the panel
+function renderGraph(panel, eOpts, options) {
+    
+    //The group can be had from the panels title.
+    var group = panel.title;
+    
+    //retreive the data for this group from the 'global' space and then
+    //undef it in the global to save memory and clean up after our
+    //dirtyness.
+	var data = GH[group];
+	GH[group] = undefined; 
+	
+	function getData(start, end) {
 	    var plotData = [];
 	    
 	    var keys = new Array();
@@ -306,16 +318,15 @@ function renderGraph(bigGraphPh, smlGraphPh, data) {
 			
 			
 			var first = data[keys[0]][j]['plots'][0][0];
-			console.log( 'First sample is at '+ new Date(first).toString() );
 			plotData.push( { label: label, data: plots } );
 	    }
     
         return plotData;
     }
     
-    console.log('Building graphs:');
-    console.log('Big graph container: ' + bigGraphPh);
-    console.log('Sml graph container: ' + smlGraphPh);
+    var bigGraphPh = group;
+    var smlGraphPh = group + '-ov';
+    
     var initialData = getData();
     
     var graphOpts = {

@@ -11,7 +11,7 @@ __PACKAGE__->config( 'map'     => {'text/html' => 'JSON'} );
 __PACKAGE__->config( 'default' => 'application/json'      );
 
 
-my $RRDFILELOC = '/home/chris/cvs/development/job-distribution/rrds/';
+my $RRDFILELOC = '/home/chris/git/Grasshopper/rrds/';
 my $RRDHTMLLOC = '/static/rrddata/';
 
 =head1 NAME
