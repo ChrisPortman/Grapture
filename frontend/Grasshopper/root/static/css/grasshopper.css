@@ -1,0 +1,167 @@
+/* Reset CSS properties to ensure consistancy across browsers */
+
+html{color:#000;background:#FFF}
+body,div,dl,dt,dd,ul,ol,li,h1,h2,h3,h4,h5,h6,pre,code,form,fieldset,legend,input,button,textarea,select,p,blockquote,th,td{margin:0;padding:0}
+table{border-collapse:collapse;border-spacing:0}
+/*fieldset,*/img{border:0}
+/*address,button,caption,cite,code,dfn,em,input,optgroup,option,select,strong,textarea,th,var{font:inherit}*/
+del,ins{text-decoration:none}
+li{list-style:none}
+caption,th{text-align:left}
+h1,h2,h3,h4,h5,h6{font-size:100%;font-weight:normal}
+q:before,q:after{content:''}
+abbr,acronym{border:0;font-variant:normal}
+sup{vertical-align:baseline}
+sub{vertical-align:baseline}
+/*legend{color:#000}*/
+
+/* Reset complete */
+
+body {
+    width: 100%;
+    float:left;
+ 
+    background-color: LightSeaGreen;
+}
+
+#heading {
+    clear: both;
+    width : 100%;
+    height: 120px;
+    background-color: Teal;
+}
+
+#sidebar {
+    padding-top: 50px;
+    float: left;
+    width: 15%;
+    height: 100%;
+}
+
+#content {
+    float: left;
+    padding-top:20px;
+    width: 85%;
+    height: 100%;
+    min-height: 1200px;
+    background-color: LightSkyBlue;
+}
+
+#footer {
+    clear:both;
+    float:left;
+}
+
+.center {
+    text-align: center;
+}
+
+h1.strong {
+	font-size: 24px;
+	font-weight: bold;
+	text-align: center;
+	text-transform: uppercase;
+}
+
+li.t1 {
+    overflow: hidden;
+    border-bottom: 3px solid LightSeaGreen;
+    background-color: #3366FF;
+    margin: 5px;
+}
+
+li.t2 {
+    border-bottom: 1px solid LightSeaGreen;
+    background-color: #3399FF;
+}
+
+li.t3 {
+    border-bottom: 1px solid LightSeaGreen;
+    background-color: #33CCFF;
+
+}
+
+li.leaf {
+    border-bottom: 1px solid LightSeaGreen;
+    background-color: #33FFFF;
+
+}
+
+a.menu,div.menu {
+    display: block;
+    height: 20px;
+    width: 100%;
+    padding: 5px;
+    text-decoration: none;
+    color: black;    
+}
+
+a.menu:hover,a.category:hover,a.device:hover{
+    background-color: LightGrey;
+}
+
+a.category {
+	display: inline-block;
+    text-decoration: none;
+    color: black;
+    padding: 20px;
+}
+
+a.device {
+	display: inline-block;
+    text-decoration: none;
+    color: black;
+    padding: 5px;
+    width :30%;
+}
+
+div.centered {
+    display: block;
+    margin-top:   20px;
+    margin-left:  auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+span.devtxt {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 80%;
+    word-wrap: break-word;
+}
+
+img.grasshopper {
+    vertical-align: top;
+}
+
+img.title {
+    padding-top: 60px;
+}
+
+img.optus {
+    float: right;
+    padding-top: 50px;
+    padding-right: 10px;
+
+}
+
+img.graph {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+fieldset {
+    display: inline-block;
+    text-align: left;
+    margin-top: 15px;
+    margin-bottom: 15px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 15px;
+    border: 1px solid grey;
+}
+
+form {
+    display: inline;
+}

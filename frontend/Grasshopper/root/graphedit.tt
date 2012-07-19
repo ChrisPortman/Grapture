@@ -1,0 +1,87 @@
+<h1 class="strong">[% target %] / [% cat %] / [% dev %]</h1>
+
+<div class="centered">
+	<fieldset>
+	    <legend>Select Range</legend>
+		<form method="post" action="/graphedit/[% index %]">
+	        <input type="radio" name="rangetype" value="last" [% IF formvals.rangetype == 'last' %] checked="checked"[% END %] />Last:
+	            <select name="number">
+	            [% FOREACH num IN [ 1..30 ] %]
+	                <option value="[% num %]" [% IF formvals.number == num %] selected="selected" [% END %] >[% num %]</option>
+	            [% END %]
+	            </select>
+	            <select name="unit">
+	                <option value="minutes" [% IF formvals.units == 'minutes' %] selected="selected"[% END %] >minutes</option>
+	                <option value="hours"   [% IF formvals.units == 'hours' %] selected="selected"  [% END %] >hours</option>
+	                <option value="days"    [% IF formvals.units == 'days' %] selected="selected"   [% END %] >days</option>
+	                <option value="weeks"   [% IF formvals.units == 'weeks' %] selected="selected"  [% END %] >weeks</option>
+	                <option value="months"  [% IF formvals.units == 'months' %] selected="selected" [% END %] >months</option>
+	                <option value="years"   [% IF formvals.units == 'years' %] selected="selected"  [% END %] >years</option>
+	            </select><br />
+	
+	        <input type="radio" name="rangetype" value="range" [% IF formvals.rangetype == 'range' %] checked="checked"[% END %] />Range:
+	            <select name="sday">
+	            [% FOREACH sday IN [ 1..31 ] %]
+	                <option value="[% sday %]" [% IF formvals.sday == sday %] selected="selected"[% END %] >[% sday %]</option>
+	            [% END %]
+	            </select>/
+	            <select name="smonth">
+	            [% FOREACH smonth IN [ 1..12 ] %]
+	                <option value="[% smonth %]" [% IF formvals.smonth == smonth %] selected="selected"[% END %] >[% smonth %]</option>
+	            [% END %]
+	            </select>/
+	            <select name="syear">
+	            [% FOREACH syear IN [ 2012..2020 ] %]
+	                <option value="[% syear %]"  [% IF formvals.syear == syear %] selected="selected"[% END %] >[% syear %]</option>
+	            [% END %]
+	            </select>
+	            <select name="shour">
+	            [% FOREACH shour IN [ 0..23 ] %]
+	                <option value="[% shour %]" [% IF formvals.shour == shour %] selected="selected"[% END %] >[% shour %]</option>
+	            [% END %]
+	            </select>:
+	            <select name="smin">
+	            [% FOREACH smin IN [ 0..59 ] %]
+	                <option value="[% smin %]" [% IF formvals.smin == smin %] selected="selected"[% END %] >[% smin %]</option>
+	            [% END %]
+	            </select>
+	
+	            to
+	
+	            <select name="fday">
+	            [% FOREACH fday IN [ 1..31 ] %]
+	                <option value="[% fday %]" [% IF formvals.fday == fday %] selected="selected" [% END %] >[% fday %]</option>
+	            [% END %]
+	            </select>/
+	            <select name="fmonth">
+	            [% FOREACH fmonth IN [ 1..12 ] %]
+	                <option value="[% fmonth %]" [% IF formvals.fmonth == fmonth %] selected="selected"[% END %] >[% fmonth %]</option>
+	            [% END %]
+	            </select>/
+	            <select name="fyear">
+	            [% FOREACH fyear IN [ 2012..2020 ] %]
+	                <option value="[% fyear %]" [% IF formvals.fyear == fyear %] selected="selected"[% END %] >[% fyear %]</option>
+	            [% END %]
+	            </select>
+	            <select name="fhour">
+	            [% FOREACH fhour IN [ 0..23 ] %]
+	                <option value="[% fhour %]" [% IF formvals.fhour == fhour %] selected="selected"[% END %] >[% fhour %]</option>
+	            [% END %]
+	            </select>:
+	            <select name="fmin">
+	            [% FOREACH fmin IN [ 0..59 ] %]
+	                <option value="[% fmin %]" [% IF formvals.fmin == fmin %] selected="selected"[% END %] >[% fmin %]</option>
+	            [% END %]
+	            </select>
+	            <br />
+	         
+	         
+	         
+	         
+		    <input type="submit" value="Update">
+		</form>
+	</fieldset>
+</div>
+
+<img class="graph" src="[% graph %]" alt="graph" /> 
+

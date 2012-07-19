@@ -1,0 +1,4 @@
+    <p>using tt template</p>
+    
+    <p>Current tree location: [% treeLoc %][% test %]</p>
+    
