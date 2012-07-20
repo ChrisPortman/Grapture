@@ -98,10 +98,6 @@ Setup
 TODO
 ====
 
- - Create a config file to store environment setup config
-   -> Various paths (eg path to RRD root)
- - Sanity check paths where ever they are used to ensure that the
-   inclusion/exclusion of a trailing '/' is handled.
  - Find a better way of managing '/' is device names eg /home,
    GigabitEthernet0/0.  Atm, Im just subbing the / for _ before putting 
    it in a URL and then subbing it back server side.  It will just be a
@@ -114,6 +110,11 @@ TODO
  - Implement a select box to allow selecting the RRD archive to look at.
    By default it loads the one with the highest resolution, but the
    least history.
+ - Add a reset graph button to refresh a graph to its full range.
 
  - (FIXED) At the moment, multiple graphs (eg InterfaceTraffic and
    InterfaceErrors) breaks the graph rendering.
+ - (FIXED) Create a config file to store environment setup config
+   -> Various paths (eg path to RRD root)
+ - (FIXED) Sanity check paths where ever they are used to ensure that the
+   inclusion/exclusion of a trailing '/' is handled.
