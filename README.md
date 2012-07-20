@@ -49,37 +49,49 @@ Setup
     <git repository>/etc/job-distribution.cfg
 
  5. Add devices to be monitored using the following SQL:
+```
     INSERT INTO targets (target, snmpcommunity, snmpversion)
     VALUES
     ('<hostname>', '<snmpcommunity', <snmpversion>)
+```
 
  6. Start beanstalkd with a larger than default max msg size.
+```
     beanstalkd -z 5000000 [&]
+```
 
  7. Start a worker:
- ```
+```
     cd <git repository>/bin
     perl PollerWorker.pl -c ../etc/job-distribution.cfg -d
 ```
 
  8. Start the Poller Master:
+```
     cd <git repository>/bin
     perl PollerMaster.pl -s localhost -p 11300 -i fifo -v
+```
 
  9. Run a discovery job through the system:
+```
     cd <git repository>/bin
     perl Discovery.pl
+```
 
-10. Start the polling scheduler that will load the poller master with
+ 10. Start the polling scheduler that will load the poller master with
     jobs every 45secs
+```
     cd <git repository>/bin
     perl Input.pl
+```
 
-11. Start the front end development server
+ 11. Start the front end development server
+```
     cd <git repository>/frontend/Grasshopper
     script/grasshopper_server.pl
+```
     
-12. Load the web interface:
+ 12. Load the web interface:
     http://localhost:3000/js
     
 
