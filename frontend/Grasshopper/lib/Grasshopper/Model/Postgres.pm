@@ -6,10 +6,15 @@ use parent 'Catalyst::Model::DBI';
 
 use Data::Dumper;
 
+my $DBHOST = $Grasshopper::GHCONFIG->{'DB_HOSTNAME'};
+my $DBNAME = $Grasshopper::GHCONFIG->{'DB_DBNAME'};
+my $DBUSER = $Grasshopper::GHCONFIG->{'DB_USERNAME'};
+my $DBPASS = $Grasshopper::GHCONFIG->{'DB_PASSWORD'};
+
 __PACKAGE__->config(
-    dsn           => 'DBI:Pg:dbname=grasshopper;host=127.0.0.1',
-    user          => 'grasshopper',
-    password      => 'hoppergrass',
+    dsn           => "DBI:Pg:dbname=$DBNAME;host=$DBHOST",
+    user          => $DBUSER,
+    password      => $DBPASS,
     options       => {},
 );
 

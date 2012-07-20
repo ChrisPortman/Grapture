@@ -82,6 +82,7 @@ my $jobsDoer = Jobsdoer->new(
 );
 
 # Setup a HUP handler to refresh available job modules.
+# kill -HUP <pid>
 local $SIG{'HUP'} = sub {
     debugOut('HUP received!');
 
@@ -138,14 +139,12 @@ sub parseConfig {
     }
 
     if ( $rawConfig->{'Pollers'}->{$hostname} ) {
-
         for my $key ( keys $rawConfig->{'Pollers'}->{$hostname} ) {
 
             #Load the host specific poller settings over the defaults.
             $config{'Poller'}->{$key} =
               $rawConfig->{'Pollers'}->{'Defaults'}->{$key};
         }
-
     }
 
     #Work out what tubes we're subscribing to.

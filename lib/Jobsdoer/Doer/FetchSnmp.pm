@@ -198,7 +198,7 @@ use warnings;
 use Net::SNMP;
 use Data::Dumper;
 
-my $debug = 1;
+my $debug = 0;
 
 sub new {
     my $class = shift;

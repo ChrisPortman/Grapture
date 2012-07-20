@@ -7,6 +7,35 @@ use warnings;
 use Data::Dumper;
 use DBI;
 
+sub _getConfig {
+	my $cfgFile = shift;
+	
+	unless ($cfgFile and -f $cfgFile) {
+		return;
+	}
+	
+	open(my $fh, '<', $cfgFile)
+	  or die "Could not open $cfgFile: $!\n";
+	
+	my %config = map  {
+		             $_ =~ s/^\s+//;    #remove leading white space
+		             $_ =~ s/\s+$//;    #remove trailing white space
+		             $_ =~ s/\s*#.*$//; #remove trailing comments 
+		             my ($opt, $val) = split(/\s*=\s*/, $_);
+		             $opt => $val ;
+				 }
+	             grep { $_ !~ /(?:^\s*#)|(?:^\s*$)/ } #ignore comments and blanks
+	             <$fh>;
+	
+	return \%config;
+}
+
+my $GHCONFIG = _getConfig( '../etc/grasshopper.cfg' );
+my $DBHOST = $GHCONFIG->{'DB_HOSTNAME'};
+my $DBNAME = $GHCONFIG->{'DB_DBNAME'};
+my $DBUSER = $GHCONFIG->{'DB_USERNAME'};
+my $DBPASS = $GHCONFIG->{'DB_PASSWORD'};
+
 sub new {
     my $class  = ref $_[0] || $_[0];
     my $args   = $_[1];
@@ -27,12 +56,9 @@ sub new {
 sub run {
 	my $self = shift;
 	
-	#print Dumper($self->{'resultset'});
-	
-	
-    my $dbh = DBI->connect("DBI:Pg:dbname=grasshopper;host=127.0.0.1",
-	                       "grasshopper",
-	                       "hoppergrass",
+    my $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST",
+	                       $DBUSER,
+	                       $DBPASS,
 	                       {
 							  #'RaiseError' => 1,
 							   'PrintError' => 0,

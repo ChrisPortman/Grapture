@@ -40,6 +40,31 @@ our $VERSION = '0.01';
 # with an external configuration file acting as an override for
 # local deployment.
 
+sub getConfig {
+	my $cfgFile = shift;
+	
+	unless ($cfgFile and -f $cfgFile) {
+		return;
+	}
+	
+	open(my $fh, '<', $cfgFile)
+	  or die "Could not open $cfgFile: $!\n";
+	
+	my %config = map  {
+		             $_ =~ s/^\s+//;    #remove leading white space
+		             $_ =~ s/\s+$//;    #remove trailing white space
+		             $_ =~ s/\s*#.*$//; #remove trailing comments 
+		             my ($opt, $val) = split(/\s*=\s*/, $_);
+		             $opt => $val ;
+				 }
+	             grep { $_ !~ /(?:^\s*#)|(?:^\s*$)/ } #ignore comments and blanks
+	             <$fh>;
+	
+	return \%config;
+}
+
+our $GHCONFIG = getConfig( '../../etc/grasshopper.cfg' );
+
 __PACKAGE__->config(
     name => 'Grasshopper',
     # Disable deprecated behavior needed by old applications

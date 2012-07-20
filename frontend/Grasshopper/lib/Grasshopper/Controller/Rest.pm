@@ -10,9 +10,11 @@ BEGIN {extends 'Catalyst::Controller::REST'; }
 __PACKAGE__->config( 'map'     => {'text/html' => 'JSON'} );
 __PACKAGE__->config( 'default' => 'application/json'      );
 
-
-my $RRDFILELOC = '/home/chris/git/Grasshopper/rrds/';
+my $RRDFILELOC = $Grasshopper::GHCONFIG->{'DIR_RRD'};
 my $RRDHTMLLOC = '/static/rrddata/';
+
+$RRDFILELOC =~ s|([^/])$|$1/|;
+$RRDHTMLLOC =~ s|([^/])$|$1/|;
 
 =head1 NAME
 
