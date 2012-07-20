@@ -176,8 +176,6 @@ function loadCategory(tabPanel, newTab, oldTab) {
 	var targetDisp = target.substr(0,1).toUpperCase() + target.substr(1)
 	GH.currentCat = category; //save the category
 	
-	console.log(targetDisp);
-	
 	if (oldTab) {
 		oldTab.removeAll();
 	}
@@ -257,7 +255,9 @@ function buildGraphs(response,target,device, graphsPanel) {
 					           <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
 					           <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
 					               Resolution:<br />                                                                           \
-					               <select id="'+group+'-sel"></select>                                                        \
+					               <select id="'+group+'-sel" onchange="renderGraph(\''+group+'\', null, true)"></select>      \
+					               <br /><br />                                                                                \
+					               <button type="button" onclick="renderGraph(\''+group+'\', null, true)">Reset Area</button>  \
 					           </div>                                                                                          \
 					       </div>                                                                                              \
 				       </div>',
@@ -279,44 +279,52 @@ function buildGraphs(response,target,device, graphsPanel) {
 
 //call back fired after a graph pannel loads.  Is responcible for 
 //rendering a graph inside the panel
-function renderGraph(panel) {
+function renderGraph(panel, eopts, rraChange) {
     
-    //The group can be had from the panels title.
-    var group = panel.title;
+    //The group can be had from the panels title or just the panel var 
+    //if this is a graph update and not the initial load.
+    var group = panel.title || panel;
     
-    //retreive the data for this group from the 'global' space and then
-    //undef it in the global to save memory and clean up after our
-    //dirtyness.
+    //retreive the data for this group from the 'global' space (yuck)
 	var data = GH[group];
-	GH[group] = undefined; 
 	
     var rraKeys = new Array();
     for ( key in data ) {
 		rraKeys.push(key);
 	}
+	
+	rraKeys.sort(function(a,b){ return b-a });
 
-	function getData(start, end) {
-	    var plotData = [];
-		rraKeys.sort(function(a,b){ return b-a });
-
+    if ( !rraChange ){
 		for (key in rraKeys) {
 			//create an option object
 			var opt   = document.createElement("option");
 			opt.text  = new Date(rraKeys[key]*1000).toString();
 			opt.value = key;
-
-			//add the option to the select
-			document.getElementById( group+'-sel' ).add(opt);
-	    }
 	
-		for (j in data[rraKeys[0]] ) {
-			var label = data[rraKeys[0]][j]['label'];
-			var plots = data[rraKeys[0]][j]['plots'];
+			//add the option to the select
+			var select = document.getElementById( group+'-sel' );
+			select.add(opt);
+	    }
+	}
+
+	function getData(start, end) {
+	    var plotData  = [];
+	    var rraKeyIdx = 0;
+	    
+	    if (rraChange) {
+			//This was prompted by a res change. Select the new rra key
+			var select = document.getElementById( group+'-sel' );
+			rraKeyIdx = select.selectedIndex;
+		}
+			
+			
+		for (j in data[rraKeys[rraKeyIdx]] ) {
+			var label = data[rraKeys[rraKeyIdx]][j]['label'];
+			var plots = data[rraKeys[rraKeyIdx]][j]['plots'];
 			
 			if ( start && end ) {
 				var filteredPlots = [];
-				console.log('Start: '+ start + ' End: ' + end);
-				console.log('Building a filtered list');
 				
 				for ( i in plots ) {
 					var timestamp = plots[i][0];
@@ -325,7 +333,6 @@ function renderGraph(panel) {
 					}
 				
 					if (timestamp > end) {
-						console.log('Timestamp now greater than end. stop');
 						break;
 					}
 				}
@@ -405,8 +412,4 @@ function renderGraph(panel) {
     $('#'+smlGraphPh).bind("plotselected", function (event, ranges) {
         plot.setSelection(ranges);
     });
-	
-	
-	
-	
 }

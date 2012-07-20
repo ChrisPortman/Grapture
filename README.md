@@ -107,10 +107,6 @@ TODO
  - Index the graph groups so that the order in which they appear can be
    specified.  It appears JS will sort therefore, InterfaceErrors
    appears above InterfaceTraffic which is what everyone wants to see.
- - Implement a select box to allow selecting the RRD archive to look at.
-   By default it loads the one with the highest resolution, but the
-   least history.
- - Add a reset graph button to refresh a graph to its full range.
 
  - (FIXED) At the moment, multiple graphs (eg InterfaceTraffic and
    InterfaceErrors) breaks the graph rendering.
@@ -118,3 +114,7 @@ TODO
    -> Various paths (eg path to RRD root)
  - (FIXED) Sanity check paths where ever they are used to ensure that the
    inclusion/exclusion of a trailing '/' is handled.
+ - (FIXED) Add a reset graph button to refresh a graph to its full range.
+ - (FIXED) Implement a select box to allow selecting the RRD archive to look at.
+   By default it loads the one with the highest resolution, but the
+   least history.
