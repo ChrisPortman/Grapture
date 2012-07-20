@@ -251,13 +251,21 @@ function buildGraphs(response,target,device, graphsPanel) {
 				title  : group,
 				padding: '20 50 0 50',
 				layout: 'fit',
-				html: '<div><div id="'+group+'-sel"></div><div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div><div id="'+smlGraphPh+'" style="width: 400px; height: 100px; margin: 10px;"></div></div>',
+				html: '<div style = "float: left;">                                                                            \
+				           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
+				           <div style = "float: left;">                                                                        \
+					           <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
+					           <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
+					               Resolution:<br />                                                                           \
+					               <select id="'+group+'-sel"></select>                                                        \
+					           </div>                                                                                          \
+					       </div>                                                                                              \
+				       </div>',
 				minHeight: 200,
 				minWidth: 400,
 				listeners: {
 					afterrender: {
 						scope: this,
-						//fn: function(){ renderGraph(bigGraphPh, smlGraphPh, rrdData[group]); },
 						fn: renderGraph,
 					},
 				},
@@ -271,7 +279,7 @@ function buildGraphs(response,target,device, graphsPanel) {
 
 //call back fired after a graph pannel loads.  Is responcible for 
 //rendering a graph inside the panel
-function renderGraph(panel, eOpts, options) {
+function renderGraph(panel) {
     
     //The group can be had from the panels title.
     var group = panel.title;
@@ -282,20 +290,28 @@ function renderGraph(panel, eOpts, options) {
 	var data = GH[group];
 	GH[group] = undefined; 
 	
+    var rraKeys = new Array();
+    for ( key in data ) {
+		rraKeys.push(key);
+	}
+
 	function getData(start, end) {
 	    var plotData = [];
-	    
-	    var keys = new Array();
-	    for ( key in data ) {
-			keys.push(key);
-		}
+		rraKeys.sort(function(a,b){ return b-a });
+
+		for (key in rraKeys) {
+			//create an option object
+			var opt   = document.createElement("option");
+			opt.text  = new Date(rraKeys[key]*1000).toString();
+			opt.value = key;
+
+			//add the option to the select
+			document.getElementById( group+'-sel' ).add(opt);
+	    }
 	
-		keys.sort(function(a,b){ return b-a });
-	
-		for (j in data[keys[0]] ) {
-			var label = data[keys[0]][j]['label'];
-			var plots = data[keys[0]][j]['plots'];
-			
+		for (j in data[rraKeys[0]] ) {
+			var label = data[rraKeys[0]][j]['label'];
+			var plots = data[rraKeys[0]][j]['plots'];
 			
 			if ( start && end ) {
 				var filteredPlots = [];
@@ -316,8 +332,7 @@ function renderGraph(panel, eOpts, options) {
 				plots = filteredPlots;
 			}
 			
-			
-			var first = data[keys[0]][j]['plots'][0][0];
+			//var first = data[rraKeys[0]][j]['plots'][0][0];
 			plotData.push( { label: label, data: plots } );
 	    }
     
