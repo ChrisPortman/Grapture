@@ -33,6 +33,11 @@ packages for them at the time of writing:
 Setup
 =====
 
+The following steps should get you to a point where you will have the 
+system working in a way that will be good for development.  The idea of
+running it in production yet is one of pure fantasy however hopefully
+that idea will join us in reallity the near to mid term future.
+
  1. Install the required packages and perl modules.
  
  2. Initialise the database by running the sql script in 
@@ -98,6 +103,17 @@ Setup
 TODO
 ====
 
+ - The Poller Master currently takes in a batch of jobs, waits for them
+   to finish and then takes another batch.  Potentially this will mean 
+   that a single dud job could halt the whole system.  The master should
+   accept jobs constantly, put them into beanstalk and track until a 
+   result code comes back.  The master should also force an optional
+   timeout on jobs so that they will only sit in the queue for a maximum
+   specified time.  This will solve the possible situation whereby if no
+   pollers are running, jobs that are time relative (eg polling tasks)
+   dont just sit and queue up and then all running as fast as possible
+   as soon as a worker comes online when they are no longer relevant
+   anyway.
  - Find a better way of managing '/' is device names eg /home,
    GigabitEthernet0/0.  Atm, Im just subbing the / for _ before putting 
    it in a URL and then subbing it back server side.  It will just be a
