@@ -459,7 +459,7 @@ sub log {
             my %logentry = (
                 'worker'  => hostname(),
                 'message' => $message,
-                'code'    => $code || 5,
+                'code'    => $code || undef,
             );
             $logentry{'jobId'} = $jobId || 'NULL';
 
