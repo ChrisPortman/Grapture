@@ -101,6 +101,7 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 		else {
 			#Job timeout monitor process
 			die "Could not fork process: $!\n" unless $lfPid;
+			$| ++;
 			timeWatchProc();
 			exit;
 		}
@@ -108,6 +109,7 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 	else {
 		#Log fetch process
 		die "Could not fork process: $!\n" unless $lfPid;
+		$| ++;
 		logFetchProc();
 		exit;
 	}
@@ -115,6 +117,7 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 else {
 	#Job fetch process.
 	die "Could not fork process: $!\n" unless $jfPid;
+	$| ++;
 	jobFetchProc();
 	exit;
 }
@@ -244,21 +247,32 @@ sub timeWatchProc {
 			beanstalkConnect($bsclient, {'watch_only' => $jobTube} );
 		}
 		
-		#get a log off the queue
-        my $job = $bsclient->reserve(); #blocks until a job is ready
-        my $id  = $job->id();
-	    my $jobData = decode_json($job);
-	    
-	    #See if there is a timeout and if it has expired.
-	    if ( $jobData->{'timeOut'} and $jobData->{'timeOut'} > time() ) {
-			#Expired, delete it
-			$bsclient->delete( $id );
-			print "$id\n";
+		my $noOfReady = $bsclient->stats_tube($jobTube)->current_jobs_ready();
+		
+		for ( 1..$noOfReady ) {
+			
+			#get a log off the queue
+	        my $job = $bsclient->reserve(); #blocks until a job is ready
+	        my $id  = $job->id();
+		    my $jobData = decode_json($job);
+		    
+		    #See if there is a timeout and if it has expired.
+		    if ( $jobData->{'timeSubmitted'} and $readyTimeout ) {
+				my $timeout = $jobData->{'timeSubmitted'} + $readyTimeout;
+				
+				if ( $timeout > time() ) {
+					#Expired, delete it
+					$bsclient->delete( $id );
+					print "$id\n";
+				}
+			}
+			else {
+				#Not expired.
+				$bsclient->release( $id );
+			}
 		}
-		else {
-			#Not expired.
-			$bsclient->release( $id );
-		}
+		
+		sleep 300;
 	}
 	
 	1;
@@ -269,7 +283,7 @@ sub processJobRet {
 	
 	while ( <$handle> ) {
 		if ( $_ =~ /^(\d+)$/ ) {
-			$activeJobs{$_} = 1;
+    		$activeJobs{$_} = 1;
 		}
 		else {
 			logging("Got job ID $_ from the job submitter which doesn't look right");
