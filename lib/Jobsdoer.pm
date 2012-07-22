@@ -458,8 +458,8 @@ sub log {
             #build the job data.
             my %logentry = (
                 'worker'  => hostname(),
-                'time'    => scalar(gmtime),
                 'message' => $message,
+                'code'    => $code || 5,
             );
             $logentry{'jobId'} = $jobId || 'NULL';
 
