@@ -178,6 +178,9 @@ sub mainLineProc {
 		for my $handle (@readyHandles) {
 			$processDispatcher{$handle}->($handle);
 		}
+		
+		my @currentActive = sort {$a <=> $b} keys %activeJobs;
+		debugOut("Mainline - Current active job IDs: @currentActive");
 	}
 	
 	debugOut( 'Run has been terminated - Exiting');
@@ -324,14 +327,27 @@ sub timeWatchProc {
 		
 		debugOut('Timeout Monitor - Checking for new jobs');
 		for my $handle ( $select->can_read(1) ) {
-	  		while ( <$handle> ) {
-				chomp;
-				last if $_ eq 'EOF';
-
-				my ($id, $timeout) = split(/:/, $_);
-			    $activeJobs{$id} = $timeout;
-	    
-			    debugOut("Job $id times out at $timeout");
+			eval {
+				local $SIG{'ALRM'} = sub { die; };
+				alarm 2;
+				
+		  		while ( <$handle> ) {
+					chomp;
+					next if $_ eq 'EOF';
+	
+					my ($cmd, $id, $timeout) = split(/:/, $_);
+					
+					if ( $cmd eq 'ADD' ) {
+						debugOut("Timeout Monitor - Adding Job $id, times out at $timeout");
+					    $activeJobs{$id} = $timeout;
+					}
+					elsif ( $cmd eq 'DEL' ) {
+						debugOut("Timeout Monitor - Deleting Job $id from tracking");
+						delete $activeJobs{$id};
+					}
+		    
+				    alarm 1;
+				}
 			}
 		}
 		
@@ -369,7 +385,10 @@ sub timeWatchProc {
 		
 		print "EOF\n" if $stuffSentToParent;
 		
-		sleep 10;
+		my @currentTracked = sort {$a <=> $b} keys %activeJobs;
+		debugOut("Timeout Monitor - Currently tracking these jobs for timeouts: @currentTracked");
+		
+		sleep 300;
 	}
 	
 	debugOut( 'Timeout Monitor - Run has been terminated - Exiting');
@@ -378,7 +397,6 @@ sub timeWatchProc {
 
 sub processJobRet {
 	my $handle = shift;
-	my $stuffToTimeout;
 
 	while ( <$handle> ) {
 		chomp;
@@ -389,17 +407,12 @@ sub processJobRet {
     		$activeJobs{$1} = 1;
     		
     		if ($2) {  #this job has a timeout
-	    		print $timeWatchProcFh_WTR "$1:$2\n";
-	    		$stuffToTimeout ++;
+	    		print $timeWatchProcFh_WTR "ADD:$1:$2\n";
 			}
 		}
 		else {
 			logging("Got job ID $_ from the job submitter which doesn't look right");
 		}
-	}
-	
-	if ($stuffToTimeout) {
-		print $timeWatchProcFh_WTR "EOF\n";
 	}
 	
 	debugOut('Mainline - All new jobs processed');
@@ -423,6 +436,7 @@ sub processLogRet {
 			logging("Job $jobId finished with result: $returnCodes{$retCode}");
 			delete $activeJobs{$jobId}
 			  or logging("Finalising job $jobId but it is not in the active jobs list");
+			print $timeWatchProcFh_WTR "DEL:$jobId\n";
 		}
 		else {
 			#this is a generic log message
@@ -500,7 +514,7 @@ sub debugOut {
 	my $message = shift;
 	chomp($message);
 	
-	print STDERR "$message\n";
+	print STDERR '(DEBUG) '.localtime.": $message\n";
 	
 	1;
 }

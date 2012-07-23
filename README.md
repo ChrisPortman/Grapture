@@ -114,6 +114,8 @@ TODO
    dont just sit and queue up and then all running as fast as possible
    as soon as a worker comes online when they are no longer relevant
    anyway.
+   (UPDATE: This is being addressed in PollerMaster2.pl which is working
+   but hasnt had a chance to soak)
  - Find a better way of managing '/' is device names eg /home,
    GigabitEthernet0/0.  Atm, Im just subbing the / for _ before putting 
    it in a URL and then subbing it back server side.  It will just be a
