@@ -85,6 +85,7 @@ while ($run) {
 		    $jobs{$target} = {
 				'module'      => $job->{'module'},
 				'output'      => $job->{'output'},
+				'waitTime'    => 300,
 				'methodInput' => {
 					'target'    => $target,
 					'version'   => $job->{'snmpversion'},

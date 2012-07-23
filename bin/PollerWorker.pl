@@ -153,7 +153,7 @@ sub parseConfig {
           map { $_ => 1 } @{ $rawConfig->{'Tubes'}->{$tube}->{'Poller'} };
 
         if ( $pollers{$hostname} ) {
-            push @{ $config{'Tubes'} }, lc($tube);
+            push @{ $config{'Tubes'} }, ($tube);
             print "Subscribing to tube $tube\n";
         }
     }

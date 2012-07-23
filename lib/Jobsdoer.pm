@@ -197,19 +197,6 @@ sub loadModules {
     return 1;
 }
 
-sub purgeNonactiveThreads {
-    my $self = shift;
-
-    #clean out the active thread list
-    my %currentThreads = map { $_->tid() => 1 } threads->list();
-    for my $activeThread ( keys %{ $self->{'activeThreads'} } ) {
-        delete $self->{'activeThreads'}->{$activeThread}
-          if not $currentThreads{$activeThread};
-    }
-
-    return 1;
-}
-
 sub beanstalkConnect {
     my $self        = shift;
     my $bsclientObj = $self->{'bsclient'};
@@ -265,7 +252,6 @@ sub runJob {
         'module'      => $jobData->{'module'},
         'outModule'   => $jobData->{'output'},
         'methodInput' => $jobData->{'methodInput'},
-        'resultsTube' => $jobData->{'resultsTube'},
         'logsTube'    => $jobData->{'logsTube'},
     };
 
@@ -276,6 +262,7 @@ sub runJob {
     {
         $self->log('Received malformed job data.  Job will be deleted.');
         $bsclientObj->delete( $self->{'currentJobData'}->{'jobId'} );
+        return 2;
     }
 
     my $result = $self->runDoerModule();
@@ -291,8 +278,8 @@ sub runJob {
         
         return wantarray ? %resultData : \%resultData;
     }
-    
-    return;
+    $self->log('Doer module '.$self->{'currentJobData'}->{'module'}.' did not return a result');
+    return 3;
 
 }
 
@@ -393,41 +380,11 @@ sub submitResult {
     my $self       = shift;
     my $result     = shift;
 
-    if (
-        not(    $self->{'currentJobData'}
-            and $self->{'currentJobData'}->{'jobId'} )
-      )
-    {
+	#We have output of a successfull doer run.  Run it thorough the
+	#output module.  If it fails set result to a code
+	$self->runOutputModule($result)
+	  or return 4;
 
-        #there has been no job
-        return;
-    }
-
-    if ( $result ) {
-
-		$self->runOutputModule($result)
-		  or warn "Output module returned a failure\n";
-
-    }
-    else {
-
-        #we should have a result
-        $self->log('Module run failed and/or did not return a result');
-
-		$result = {
-            'id'     => $self->{'currentJobData'}->{'jobId'},
-            'result' => 0,
-        };
-
-	}
-
-	#submit the result back through the tubes regardless of success
-	#or not as it will have any error messages.		
-    my $bsclientObj = $self->{'bsclient'};
-
-    $bsclientObj->use( $self->{'currentJobData'}->{'resultsTube'} );
-    $bsclientObj->put( {}, $result );
-    
     return 1;
 }
 
@@ -441,7 +398,7 @@ sub deleteJob {
         debug('Finishing job ID '.$self->{'currentJobData'}->{'jobId'}.' at '.localtime());
     }
     
-    $self->{'currentJobData'} = undef;
+    #$self->{'currentJobData'} = undef;
 
     return 1;
 }
@@ -449,8 +406,9 @@ sub deleteJob {
 sub log {
     my $self    = shift;
     my $message = shift;
+    my $code    = shift;
     my $jobId   = $self->{'currentJobData'}->{'jobId'};
-
+    
     if ( $self->{'currentJobData'} ) {
         if ( $self->{'currentJobData'}->{'logsTube'} ) {
             my $bsclientObj = $self->{'bsclient'};
@@ -512,21 +470,27 @@ sub _jobDoerThread {
     while ( not $exit ) {
 		
 		my $jobObj;
-		my $result;
+		my $result = 0;
 		my $submit;
 
         #Check to see if we are still connected
         last if not $bsclientObj->socket();
 
         #run each step as long as the last returns true.
-            ( $jobObj = $self->getJob()              ) 
-        and ( $result = $self->runJob($jobObj)       )
-        and ( $submit = $self->submitResult($result) );
-        
-        
-        $submit or  $self->submitResult();
-        $jobObj and $self->deleteJob();
-        
+        $jobObj = $self->getJob();
+        if ($jobObj) {              
+
+	        $result = $self->runJob($jobObj);
+	        
+	        if (ref $result) {
+		        $result = $self->submitResult($result);
+			}
+			
+	        $self->deleteJob();
+
+            $self->log('Job complete', $result);
+		}
+		
         if ( $expireTime and time > $expireTime ) {
 			print "Thread has expired and is ending\n";
 			$exit ++;
