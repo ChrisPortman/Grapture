@@ -12,6 +12,7 @@ Required Packages (Debian)
  - libcatalyst-view-tt-perl
  - libsnmp-perl
  - libnet-snmp-perl
+ - liblog-any-adapter-dispatch-perl
  - rrdtool
  - librrdtool-oo-perl
  - beanstalkd

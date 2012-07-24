@@ -8,7 +8,20 @@ use JSON::XS;
 use Getopt::Long;
 use Sys::Hostname;
 use POSIX;
+use Log::Dispatch;
 use Data::Dumper;
+
+my $logger = Log::Dispatch->new(
+    outputs   => [
+        [ 'Syslog', 'min_level' => 'info', 'ident' => 'JobDispatch' ],
+        [ 'Screen', 'min_level' => 'info', 'stderr' => 1, 'newline' => 1 ],
+    ],
+    callbacks => [
+        \&logPrependLevel,
+    ]
+);
+
+$logger->notice('POLLER MASTER STARTING UP');
 
 # Initialise command line options
 my $bsserver;
@@ -77,7 +90,7 @@ $bsclient = Beanstalk::Client->new(
 				return $json;
             }
             else {
-                logging( 
+                $logger->info( 
 	'Job data must be a HASH ref when putting on the queue');
 	            return;
             }
@@ -86,13 +99,13 @@ $bsclient = Beanstalk::Client->new(
 );
 
 #Fork off the required processes.
-debugOut('Starting JobFetch');
+$logger->notice('INIT - Starting JobFetch');
 if ($jfPid = open($jobFetchProcFh, "-|") ) {
 	#Parent process
 	$childPids{$jfPid} =1;
 	$children ++;
 	
-	debugOut('Starting LogFetch');
+	$logger->notice('INIT - Starting LogFetch');
 	if ($lfPid = open($logFetchProcFh, "-|") ) {
 		#Still the parent
 		$childPids{$lfPid} =1;
@@ -103,7 +116,7 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 		pipe( $mainProc_RDR, $timeWatchProcFh_WTR );
 		pipe( $timeWatchProcFh_RDR, $mainProc_WTR );
 		
-		debugOut('Starting TimeOut Monitor');
+		$logger->notice('INIT - Starting TimeOut Monitor');
 		if ( $twPid = fork ) {
 			#Still the parent
 			$childPids{$twPid} =1;
@@ -168,7 +181,7 @@ sub mainLineProc {
 	    $logFetchProcFh      => \&processLogRet,
 	    $timeWatchProcFh_RDR => \&processTimeRet,
     );
-	
+    
 	#start an endless loop
 	while ( $run ) {
 		#Find childs with something for us
@@ -180,10 +193,10 @@ sub mainLineProc {
 		}
 		
 		my @currentActive = sort {$a <=> $b} keys %activeJobs;
-		debugOut("Mainline - Current active job IDs: @currentActive");
+		$logger->debug("Mainline - Current active job IDs: @currentActive");
 	}
 	
-	debugOut( 'Run has been terminated - Exiting');
+	$logger->notice( 'Run has been terminated - Exiting');
     
     1;	
 }
@@ -194,7 +207,7 @@ sub jobFetchProc {
 		#Check for a BS connection and connect if not connected.
 		unless ($bsclient and $bsclient->socket()) {
 			beanstalkConnect($bsclient, {'use' => $jobTube} );
-			debugOut('Job Fetch connected to Beanstalk');
+			$logger->info('Job Fetch connected to Beanstalk');
 		}
 		
 	    my $fifoFh;	
@@ -202,23 +215,23 @@ sub jobFetchProc {
 	    
 		unless ( -p $fifo ) {
 			if ( -e $fifo ) {
-			    logging("$fifo exists as a NON fifo.  Can't continue");
+			    $logger->emerg("$fifo exists as a NON fifo.  Can't continue");
 			    kill 'TERM', $pid; #kill the parent
 			}
 			else {
 				#make the fifo
 				unless ( mkfifo($fifo, 0700) ) {
-				    logging ('Cannot crete FIFO file');
+				    $logger->emerg('Cannot crete FIFO file');
 				}
 			}
 		}
 		
-		debugOut('JobFetch - Waiting for Jobs');
+		$logger->debug('JobFetch - Waiting for Jobs');
    		unless ( open($fifoFh, '<', $fifo) ) {
 			#check run here, we may have unblocked due to exiting
 			last unless $run;
 			
-			logging('Could not open FIFO, cannot continue.');
+			$logger->info('Could not open FIFO, cannot continue.');
 	    }
 	      
 	    $input = <$fifoFh>;
@@ -227,11 +240,11 @@ sub jobFetchProc {
 		$input = decode_json($input);
 	    
 	    unless ( ref($input) and ref($input) eq 'ARRAY'){ 
-			logging('Recieved malformed data as job input');
+			$logger->error('JobFetch - Recieved malformed data as job input');
 			next;
 	    };
 	    
-	    debugOut('JobFetch - Job batch recieved');
+	    $logger->debug('JobFetch - Job batch recieved');
 
 		JOB:
 		for my $job ( @{$input} ) {
@@ -251,7 +264,7 @@ sub jobFetchProc {
 			
 			#Put the job on beanstalk
 			my $jobObj = $bsclient->put( { 'ttr' => 30 }, $job );
-			debugOut('JobFetch - Put job ID '.$jobObj->id().' to Beanstalk');
+			$logger->info('JobFetch - Put job ID '.$jobObj->id().' to Beanstalk');
 			#print to STDOUT which goes to the parent
 			print $jobObj->id().":$timeout\n";
 		}
@@ -259,7 +272,7 @@ sub jobFetchProc {
 		print "EOF\n";
 	}
 	
-	debugOut( 'JobFetch - Run has been terminated - Exiting');
+	$logger->notice( 'JobFetch - Run has been terminated - Exiting');
 	1;
 }
 
@@ -269,11 +282,11 @@ sub logFetchProc {
 		#Check for a BS connection and connect if not connected.
 		unless ($bsclient and $bsclient->socket()) {
 			beanstalkConnect($bsclient, {'watch_only' => $logTube} );
-			debugOut('LogFetch connected to Beanstalk');
+			$logger->info('LogFetch connected to Beanstalk');
 		}
 		
 		#get a log off the queue
-		debugOut('LogFetch - Waiting for a log');
+		$logger->debug('LogFetch - Waiting for a log');
   
         my $log;
         eval {
@@ -285,7 +298,7 @@ sub logFetchProc {
 	    };
         last unless $run;
         
-        debugOut('LogFetch - Received a log');
+        $logger->debug('LogFetch - Received a log');
 
         $bsclient->delete( $log->id() );
         my $logEntry = decode_json( $log->{'data'} );
@@ -298,17 +311,17 @@ sub logFetchProc {
         #print to STDOUT which goes to the parent
         if ( $code ) {
 			print "ID $jobId: $code: $worker - $message\n";
-			debugOut("LogFetch - Recieved finish code $code for $jobId");
+			$logger->debug("LogFetch - Recieved finish code $code for $jobId");
 		}
 		else {
 			print "ID $jobId: $worker - $message\n";
-			debugOut("LogFetch - Recieved log message for $jobId");
+			$logger->debug("LogFetch - Recieved log message for $jobId");
 		}
 		
 		print "EOF\n";
 	}
 
-	debugOut( 'LogFetch - Run has been terminated - Exiting');
+	$logger->notice( 'LogFetch - Run has been terminated - Exiting');
 	1;
 }
 
@@ -322,10 +335,10 @@ sub timeWatchProc {
 		#Check for a BS connection and connect if not connected.
 		unless ($bsclient and $bsclient->socket()) {
 			beanstalkConnect($bsclient, {'watch_only' => $jobTube} );
-			debugOut('Timeout Monitor connected to Beanstalk');
+			$logger->info('Timeout Monitor connected to Beanstalk');
 		}
 		
-		debugOut('Timeout Monitor - Checking for new jobs');
+		$logger->debug('Timeout Monitor - Checking for new jobs');
 		for my $handle ( $select->can_read(1) ) {
 			eval {
 				local $SIG{'ALRM'} = sub { die; };
@@ -338,11 +351,11 @@ sub timeWatchProc {
 					my ($cmd, $id, $timeout) = split(/:/, $_);
 					
 					if ( $cmd eq 'ADD' ) {
-						debugOut("Timeout Monitor - Adding Job $id, times out at $timeout");
+						$logger->debug("Timeout Monitor - Adding Job $id, times out at $timeout");
 					    $activeJobs{$id} = $timeout;
 					}
 					elsif ( $cmd eq 'DEL' ) {
-						debugOut("Timeout Monitor - Deleting Job $id from tracking");
+						$logger->debug("Timeout Monitor - Deleting Job $id from tracking");
 						delete $activeJobs{$id};
 					}
 		    
@@ -357,41 +370,43 @@ sub timeWatchProc {
 		    #See if the job has expired.
 			if ( time > $activeJobs{$jobId} ) {
 				#Expired, delete it
-				debugOut("Timeout Monitor - Job $jobId has expired, deleting...");
+				$logger->warning("Timeout Monitor - Job $jobId has expired, deleting...");
+
 				if ( $bsclient->delete( $jobId ) ) {
 					delete $activeJobs{ $jobId };
 				    print $mainProc_WTR "$jobId\n";
 				    $stuffSentToParent ++;
-				    debugOut("Timeout Monitor - Job $jobId deleted");
+				    $logger->debug("Timeout Monitor - Job $jobId deleted");
 				}
 				else {
 					#Delete failed.  If because the job no longer exists
 					#delete it from our records, if its because its 
 					#reserved or similar, we'll deal with it next time
 					#round.  Test if it exists by trying to get stats
+
 					unless ( $bsclient->stats_job($jobId) ){
 						delete $activeJobs{ $jobId };
-						debugOut("Timeout Monitor - Job $jobId already gone");
+						$logger->debug("Timeout Monitor - Job $jobId already gone");
 					}
 					else {
-						debugOut("Timeout Monitor - Job $jobId not available for deletion");
+						$logger->debug("Timeout Monitor - Job $jobId not available for deletion");
 					}
 				}
 			}
 			else {
-				debugOut("Timeout Monitor - Job $jobId NOT expired.");
+				$logger->debug("Timeout Monitor - Job $jobId NOT expired.");
 			}
 		}
 		
 		print "EOF\n" if $stuffSentToParent;
 		
 		my @currentTracked = sort {$a <=> $b} keys %activeJobs;
-		debugOut("Timeout Monitor - Currently tracking these jobs for timeouts: @currentTracked");
+		$logger->debug("Timeout Monitor - Currently tracking these jobs for timeouts: @currentTracked");
 		
 		sleep 300;
 	}
 	
-	debugOut( 'Timeout Monitor - Run has been terminated - Exiting');
+	$logger->notice( 'Timeout Monitor - Run has been terminated - Exiting');
 	1;
 }
 
@@ -403,7 +418,7 @@ sub processJobRet {
 		last if $_ eq 'EOF';
 		
 		if ( /^(\d+):(\d+)$/ ) {
-			debugOut("Mainline - Got jobid $1");
+			$logger->debug("Mainline - Got jobid $1");
     		$activeJobs{$1} = 1;
     		
     		if ($2) {  #this job has a timeout
@@ -411,11 +426,11 @@ sub processJobRet {
 			}
 		}
 		else {
-			logging("Got job ID $_ from the job submitter which doesn't look right");
+			$logger->error("Got job ID $_ from the job submitter which doesn't look right");
 		}
 	}
 	
-	debugOut('Mainline - All new jobs processed');
+	$logger->debug('Mainline - All new jobs processed');
 
 	1;
 }
@@ -433,14 +448,19 @@ sub processLogRet {
 			my $retCode = $2;
 			my $message = $3;
 			
-			logging("Job $jobId finished with result: $returnCodes{$retCode}");
+			if ($retCode > 1 ) {
+				$logger->error("Job $jobId finished with result: $returnCodes{$retCode}");
+			}
+			else {
+				$logger->info("Job $jobId finished with result: $returnCodes{$retCode}");
+			}
 			delete $activeJobs{$jobId}
-			  or logging("Finalising job $jobId but it is not in the active jobs list");
+			  or $logger->warn("Finalising job $jobId but it is not in the active jobs list");
 			print $timeWatchProcFh_WTR "DEL:$jobId\n";
 		}
 		else {
 			#this is a generic log message
-			logging($_);
+			$logger->info($_);
 		}
 	}
 	
@@ -455,12 +475,12 @@ sub processTimeRet {
 		last if $_ eq 'EOF';
 		
 		if ( /^(\d+)$/ ) {
-			logging("Job $1 timed out and has been removed from the queue");
+			$logger->info("Job $1 timed out and has been removed from the queue");
 			delete $activeJobs{$1}
-			  or logging("Finalising job $1 but it is not in the active jobs list");
+			  or $logger->info("Finalising job $1 but it is not in the active jobs list");
 		}
 		else {
-			logging("Got job ID $_ as a timedout job which doesn't look right");
+			$logger->error("Got job ID $_ as a timedout job which doesn't look right");
 		}
 	}
 
@@ -477,8 +497,9 @@ sub beanstalkConnect {
 			$bsclient->connect();
             last if $bsclient->socket();
             
-            #Keep trying every 10 secs till we get a connection
-		    sleep 10;
+            $logger->warning('Could not connect to Beanstalk.  Will retry in 30 secs');
+            #Keep trying every 30 secs till we get a connection
+		    sleep 30;
 		}
 	}
 	
@@ -492,31 +513,12 @@ sub beanstalkConnect {
 		elsif ($opt eq 'watch_only') {
 			$bsclient->watch_only($options->{$opt});
 		}
+		else {
+			$logger->warning("Invalid option $opt supplied for Beanstalk connection");
+		}
 	}
 
     1;		
-}
-
-sub logging {
-	my $log  = shift;
-	my $time = localtime();
-
-	chomp($log);
-	
-	print STDERR "$time: $log\n";
-	
-	1;
-}
-
-sub debugOut {
-	unless ($debug) { return 1; }
-	
-	my $message = shift;
-	chomp($message);
-	
-	print STDERR '(DEBUG) '.localtime.": $message\n";
-	
-	1;
 }
 
 sub sigChldHandler {
@@ -526,7 +528,6 @@ sub sigChldHandler {
 	$pid = waitpid(-1, &WNOHANG);
 	
 	while ( $pid > 0 ) {
-		print "Child $pid is dead. Throw it away.\n";
 		delete $childPids{$pid};
 		$children --;
 		$pid = waitpid(-1, &WNOHANG);
@@ -542,12 +543,11 @@ sub mainSigTermHandler {
 
 sub mainSigIntHandler {
 	# Wait while the children are being murdered
-	print "We need to exit.  Wait for the children to be murdered!\n";
+	$logger->notice('SHUTTING DOWN!');
     
     $run = 0;
     
     while ( $children ) {
-		print "Waiting for children to die, $children left.\n";
 		sleep;
 	}
 	1;
@@ -563,4 +563,16 @@ sub childSigIntHandler {
 	# Wait while the children are being murdered
     $run = 0;
     1;
+}
+
+sub logPrependLevel {
+	my %options = @_;
+	
+	my $message = $options{'message'};
+	my $level   = uc($options{'level'});
+	
+	$message = "($level) $message"
+	  if $level;
+	
+	return $message;
 }
