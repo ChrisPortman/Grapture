@@ -70,16 +70,17 @@ sub run {
 	my $addMetricsQuery = 'insert into targetmetrics 
 	                       ( target,  device,      metric,  valbase,
 	                         mapbase, counterbits, max,     category,
-	                         module,  output,      valtype, graphgroup
+	                         module,  output,      valtype, graphgroup,
+	                         enabled
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
 	                       
 	my $updMetricsQuery = 'update targetmetrics set
 	                       valbase = ?,     mapbase = ?, 
 	                       counterbits = ?, max = ?,
 	                       category = ?,    module = ?,  
 	                       output = ?,      valtype = ?
-	                       graphgroup = ?
+	                       graphgroup = ?   enabled = ?
 	                       where  
 	                       target = ? and device = ? and metric = ? --';
 
@@ -111,16 +112,16 @@ sub run {
 		    $result->{'counterbits'}, $result->{'max'},
 		    $result->{'category'},    'FetchSnmp',
 		    'RRDTool',                $result->{'valtype'},
-		    $result->{'graphgroup'}
+		    $result->{'graphgroup'},  $result->{'enabled'}
 		)
 		or
 		$sthupdmet->execute(      $result->{'valbase'},
 	        $result->{'mapbase'}, $result->{'counterbits'}, 
 	        $result->{'max'},     $result->{'category'},
 	        'FetchSnmp',          'RRDTool',           
-	        $result->{'valtype'}, $result->{'graphgroup'}, 
-	        $result->{'target'},  $result->{'device'},  
-	        $result->{'metric'},
+	        $result->{'valtype'}, $result->{'graphgroup'},
+	        $result->{'enabled'}, $result->{'target'},
+	        $result->{'device'},  $result->{'metric'},
 	    );
 	}
 

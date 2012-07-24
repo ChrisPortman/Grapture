@@ -17,6 +17,12 @@ sub discover {
 			 'group'   => 'Routers',
              'sysDesc' => [ qr/^\s*Cisco/i, ],
 		},
+		
+		# A catch all!  Leave LAST!
+		{
+			'group'    => 'Unknown',
+			'sysDesc'  => [ qr/./, ],
+		}
 
     ];
 
@@ -24,3 +30,6 @@ sub discover {
 
 
 1;
+
+
+#### Add unknown group to the DB!!!

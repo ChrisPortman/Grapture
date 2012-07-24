@@ -131,10 +131,11 @@ sub getTargetDevs {
 	
     my $dbh  = $self->dbh;
     
-	my $devsQuery = q(select a.device, b.graphitetreeloc from targetmetrics a
+	my $devsQuery = q(select a.device, from targetmetrics a
 						join targets b on a.target = b.target 
 						where a.target = ? and category = ?
-						group by a.device, b.graphitetreeloc 
+						and enabled = true
+						group by a.device  
 						order by a.device --
                      );
                      
@@ -144,14 +145,8 @@ sub getTargetDevs {
     my @devices;
         
     for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
-        #~ my $linkFriendlyName = $row->{'device'};
-        #~ $linkFriendlyName =~ s|/|_|g;
-        #~ $devices{ $row->{'device'} } = $linkFriendlyName;
-        
         push @devices, { 'title' => $row->{'device'} };
 	}
-	
-	#~ $c->session->{'graphvars'} = { 'graphitetreeloc' => $treeLoc };
 	
 	@devices or return;
 	

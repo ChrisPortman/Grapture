@@ -51,8 +51,9 @@ my $getSchedQuery = 'select
 	                 a.mapbase, a.counterbits, a.max,    a.category,
 	                 a.module, a.output, a.valtype, b.snmpcommunity,
 	                 b.snmpversion
-                     from targetmetrics a 
+                     from targetmetrics a
                      join targets b on a.target = b.target
+                     where a.enabled = true
                      order by a.target, a.metric --';
                      
 my $sth = $dbh->prepare($getSchedQuery);

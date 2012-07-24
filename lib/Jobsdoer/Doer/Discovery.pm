@@ -121,7 +121,6 @@ sub runDiscParams {
 	
 			}
 			
-			
 			EXPRESSION:
 			for my $exp ( @{$metricDef->{'sysDesc'}} ) {
 
@@ -141,6 +140,14 @@ sub runDiscParams {
 			next METRIC;
 		}
 		
+        #look for a filter code ref
+		if (    ref($metricDef->{'filterSub'}) 
+			and ref($metricDef->{'filterSub'}) eq 'CODE') {
+			*filterInclude = delete $metricDef->{'filterSub'};
+		}
+		else {
+			undef &filterInclude;
+		}
 		
 	
 		#essential params
@@ -190,9 +197,19 @@ sub runDiscParams {
 			
 			DEVICE:
 			for my $device ( keys(%{$map}) ) {
-				
+				my %deviceHash;
+
 				my $inclregex = $metricDef->{'inclregex'};
 				my $exclregex = $metricDef->{'exclregex'};
+
+				$deviceHash{'enabled'} = 1;
+				
+				if ( defined &filterInclude) {
+					print "Testing filter\n";
+					unless ( filterInclude($map->{$device}, $metricDef, $session) ) {
+						$deviceHash{'enabled'} = 0;
+					}
+			    }
 				
 				#inclregex and exclregex can be a single regex or an
 				#array of regexes.
@@ -220,8 +237,6 @@ sub runDiscParams {
 				
 				my ($deviceIndex) = $map->{$device} =~ m/(\d+)$/;
 				$deviceIndex or next DEVICE;
-				
-				my %deviceHash;
 				
 				#essentials for a mapped metric (tested earlier)
 				$deviceHash{'target'}  = $target;
