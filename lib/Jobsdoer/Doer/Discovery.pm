@@ -276,6 +276,25 @@ sub runDiscParams {
 		}
 		else {
 			#this is not a mapped device.
+			
+			my %deviceHash;
+			$deviceHash{'enabled'} = 1;
+				
+			#If theres a filter sub run it now.
+			if ( defined &filterInclude) {
+				print "Testing filter\n";
+				
+				eval {
+					unless ( filterInclude(undef, $metricDef, $session) ) {
+						$deviceHash{'enabled'} = 0;
+					}
+				};
+				if ($@) {
+					#If there was any error at all, force the device
+					#enabled
+					$deviceHash{'enabled'} = 1;
+				}
+		    }
 
             #test the valbase
             print "Testing $target/$metric...\n";
@@ -299,8 +318,6 @@ sub runDiscParams {
 				print "\tGot $max for the maximum val for $metricDef->{'metric'}\n";
 			}
 
-			my %deviceHash;
-			
 			#essentials for a non-mapped metric (tested earlier)
 			$deviceHash{'target'}  = $target;
 			$deviceHash{'metric'}  = $metric;

@@ -147,11 +147,9 @@ sub getTargetDevs {
     for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
         push @devices, { 'title' => $row->{'device'} };
 	}
-	
-	@devices or return;
+	@devices = sort { $a->{'title'} <=> $b->{'title'} } @devices;
 	
 	return wantarray ? @devices : \@devices;
-	
 }
 
 sub getGraphDefs {
