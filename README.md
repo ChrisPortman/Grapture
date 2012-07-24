@@ -126,6 +126,14 @@ TODO
  - Index the graph groups so that the order in which they appear can be
    specified.  It appears JS will sort therefore, InterfaceErrors
    appears above InterfaceTraffic which is what everyone wants to see.
+ - Add more flexible device filtering so that for example, interfaces
+   that are down wont be polled. (UPDATE: The discovery plugins can
+   now have a 'filterSub' option that holds a reference to a sub which
+   will then be globbed into the main discovery process and executed.
+   The sub will be passed an SNMP connection to the device, the metric
+   definition hash and the device ID, using which it can do what ever it 
+   likes to determine a true/false return, true will result in the device
+   being monitored (enabled) and false resulting in it being disabled).
 
  - (FIXED) At the moment, multiple graphs (eg InterfaceTraffic and
    InterfaceErrors) breaks the graph rendering.
