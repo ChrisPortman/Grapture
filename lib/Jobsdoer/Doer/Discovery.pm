@@ -204,10 +204,19 @@ sub runDiscParams {
 
 				$deviceHash{'enabled'} = 1;
 				
+				#If theres a filter sub run it now.
 				if ( defined &filterInclude) {
 					print "Testing filter\n";
-					unless ( filterInclude($map->{$device}, $metricDef, $session) ) {
-						$deviceHash{'enabled'} = 0;
+					
+					eval {
+						unless ( filterInclude($map->{$device}, $metricDef, $session) ) {
+							$deviceHash{'enabled'} = 0;
+						}
+					};
+					if ($@) {
+						#If there was any error at all, force the device
+						#enabled
+						$deviceHash{'enabled'} = 1;
 					}
 			    }
 				

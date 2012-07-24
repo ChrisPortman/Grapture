@@ -131,7 +131,7 @@ sub getTargetDevs {
 	
     my $dbh  = $self->dbh;
     
-	my $devsQuery = q(select a.device, from targetmetrics a
+	my $devsQuery = q(select a.device from targetmetrics a
 						join targets b on a.target = b.target 
 						where a.target = ? and category = ?
 						and enabled = true

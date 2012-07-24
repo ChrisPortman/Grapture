@@ -87,6 +87,9 @@ sub discover {
 	];
 }
 
+#metric defs can take a 'filterSub' option that should contain a
+#reference to a sub routine that will be run to determine if the device
+#should be enabled
 sub onlyUpWithPosInCounter {
 	my $devId   = shift;
 	my $options = shift;
@@ -106,7 +109,6 @@ sub onlyUpWithPosInCounter {
 	$inCounter = $inCounter->{ '1.3.6.1.2.1.2.2.1.10.'.$devId };
 
 	if ($operStatus eq '1' and $inCounter =~ /^[1-9]\d*$/) {
-	print "$devId operstatus is $operStatus inOcts is $inCounter, returning 1\n";
 		return 1;
 	}
 	
