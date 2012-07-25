@@ -95,8 +95,6 @@ sub onlyUpWithPosInCounter {
 	my $options = shift;
 	my $session = shift;
 	
-	($devId) = $devId =~ /(\d+)$/;
-	
 	#get the opper status
 	my $operStatus = $session->get_request(
 	    '-varbindlist' => ['1.3.6.1.2.1.2.2.1.8.'.$devId],

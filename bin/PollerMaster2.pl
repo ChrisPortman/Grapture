@@ -297,6 +297,7 @@ sub logFetchProc {
             $log = $bsclient->reserve(); #blocks until a job is ready
 	    };
         last unless $run;
+        next unless $log;
         
         $logger->debug('LogFetch - Received a log');
 

@@ -297,7 +297,7 @@ sub run {
 	else {
 		return;
 	}
-
+	
     #get all the map tables.
     for my $mapBase ( keys %maps ) {
         debug( "\t- Getting maptable $mapBase..." );
@@ -319,25 +319,25 @@ sub run {
     if ($mapResults[0]) {
 		debug( "\t- Got the maps OK\n" );
 	}
+	
     
     #push each hash into a single hash
     for my $hash ( @mapResults ) {
 		%mapResultsHash = ( %mapResultsHash, %{$hash} );
 	}
-
     
     #reverse the mapResults so the oid becomes the value and then trim the oid so we only keep the index
     %mapResultsHash = reverse( %mapResultsHash );
     for my $key (keys %mapResultsHash) {
 		$mapResultsHash{$key} =~ s/.+(\.\d+)$/$1/;  #value now looks like '.1'
     }
-    
+
     #do the polling
     my @pollsResults;
     my %queuedValmaps;
     my %fullResultHash;
     my %timestamps;
-    
+
     for my $device ( keys %polls ) {
 		
 		for my $metric ( @{ $polls{$device} } ) {
@@ -361,7 +361,9 @@ sub run {
 			#if this is a mapped metric, then get the whole val table
 			#otherwise just get the oid
 			my $result;
+			debug( "Checking for $oid in fullResultHash... " );
 			unless ( exists($fullResultHash{$oid}) ) {
+				debug( "Not Found\n" );
 				debug( "\t- Getting table for metric $metric->{'metric'}..." );
 				if ($metric->{'mapbase'}) {
 			        $result = $session->get_table(
@@ -390,6 +392,9 @@ sub run {
 					$fullResultHash{$key} = $result->{$key};
 				}
 				debug( " OK\n" );
+			}
+			else {
+				debug( "Found\n" );
 			}
 
             #get the timestamp from when the snmp data was actually 

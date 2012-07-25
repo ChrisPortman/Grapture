@@ -95,11 +95,17 @@ sub runDiscParams {
 	}
 	
     my @return;
+    my %devStateCache; #Cache the results of filterInclude for each Dev
 	
 	METRIC:
 	for my $metricDef ( @{$params} ) {
 		next METRIC unless ref($metricDef) and ref($metricDef) eq 'HASH'; 
-		
+
+		my $metric  = $metricDef->{'metric'};
+		my $valbase = $metricDef->{'valbase'};
+	   	my $max;
+
+        print "\nExamining $metric for $target...\n" if $metric;
 	
 	    if ( $metricDef->{'group'} ) {
 			#this is a group definition hash
@@ -125,7 +131,6 @@ sub runDiscParams {
 			for my $exp ( @{$metricDef->{'sysDesc'}} ) {
 
 				if ( $sysDesc =~ /$exp/) {
-					print "\t- Match!\n";
 					$group = $metricDef->{'group'};
 					print "Setting Group = $group\n";
 					last EXPRESSION;
@@ -143,48 +148,49 @@ sub runDiscParams {
         #look for a filter code ref
 		if (    ref($metricDef->{'filterSub'}) 
 			and ref($metricDef->{'filterSub'}) eq 'CODE') {
+			print "Setting filterSub for $metric\n";
 			*filterInclude = delete $metricDef->{'filterSub'};
+			if ( defined &filterInclude ) {
+				print "Filtersub successfully defined\n";
+			}
+			else {
+				print "Filtersub FAILED to define!\n";
+			}
 		}
 		else {
-			undef &filterInclude;
+			print "No filterSub for $metric\n";
+			undef *filterInclude;
 		}
 		
-	
 		#essential params
 		unless ( $metricDef->{'metric'} and $metricDef->{'valbase'}) {
 			next METRIC;
 		}
 
-		my $metric  = $metricDef->{'metric'};
-		my $valbase = $metricDef->{'valbase'};
-	   	my $max;
-		
 		if ($metricDef->{'mapbase'}) {
+			my $map;
+	        my $vals;
+			
 			#test the valbase
 			
 			$session->error();
-			print "Testing $target/$metric...\n";
-			$session->get_table( '-baseoid'        => $metricDef->{'valbase'},
-			                     '-maxrepetitions' => 10, 
-			                   )
-			  or next METRIC;
-			print "\tPASSED\n";
+			$vals = 
+			    $session->get_table( '-baseoid'        => $metricDef->{'valbase'},
+			                         '-maxrepetitions' => 10, 
+			                       ) or next METRIC;
 			  
 			#we need to get the table for map base
-	     	my $map;
-	
-			$map = $session->get_table( '-baseoid'        => $metricDef->{'mapbase'},
-			                            '-maxrepetitions' => 10,
-			                          );
-			$map or next METRIC;
+			$map  = 
+			    $session->get_table( '-baseoid'        => $metricDef->{'mapbase'},
+			                         '-maxrepetitions' => 10,
+			                       ) or next METRIC;
 			
 			$map = { reverse(%{$map}) };
 			
 			if ( $metricDef->{'maxbase'} ) {
 				$max = $session->get_table( '-baseoid'        => $metricDef->{'maxbase'},
 				                            '-maxrepetitions' => 10,
-				                          );
-				$max or next METRIC;
+				                          ) or next METRIC;
 				
 				#knock the max keys down to just the index part of the OID (last digit)
 				for my $key ( keys(%{$max}) ) {
@@ -197,6 +203,22 @@ sub runDiscParams {
 			
 			DEVICE:
 			for my $device ( keys(%{$map}) ) {
+				#make sure that the device appears in the $vals for this
+				#metric.  Not all devices in the map will have all the 
+				#metrics we've specified
+
+				my ($devId) = $map->{$device} =~ /(\d+)$/; 
+				my $devValOid = $valbase.'.'.$devId;
+				$devValOid =~ s/\.\././;
+
+				print "Looking for $devValOid in vals table for device $device metric $metric... ";
+
+				unless ( defined $vals->{$devValOid} ) {
+					print "NOT FOUND, SKIPPING\n";
+					next DEVICE;
+				}
+				print "FOUND\n";
+				
 				my %deviceHash;
 
 				my $inclregex = $metricDef->{'inclregex'};
@@ -206,19 +228,31 @@ sub runDiscParams {
 				
 				#If theres a filter sub run it now.
 				if ( defined &filterInclude) {
-					print "Testing filter\n";
+					print "Testing filter for $device: $metric\n";
 					
-					eval {
-						unless ( filterInclude($map->{$device}, $metricDef, $session) ) {
-							$deviceHash{'enabled'} = 0;
-						}
-					};
-					if ($@) {
-						#If there was any error at all, force the device
-						#enabled
-						$deviceHash{'enabled'} = 1;
+					if ( defined $devStateCache{$device} ) {
+						print "Using cached result for $device: $metric\n";
+						$deviceHash{'enabled'} = $devStateCache{$device};
 					}
+					else {
+						eval {
+							unless ( filterInclude($devId, $metricDef, $session) ) {
+								$deviceHash{'enabled'}  = 0;
+							}
+						};
+				    
+						if ($@) {
+							#If there was any error at all, force the device
+							#enabled
+							$deviceHash{'enabled'}  = 1;
+						}
+						$devStateCache{$device} = $deviceHash{'enabled'};
+				    }
+				    print "Device state is $devStateCache{$device}\n";
 			    }
+			    else {
+					print " - no filter apparently\n";
+				}
 				
 				#inclregex and exclregex can be a single regex or an
 				#array of regexes.

@@ -67,6 +67,10 @@ sub getTargetTree {
         my $group    = $row->{'groupname'};
         my $memberof = $row->{'memberof'};
 
+        unless ( $hierachy{$group} ) {
+			$hierachy{$group} = [];
+		}
+
         if ( $memberof ) {
 			push @{$hierachy{$memberof}}, { 'text' => $group, 'children' => $hierachy{$group} };
 		}    
@@ -82,13 +86,13 @@ sub getTargetTree {
 		}		
 	}
 	
+	# Push each top level branch into an array
 	for my $key ( keys %hierachy ) {
-		#$hierachy{$key}->{'text'} = $key;
 		push @tree, { 'text'     => $key,
 		              'children' => $hierachy{$key},
 		            };
 	}
-    
+	
     return wantarray ? @tree : \@tree;
 }
 

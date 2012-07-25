@@ -58,17 +58,19 @@ sub discover {
              'device'      => 'CPU',
              'graphgroup'  => 'CPUUsage',
 		},
-	    {
-			 'metric'      => 'CpuIdleTime',
-	         'valbase'     => '1.3.6.1.4.1.2021.11.53.0',
-             'counterbits' => '32',
-	         'munge'       => 'changeSinceLast',
-	         'graphdef'    => 'LinuxCpu',
-             'valtype'     => 'counter',
-             'category'    => 'System',
-             'device'      => 'CPU',
-             'graphgroup'  => 'CPUUsage',
-		},
+		
+		#Disabled.  I dont think it really adds anything to the info
+	    #~ {  
+			 #~ 'metric'      => 'CpuIdleTime',
+	         #~ 'valbase'     => '1.3.6.1.4.1.2021.11.53.0',
+             #~ 'counterbits' => '32',
+	         #~ 'munge'       => 'changeSinceLast',
+	         #~ 'graphdef'    => 'LinuxCpu',
+             #~ 'valtype'     => 'counter',
+             #~ 'category'    => 'System',
+             #~ 'device'      => 'CPU',
+             #~ 'graphgroup'  => 'CPUUsage',
+		#~ },
 	    {
 			 'metric'      => 'CpuKernelTime',
 	         'valbase'     => '1.3.6.1.4.1.2021.11.55.0',
