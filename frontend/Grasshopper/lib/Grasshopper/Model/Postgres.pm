@@ -3,7 +3,6 @@ package Grasshopper::Model::Postgres;
 use strict;
 use warnings;
 use parent 'Catalyst::Model::DBI';
-
 use Data::Dumper;
 
 my $DBHOST = $Grasshopper::GHCONFIG->{'DB_HOSTNAME'};
@@ -151,7 +150,8 @@ sub getTargetDevs {
     for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
         push @devices, { 'title' => $row->{'device'} };
 	}
-	@devices = sort { $a->{'title'} <=> $b->{'title'} } @devices;
+
+	@devices = sort { sortNatural($a->{'title'}, $b->{'title'}) } @devices;
 	
 	return wantarray ? @devices : \@devices;
 }
@@ -212,6 +212,54 @@ sub getMetricGrp {
 	}
 	
 	return $groups[0];
+}
+
+sub sortNatural {
+	my $a = shift;
+	my $b = shift;
+	my $caseInsen = shift;
+	
+	if ($caseInsen) {
+		$a = lc($a);
+		$b = lc($b);
+	}
+	
+	my @aElems = split //, $a;
+	my @bElems = split //, $b;
+
+	if ($a eq $b) {
+		return 0;
+	}
+	
+	my $length = ($#aElems > $#bElems) ? $#aElems : $#bElems;
+	
+	for my $i ( 0 .. $length ) {
+		#check to see if both have bee the same to this point but one
+		#has stopped
+		unless (defined $aElems[$i]) {
+			return -1;
+		}
+		unless (defined $bElems[$i]) {
+			return 1;
+		}
+
+        next if ($aElems[$i] eq $bElems[$i]);
+        
+        my $aRemainder = join('', @aElems[$i..$#aElems] );
+        my $bRemainder = join('', @bElems[$i..$#bElems] );
+
+		if (     $aRemainder =~ /^\d+(?:\.\d+)?$/ 
+		     and $bRemainder =~ /^\d+(?:\.\d+)?$/ ) {
+				 
+		    my $result = $aRemainder <=> $bRemainder;
+		    return $result;			 
+		}
+		else {
+		    my $result = $aElems[$i] cmp $bElems[$i];
+		    return $result;			 
+		}
+	}
+	die "Couldnt compare\n";
 }
 
 =head1 NAME

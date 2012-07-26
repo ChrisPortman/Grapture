@@ -247,7 +247,8 @@ function buildGraphs(response,target,device, graphsPanel) {
 			{
 				xtype  : 'panel',
 				title  : group,
-				padding: '20 50 0 50',
+				//padding: '20 50 0 50',
+				margin : '20 auto 0 auto',
 				layout: 'fit',
 				html: '<div style = "float: left;">                                                                            \
 				           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
