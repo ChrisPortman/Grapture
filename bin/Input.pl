@@ -2,51 +2,16 @@
 #$Id: testInput.pl,v 1.9 2012/06/07 03:43:34 cportman Exp $
 
 use strict;
+use Config::Auto;
 use JSON::XS;
-use Data::Dumper;
 use DBI;
 
-my $fifo = '/tmp/pollermaster.cmd';
+my $fifo = '/tmp/pollermaster.cmd'; # FIXME, this should probably be in the config file
+my $dbh;
+my $sth;
+my $config;
 
-sub getConfig {
-	my $cfgFile = shift;
-	
-	unless ($cfgFile and -f $cfgFile) {
-		return;
-	}
-	
-	open(my $fh, '<', $cfgFile)
-	  or die "Could not open $cfgFile: $!\n";
-	
-	my %config = map  {
-		             $_ =~ s/^\s+//;    #remove leading white space
-		             $_ =~ s/\s+$//;    #remove trailing white space
-		             $_ =~ s/\s*#.*$//; #remove trailing comments 
-		             my ($opt, $val) = split(/\s*=\s*/, $_);
-		             $opt => $val ;
-				 }
-	             grep { $_ !~ /(?:^\s*#)|(?:^\s*$)/ } #ignore comments and blanks
-	             <$fh>;
-	
-	return \%config;
-}
-
-
-my $GHCONFIG = getConfig( '../etc/grasshopper.cfg' );
-my $DBHOST = $GHCONFIG->{'DB_HOSTNAME'};
-my $DBNAME = $GHCONFIG->{'DB_DBNAME'};
-my $DBUSER = $GHCONFIG->{'DB_USERNAME'};
-my $DBPASS = $GHCONFIG->{'DB_PASSWORD'};
-
-my $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST",
-	                       $DBUSER,
-	                       $DBPASS,
-	                       #{'RaiseError' => 1},
-	                      );
-	
-if ( not $dbh ) { return; };
-
-my $getSchedQuery = 'select 
+my $getSchedQuery = q/select 
                      a.target,  a.device,      a.metric, a.valbase,
 	                 a.mapbase, a.counterbits, a.max,    a.category,
 	                 a.module, a.output, a.valtype, b.snmpcommunity,
@@ -54,12 +19,46 @@ my $getSchedQuery = 'select
                      from targetmetrics a
                      join targets b on a.target = b.target
                      where a.enabled = true
-                     order by a.target, a.metric --';
-                     
-my $sth = $dbh->prepare($getSchedQuery);
+                     order by a.target, a.metric --/;
 
+sub getConfig {
+	my $file = shift;
+	return unless ($file and -f $file);
+	my $config = Config::Auto::parse($file);
+	return $config;
+}
+
+sub loadConfig {
+
+    $config = getConfig( '../etc/grasshopper.cfg' ); # FIXME, should be from the cli
+    my $DBHOST = $config->{'DB_HOSTNAME'};
+    my $DBNAME = $config->{'DB_DBNAME'};
+    my $DBUSER = $config->{'DB_USERNAME'};
+    my $DBPASS = $config->{'DB_PASSWORD'};
+
+    $dbh->disconnect if $dbh; # disconnect if connected
+    $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST", $DBUSER, $DBPASS, 
+        #{'RaiseError' => 1},
+        )
+        or die "Failed to connect to the database: $DBI::errstr\n";
+
+    $sth = $dbh->prepare($getSchedQuery);
+
+    return 1
+
+}
+	
+                     
 my $run = 1;
+my $reload = 0;
+
+$SIG{HUP} = { $reload++ };
+$SIG{DIE} = { $run = 0 };
+
 while ($run) {
+
+        if ($reload) { loadConfig(); $reload = 0 }
+
 	my $res = $sth->execute();
 	
 	my %jobs;
@@ -117,18 +116,16 @@ while ($run) {
 	}
 	else {
 		print "FIFO not created, is the pollerMaster running?\n";
+# FIXME, should now probably exit?
 	}
 
     #~ my $command = 
 	#~ "echo '$encodedJobs' | perl PollerMaster.pl -s localhost -p 11300 -i stdin -v";
 	#~ print "$command\n";
 	#~ my @results = `$command`;
-	
-	sleep 45;
+
+	sleep 45; # FIXME, this should probably be configurable
+
 }
 
-
-
-
-1;
-
+exit;
