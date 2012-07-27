@@ -7,7 +7,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use RRDTool::OO;
+use RRDs;
 
 my $RRDFILELOC = '/home/chris/git/Grasshopper/rrds/';
 
@@ -21,9 +21,9 @@ sub new {
 	}
     
     my %selfHash;
-    $selfHash{'resultset'}  = $args;
-    $selfHash{'rrdfileloc'} = $RRDFILELOC;
-    
+    $selfHash{'resultset'}     = $args;
+    $selfHash{'rrdfileloc'}    = $RRDFILELOC;
+    $selfHash{'newGraphStart'} = time - 300; 
     my $self = bless(\%selfHash, $class);
     
     return $self;
@@ -32,10 +32,9 @@ sub new {
 sub run {
 	my $self    = shift;
     my $results = $self->{'resultset'};
-    
+
     my $target;     #A job is per target.
     my %rrdUpdates; #hash keyed on device.
-
 
     #First rearrange the result hash so metrics per device are together.
     for my $result ( @{$results} ) {
@@ -43,7 +42,7 @@ sub run {
 		my $category  = $result->{'category'};
 		my $device    = $result->{'device'};
 		my $metric    = $result->{'metric'};
-		my $value     = $result->{'value'} || 0;
+		my $value     = $result->{'value'} || 'U';
 		my $timestamp = $result->{'timestamp'};
 		my $valtype   = $result->{'valtype'};
 		my $max       = $result->{'max'};
@@ -62,7 +61,6 @@ sub run {
 		                                    'max'      => $max,
 		                                  };
 		$rrdUpdates{$device}->{'category'} = $category,
-		#print Dumper(\%rrdUpdates);
 	}
 	
 	#process each device and its metrics and do some manipulations
@@ -116,7 +114,7 @@ sub run {
 
 			#finish the rrd file name and location with <metric>.rrd
 			my $devFileName = $updMetric.'.rrd';
-			$devFileName =~ s|\/|_|g;
+			$devFileName    =~ s|\/|_|g;
 			
 	        my $finalFileName = $rrdFile . $devFileName;
 	
@@ -127,7 +125,6 @@ sub run {
 			               'valmax'  => {},
 			             );
 
-
 			my %updMetricHash = %{$rrdUpdates{$updDevice}->{$updMetric}};
 
 	        $update{'values'}->{$updMetric}  = $updMetricHash{'value'};
@@ -135,8 +132,7 @@ sub run {
 	        $update{'valmax'}->{$updMetric}  = $updMetricHash{'max'};
 	        $update{'time'}                  = $updMetricHash{'time'};
 
-		    $self->_pushUpdate($finalFileName, \%update)
-		      or return;
+		    $self->_pushUpdate($finalFileName, \%update);
 		}
 	}
 	
@@ -156,73 +152,55 @@ sub _pushUpdate {
 	}
 
     if ($rrdFile) {
-		
-		$rrdObj = RRDTool::OO->new( 'file'        => $rrdFile,
-		                            'raise_error' => 0 )
-		  or print "Failed to create RRD perl obj: ".$rrdObj->error_message()."\n" 
-		    and return;
-
-		$self->{'rrdObj'} = $rrdObj;
-	
 		unless ( -f $rrdFile ) {
 			print "Creating file $rrdFile for\n";
-			$self->_createRrd($updateHash)
+			$self->_createRrd($rrdFile, $updateHash)
 			  or return;
 		}
 	}
 	
-	#Valtype and Max only needed for creation.
-	my %update = ( 'time'   => $updateHash->{'time'}, 
-	               'values' => $updateHash->{'values'},
-	             );
+    my $values; 
+    for my $metric ( keys ( %{$updateHash->{'values'}} ) ){
+		$values .= $updateHash->{'values'}->{$metric} .':';
+	}
 	
-	$rrdObj->update( %update )
-		  or print "Update failed for $rrdFile: ".$rrdObj->error_message()."\n".Dumper($rrdObj)."\n".Dumper(\%update)."\n" and return;
+	$values =~ s/:$//;
+    RRDs::update($rrdFile, $updateHash->{'time'}.':'.$values);
+    
+    my $error = RRDs::error;
+    print "$error\n" if $error;
 		  
     return 1;
 }
 
 sub _createRrd {
     my $self       = shift;
+    my $file       = shift;
     my $updateHash = shift;
-    my $rrdObj     = $self->{'rrdObj'};
+    
     my @datasources;
+    my @rras;
     
     for my $ds ( keys( %{$updateHash->{'values'}} ) ) {
-		my $type = $updateHash->{'valtype'}->{$ds};
-		my $max  = $updateHash->{'valmax'}->{$ds};
+		my $type = uc($updateHash->{'valtype'}->{$ds});
+		my $max  = $updateHash->{'valmax'}->{$ds} || 'U';
 		
-		my %dataSettings;
-		$dataSettings{'name'}         = $ds;
-		$dataSettings{'type'}         = uc($type);
-		$max and $dataSettings{'max'} = $max;
-		
-		push @datasources, ( 'data_source', \%dataSettings );
+		push @datasources, ( "DS:$ds:$type:600:U:$max" );
 	}
 	
-	#print Dumper(\%datasources);
+	push @rras, "RRA:AVERAGE:0.5:1:2880";
+	push @rras, "RRA:AVERAGE:0.5:6:4320";
+	push @rras, "RRA:AVERAGE:0.5:24:8760";
 
-	$rrdObj->create(
-	    'step' => 60,
-	    
-	    @datasources,
-	    
-		'archive' => { 'rows'    => 2880, #10 days, AVG over 5Mins
-		               'cpoints' => 1,
-		               'cfunc'   => 'AVERAGE',
-		             },
-		'archive' => { 'rows'    => 4320, #90 days, AVG over 30Mins
-		               'cpoints' => 6,
-		               'cfunc'   => 'AVERAGE',
-		             },
-		'archive' => { 'rows'    => 8760, #2year days, AVG over 120Mins
-		               'cpoints' => 24,
-		               'cfunc'   => 'AVERAGE',
-		             },
-	)
-	  or print "Failed to create RRD: ".$rrdObj->error_message()."\n" 
-	    and return;
-	
+	RRDs::create( $file, 
+	              '--step' , '300',
+	              '--start', $self->{'newGraphStart'},
+	              @datasources,
+	              @rras,
+	            );
+    my $error = RRDs::error;
+    print "$error\n" if $error;
+
 	return 1;
 }
 	

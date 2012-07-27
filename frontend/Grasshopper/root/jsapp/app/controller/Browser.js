@@ -202,7 +202,6 @@ function loadCategory(tabPanel, newTab, oldTab) {
 	devStore.setProxy({
 			type: 'rest',
 			headers: {'Content-type': 'application/json'},
-			//url:  '/data/devices.' + target + '.' + category + '.json',
 			url:  '/rest/targetdevices/' + target + '/' + category,
 			reader: {
 	            type: 'json',
@@ -216,6 +215,8 @@ function loadGraphs(node, record, item, index, event) {
 	var target      = GH.currentTarget;
 	var category    = GH.currentCat;
 	var device      = record.data.title;
+
+	this.getGraphsRef().removeAll();
 	
 	//remove unfrendly chars from the device
 	device = device.replace(/\//g,'_');
@@ -228,6 +229,7 @@ function loadGraphs(node, record, item, index, event) {
 }
 
 function buildGraphs(response,target,device, graphsPanel) {
+
 	var rrdData = response.responseText;
 	var panels = [];
 	
@@ -247,8 +249,7 @@ function buildGraphs(response,target,device, graphsPanel) {
 			{
 				xtype  : 'panel',
 				title  : group,
-				//padding: '20 50 0 50',
-				margin : '20 auto 0 auto',
+				margin : '10 auto 10 auto',
 				layout: 'fit',
 				html: '<div style = "float: left;">                                                                            \
 				           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
@@ -273,7 +274,6 @@ function buildGraphs(response,target,device, graphsPanel) {
 			}
 		);
 	}
-	graphsPanel.removeAll();
 	graphsPanel.setTitle( device + ' Performance Graphs');
 	graphsPanel.add( panels );
 }
