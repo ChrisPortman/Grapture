@@ -53,7 +53,7 @@ my $run = 1;
 my $reload = 0;
 
 $SIG{HUP} = { $reload++ };
-$SIG{DIE} = { $run = 0 };
+$SIG{__DIE__} = { $run = 0 };
 
 while ($run) {
 
