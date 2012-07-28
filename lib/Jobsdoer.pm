@@ -1,11 +1,11 @@
 #!/usr/bin/env perl
 # $Id: Jobsdoer.pm,v 1.15 2012/06/07 03:41:22 cportman Exp $
 
-=head 1 TITLE
+=head1 TITLE
 
-  JobsDoer.pm
+  JobsDoer
   
-head 1 DESCRIPTION
+=head1 DESCRIPTION
 
   JobsDoer is a Object Orientated interface to a Beanstalkd server. It
   retireved jobs from the server and dispatces them to doer modules that
@@ -14,7 +14,7 @@ head 1 DESCRIPTION
   module that is responsible to getting the result to where it needs to
   go.
 
-head 1 THREADS
+=head1 THREADS
 
   The JobsDoer was designed to run threaded so that a single host can
   simultaneously take and run multiple jobs.
@@ -39,18 +39,18 @@ head 1 THREADS
   that attempts to start threads, then they will be spawned by JobsDoer
   as required.
   
-=head 1 MODULES
+=head1 MODULES
 
   JobsDoer dynamically includes modules on start up and if a HUP is
   received.
   
-=head 2 Doer Modules
+=head2 Doer Modules
 
   Doer modules fall under the Jobsdoer::Doer namespace and represent the
   actual feet on the ground so to speak.  They contain the actual logic
   that gets something done/does the job.
   
-=head 2 Output Modules
+=head2 Output Modules
 
   Output modules fall under Jobsdoer::Output namespace and are tasked
   with getting the result of the Doer module to some place useful and 
@@ -65,14 +65,13 @@ head 1 THREADS
   more than one Doer.  Its really up to the author of the Output module
   what Doers it will work with.
   
-=head 2 TODO
+=head2 TODO
 
   - Fix up some inconsistancies in terminologies in the code variables
     e.g. Doer modules being refered to as methods and modules 
     interchangably.
 
 =cut
-
 
 package Jobsdoer;
 
@@ -87,30 +86,37 @@ use JSON::XS;
 use Data::Dumper;
 
 #Use plugable modules to allow on the fly expansion of functionality
-use Module::Pluggable search_path => ['Jobsdoer::Doer'],   require => 1, sub_name => 'doers';
-use Module::Pluggable search_path => ['Jobsdoer::Output'], require => 1, sub_name => 'outputs';
+use Module::Pluggable
+  search_path => ['Jobsdoer::Doer'],
+  require     => 1,
+  sub_name    => 'doers';
+use Module::Pluggable
+  search_path => ['Jobsdoer::Output'],
+  require     => 1,
+  sub_name    => 'outputs';
 
 sub new {
     my $class = shift;
-    if ( ref($class) ) { $class = ref($class); }
+    $class = ref $class if ref $class;
 
     my $args = shift;
 
-    if ( not( ref($args) or ref( $args eq 'HASH' ) ) ) {
-        die 'Argument to Jobsdoer->new() must be a hash ref';
-    }
+    die 'Argument to ' . $class . '->new() must be a hash ref';
+    unless ref $args eq 'HASH';
 
-    if ( not( $args->{'bsserver'} and $args->{'bstubes'} ) ) {
-        die 'Args hash must contain at least bsclient and bstubes.';
-    }
+    die 'Args hash must contain at least bsclient and bstubes.'
+      unless ( $args->{'bsserver'} and $args->{'bstubes'} );
 
-    my $self = bless( $args, $class );
+    my $self = bless( {}, $class );
+
+    $self->{'bsserver'} = $args->{'bsserver'};
+    $self->{'bstubes'}  = $args->{'bstubes'};
 
     #These values can be suplied in %args or given defaults here.
-    $self->{'maxThreadTime'} ||= 3600;
-    $self->{'maxThreads'}    ||= 5;
-    $self->{'childCount'}      = 0;
-    $self->{'childPids'}       = {};
+    $self->{'maxThreadTime'} = $args->{'maxThreadTime'} || 3600;
+    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 5;
+    $self->{'childCount'}    = $args->{'childCount'}    || 0;
+    $self->{'childPids'}     = {};
 
     #Initial load of plugable modules.
     $self->loadModules();
@@ -140,38 +146,37 @@ sub new {
 sub startThread {
     my $self = shift;
     my $pid;
-    
-    if ( $self->{'childCount'} >= $self->{'maxThreads'} ) {
-		return;
-	}
-    
+
+    return if ( $self->{'childCount'} >= $self->{'maxThreads'} );
+
     # block signal for fork
     my $sigset = POSIX::SigSet->new(SIGINT);
-    sigprocmask(SIG_BLOCK, $sigset)
-        or die "Can't block SIGINT for fork: $!\n";
-    
+    sigprocmask( SIG_BLOCK, $sigset )
+      or die "Can't block SIGINT for fork: $!\n";
+
     #spin off a thread.
-    die "fork: $!" unless defined ($pid = fork);
-      
-    if ( $pid ) {
-		# unblock signals
-		sigprocmask(SIG_UNBLOCK, $sigset)
-            or die "Can't unblock SIGINT for fork: $!\n";
-		
-		$self->{'childCount'} ++;
-		$self->{'childPids'}->{$pid} = 1;
-		
-		return $pid;
-	}
-	else {
-		# unblock signals
-		sigprocmask(SIG_UNBLOCK, $sigset)
-            or die "Can't unblock SIGINT for fork: $!\n";
-		
-		$self->_jobDoerThread( time() + $self->{'maxThreadTime'} );
-		
-		exit;
-	}
+    die "fork: $!" unless defined( $pid = fork );
+
+    if ($pid) {
+
+        # unblock signals
+        sigprocmask( SIG_UNBLOCK, $sigset )
+          or die "Can't unblock SIGINT for fork: $!\n";
+
+        $self->{'childCount'}++;
+        $self->{'childPids'}->{$pid} = 1;
+
+        return $pid;
+    }
+    else {
+        # unblock signals
+        sigprocmask( SIG_UNBLOCK, $sigset )
+          or die "Can't unblock SIGINT for fork: $!\n";
+
+        $self->_jobDoerThread( time() + $self->{'maxThreadTime'} );
+
+        exit;
+    }
 }
 
 sub loadModules {
@@ -190,10 +195,9 @@ sub loadModules {
         $mod => $_
     } $self->outputs();
 
-
     $self->{'doers'}   = \%doers;
     $self->{'outputs'} = \%outputs;
-    
+
     return 1;
 }
 
@@ -214,9 +218,9 @@ sub beanstalkDisconnect {
     my $self        = shift;
     my $bsclientObj = $self->{'bsclient'};
 
-    if ( $bsclientObj->socket() ) {
-        $bsclientObj->quit();
-    }
+    $bsclientObj->quit()
+        if $bsclientObj->socket();
+
     return 1;
 }
 
@@ -227,9 +231,7 @@ sub getJob {
 
     my $job = $bsclientObj->reserve(10);
 
-    if ($job) {
-        return $job;
-    }
+    return $job if $job;
 
     return;
 }
@@ -238,12 +240,14 @@ sub runJob {
     my $self = shift;
     my $job  = shift;
 
-    if ( not $job ) { return; }
+    return unless $job;
 
     my $bsclientObj = $self->{'bsclient'};
 
     my $jobData = decode_json( $job->{'data'} );
-    debug("Starting job ID $job->{'id'} at ".localtime()." for $jobData->{'methodInput'}->{'target'}");
+    debug(  "Starting job ID $job->{'id'} at "
+          . localtime()
+          . " for $jobData->{'methodInput'}->{'target'}" );
 
     #Stash some useful details regarding the job
     $self->{'currentJobData'} = {
@@ -266,19 +270,21 @@ sub runJob {
     }
 
     my $result = $self->runDoerModule();
-    
+
     my %resultData;
-    
+
     if ($result) {
-		
+
         %resultData = (
-            'id'         => $self->{'currentJobData'}->{'jobId'},
-            'result'     => $result,
+            'id'     => $self->{'currentJobData'}->{'jobId'},
+            'result' => $result,
         );
-        
+
         return wantarray ? %resultData : \%resultData;
     }
-    $self->log('Doer module '.$self->{'currentJobData'}->{'module'}.' did not return a result');
+    $self->log( 'Doer module '
+          . $self->{'currentJobData'}->{'module'}
+          . ' did not return a result' );
     return 3;
 
 }
@@ -288,13 +294,13 @@ sub runDoerModule {
     my $module = $self->{'currentJobData'}->{'module'};
     my $data   = $self->{'currentJobData'}->{'methodInput'};
     my $jobId  = $self->{'currentJobData'}->{'jobId'};
-    
-    if ( not( $module or $data or $jobId ) ) {
+
+    unless ( $module or $data or $jobId ) {
         $self->log('Did not get the required details');
         return;
     }
 
-    if ( not $self->{'doers'}->{$module} ) {
+    unless ( $self->{'doers'}->{$module} ) {
         $self->log("Module specified ($module) is not valid");
         return;
     }
@@ -305,28 +311,27 @@ sub runDoerModule {
     eval {
         my $work = $self->{'doers'}->{$module}->new($data);
         $work or die "Couldn't construct object for module $module";
-        
-        $result  = $work->run();
-          
+
+        $result = $work->run();
+
         unless ($result) {
-			$error   = $work->error();
-        
-	        if ($error) {
-		        $self->log($error);
-			}        
-		}
-		
+            $error = $work->error();
+
+            if ($error) {
+                $self->log($error);
+            }
+        }
+
         1;
     };
-    
+
     if ($@) {
         $self->log($@);
         return;
     }
 
-    if ($result) {
-        return $result;
-    }
+    return $result
+        if $result;
 
     return;
 }
@@ -335,36 +340,35 @@ sub runOutputModule {
     my $self   = shift;
     my $result = shift;
     my $module = $self->{'currentJobData'}->{'outModule'};
-    
-    if ( not( $module ) ) {
-		#If theres no module, just return, this is valid as it may be
-		#desired to just get the result back via Beanstalk.
-        return;
-    }
 
-    if ( not $self->{'outputs'}->{$module} ) {
+    return unless $module;
+
+    #If theres no module, just return, this is valid as it may be
+    #desired to just get the result back via Beanstalk.
+
+    unless ( $self->{'outputs'}->{$module} ) {
         $self->log("Output module specified ($module) is not valid");
         return;
     }
 
     my $error;
     my $resultData = $result->{'result'};
-    
+
     eval {
         my $work = $self->{'outputs'}->{$module}->new($resultData);
-        
+
         if ($work) {
-        
+
             $result = $work->run();
-	        $error  = $work->error();
-        
-	    }
-	    
+            $error  = $work->error();
+
+        }
+
         1;
     };
 
     if ($@) {
-		print "Whoops!\n";
+        print "Whoops!\n";
         $self->log($@);
         return;
     }
@@ -377,13 +381,13 @@ sub runOutputModule {
 }
 
 sub submitResult {
-    my $self       = shift;
-    my $result     = shift;
+    my $self   = shift;
+    my $result = shift;
 
-	#We have output of a successfull doer run.  Run it thorough the
-	#output module.  If it fails set result to a code
-	$self->runOutputModule($result)
-	  or return 4;
+    #We have output of a successfull doer run.  Run it thorough the
+    #output module.  If it fails set result to a code
+    $self->runOutputModule($result)
+      or return 4;
 
     return 1;
 }
@@ -395,9 +399,11 @@ sub deleteJob {
         my $bsclientObj = $self->{'bsclient'};
 
         $bsclientObj->delete( $self->{'currentJobData'}->{'jobId'} );
-        debug('Finishing job ID '.$self->{'currentJobData'}->{'jobId'}.' at '.localtime());
+        debug(  'Finishing job ID '
+              . $self->{'currentJobData'}->{'jobId'} . ' at '
+              . localtime() );
     }
-    
+
     #$self->{'currentJobData'} = undef;
 
     return 1;
@@ -408,7 +414,7 @@ sub log {
     my $message = shift;
     my $code    = shift;
     my $jobId   = $self->{'currentJobData'}->{'jobId'};
-    
+
     if ( $self->{'currentJobData'} ) {
         if ( $self->{'currentJobData'}->{'logsTube'} ) {
             my $bsclientObj = $self->{'bsclient'};
@@ -434,12 +440,12 @@ sub log {
 }
 
 sub debug {
-	my $message = shift;
-	my $threadid = $$ || 'UNKNOWN';
-	
-	print "Thread ID $threadid - $message\n";
-	
-	return 1;
+    my $message = shift;
+    my $threadid = $$ || 'UNKNOWN';
+
+    print "Thread ID $threadid - $message\n";
+
+    return 1;
 }
 
 ###########################################
@@ -453,55 +459,55 @@ sub _jobDoerThread {
     my $exit;
 
     local $SIG{'INT'} = sub {
-		debug('Need to exit. Exit flag set, alarm set for 15 secs.');
-		alarm 15;
-		$exit = 1;
+        debug('Need to exit. Exit flag set, alarm set for 15 secs.');
+        alarm 15;
+        $exit = 1;
     };
 
     #Connect to the Beanstalk server.
     if ( not $self->beanstalkConnect() ) {
         sleep 10;    #Avoid spamming the CPU if the BS server is down
-        #~ threads->detach();
+                     #~ threads->detach();
         return;
     }
-    
+
     debug('Connected to Beanstalk server');
 
     while ( not $exit ) {
-		
-		my $jobObj;
-		my $result = 0;
-		my $submit;
+
+        my $jobObj;
+        my $result = 0;
+        my $submit;
 
         #Check to see if we are still connected
         last if not $bsclientObj->socket();
 
         #run each step as long as the last returns true.
         $jobObj = $self->getJob();
-        if ($jobObj) {              
+        if ($jobObj) {
 
-	        $result = $self->runJob($jobObj);
-	        
-	        if (ref $result) {
-		        $result = $self->submitResult($result);
-			}
-			
-	        $self->deleteJob();
+            $result = $self->runJob($jobObj);
 
-            $self->log('Job complete', $result);
-		}
-		
+            if ( ref $result ) {
+                $result = $self->submitResult($result);
+            }
+
+            $self->deleteJob();
+
+            $self->log( 'Job complete', $result );
+        }
+
         if ( $expireTime and time > $expireTime ) {
-			print "Thread has expired and is ending\n";
-			$exit ++;
-		}
+            print "Thread has expired and is ending\n";
+            $exit++;
+        }
     }
 
     #Disconnect from the BS server properly
     $self->beanstalkDisconnect();
 
     debug('Expired, exiting');
-    
+
     return 1;
 }
 
