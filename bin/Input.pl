@@ -3,14 +3,59 @@
 
 use strict;
 use Config::Auto;
+use Log::Dispatch;
+use Getopt::Long;
 use JSON::XS;
 use DBI;
 
-my $fifo = '/tmp/pollermaster.cmd'; # FIXME, this should probably be in the config file
+my $fifo;
 my $dbh;
 my $sth;
 my $config;
+my $cfgfile;
+my $interval;
+my $run = 1;
+my $reload = 1;
 
+#some signal handling
+$SIG{HUP} = sub { $reload++ };
+$SIG{__DIE__} = sub { $run = 0 };
+
+#set up logging
+my $logger = Log::Dispatch->new(
+    outputs   => [
+        [ 'Syslog', 'min_level' => 'info', 'ident' => 'PollerInput' ],
+        [ 'Screen', 'min_level' => 'info', 'stdout' => 1, 'newline' => 1 ],
+    ],
+    callbacks => [
+        \&logPrependLevel,
+    ]
+);
+
+# Process command line options
+my $optsOk = GetOptions(
+    'cfgfile|c=s'  => \$cfgfile, 
+    'interval|i=i' => \$interval,
+);
+die "Invalid options.\n" unless $optsOk;
+
+unless ($cfgfile and -f $cfgfile) {
+	$logger->emergency('Must supply valid config file (-c)');
+	exit;
+}
+
+#Init notices
+$logger->notice('Input starting...');
+$logger->notice("Using config file $cfgfile");
+
+if ($interval) {
+	$logger->notice("Submitting jobs every $interval seconds.");
+}
+else {
+	$logger->notice("Submitting a single batch of jobs.");
+}
+
+#Job harvesting query
 my $getSchedQuery = q/select 
                      a.target,  a.device,      a.metric, a.valbase,
 	                 a.mapbase, a.counterbits, a.max,    a.category,
@@ -21,40 +66,7 @@ my $getSchedQuery = q/select
                      where a.enabled = true
                      order by a.target, a.metric --/;
 
-sub getConfig {
-	my $file = shift;
-	return unless ($file and -f $file);
-	my $config = Config::Auto::parse($file);
-	return $config;
-}
-
-sub loadConfig {
-
-    $config = getConfig( '../etc/grasshopper.cfg' ); # FIXME, should be from the cli
-    my $DBHOST = $config->{'DB_HOSTNAME'};
-    my $DBNAME = $config->{'DB_DBNAME'};
-    my $DBUSER = $config->{'DB_USERNAME'};
-    my $DBPASS = $config->{'DB_PASSWORD'};
-
-    $dbh->disconnect if $dbh; # disconnect if connected
-    $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST", $DBUSER, $DBPASS, 
-        #{'RaiseError' => 1},
-        )
-        or die "Failed to connect to the database: $DBI::errstr\n";
-
-    $sth = $dbh->prepare($getSchedQuery);
-
-    return 1
-
-}
-	
-                     
-my $run = 1;
-my $reload = 1;
-
-$SIG{HUP} = sub { $reload++ };
-$SIG{__DIE__} = sub { $run = 0 };
-
+#Main loop
 while ($run) {
 
     if ($reload) { loadConfig(); $reload = 0 }
@@ -105,19 +117,64 @@ while ($run) {
 	
 	if ( -p $fifo ) {
 		open (my $fifoFH, '>', $fifo)
-	      or die "Could not open FIFO, can't continue.\n";
+	      or ($logger->emergency(q|Could not open FIFO, can't continue.|)
+	         and die);
 	    
 	    print $fifoFH "$encodedJobs\n";
 	    
 	    close $fifoFH;
 	}
 	else {
-		print "FIFO not created, is the pollerMaster running?\n";
-# FIXME, should now probably exit?
+		$logger->emergency('FIFO not created, is the pollerMaster running?');
+        exit;
 	}
 
-	sleep 45; # FIXME, this should probably be configurable
+    last unless $interval;
+	sleep $interval;
 
 }
 
+sub getConfig {
+	my $file = shift;
+	return unless ($file and -f $file);
+	my $config = Config::Auto::parse($file);
+	return $config;
+}
+
+sub loadConfig {
+
+    $config = getConfig( $cfgfile );
+    $fifo      = $config->{'MASTER_FIFO'};
+    my $DBHOST = $config->{'DB_HOSTNAME'};
+    my $DBNAME = $config->{'DB_DBNAME'};
+    my $DBUSER = $config->{'DB_USERNAME'};
+    my $DBPASS = $config->{'DB_PASSWORD'};
+
+    $dbh->disconnect if $dbh; # disconnect if connected
+    $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST", $DBUSER, $DBPASS, 
+        #{'RaiseError' => 1},
+        )
+        or ($logger->emergency("Failed to connect to the database: $DBI::errstr")
+            and exit);
+          
+
+    $sth = $dbh->prepare($getSchedQuery);
+
+    return 1
+
+}
+
+sub logPrependLevel {
+	my %options = @_;
+	
+	my $message = $options{'message'};
+	my $level   = uc($options{'level'});
+	
+	$message = "($level) $message"
+	  if $level;
+	
+	return $message;
+}
+
+$logger->notice('Shutting Down');
 exit;
