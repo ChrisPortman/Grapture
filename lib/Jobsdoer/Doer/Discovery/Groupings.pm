@@ -8,28 +8,26 @@ use warnings;
 
 sub discover {
 
-	[
-	    {
-			 'group'   => 'Linux',
-             'sysDesc' => [ qr/^\s*Linux/i, ],
-		},
+    [
         {
-			 'group'   => 'Routers',
-             'sysDesc' => [ qr/^\s*Cisco/i, ],
-		},
-		
-		# A catch all!  Leave LAST!
-		{
-			'group'    => 'Unknown',
-			'sysDesc'  => [ qr/./, ],
-		}
+            'group'   => 'Linux',
+            'sysDesc' => [ qr/^\s*Linux/i, ],
+        },
+        {
+            'group'   => 'Routers',
+            'sysDesc' => [ qr/^\s*Cisco/i, ],
+        },
+
+        # A catch all!  Leave LAST!
+        {
+            'group'   => 'Unknown',
+            'sysDesc' => [ qr/./, ],
+        }
 
     ];
 
 }
 
-
 1;
-
 
 #### Add unknown group to the DB!!!

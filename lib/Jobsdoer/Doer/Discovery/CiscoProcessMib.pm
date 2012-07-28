@@ -7,36 +7,36 @@ use strict;
 use warnings;
 
 sub discover {
-	[
-	    {  #CPU Usage
-			 'metric'      => 'CPU_Use_5sec',
-	         'valbase'     => '1.3.6.1.4.1.9.9.109.1.1.1.1.3.1',
-	         'graphdef'    => 'CiscoCpu',
-             'valtype'     => 'gauge',
-             'category'    => 'System',
-             'device'      => 'CPU',
-             'graphgroup'  => 'CPULoad',
-		},
+    [
+        {    #CPU Usage
+            'metric'     => 'CPU_Use_5sec',
+            'valbase'    => '1.3.6.1.4.1.9.9.109.1.1.1.1.3.1',
+            'graphdef'   => 'CiscoCpu',
+            'valtype'    => 'gauge',
+            'category'   => 'System',
+            'device'     => 'CPU',
+            'graphgroup' => 'CPULoad',
+        },
         {
-			 'metric'      => 'CPU_Use_1min',
-	         'valbase'     => '1.3.6.1.4.1.9.9.109.1.1.1.1.4.1',
-	         'graphdef'    => 'CiscoCpu',
-             'valtype'     => 'gauge',
-             'category'    => 'System',
-             'device'      => 'CPU',
-             'graphgroup'  => 'CPULoad',
-		},
+            'metric'     => 'CPU_Use_1min',
+            'valbase'    => '1.3.6.1.4.1.9.9.109.1.1.1.1.4.1',
+            'graphdef'   => 'CiscoCpu',
+            'valtype'    => 'gauge',
+            'category'   => 'System',
+            'device'     => 'CPU',
+            'graphgroup' => 'CPULoad',
+        },
         {
-			 'metric'      => 'CPU_Use_5min',
-	         'valbase'     => '1.3.6.1.4.1.9.9.109.1.1.1.1.5.1',
-	         'graphdef'    => 'CiscoCpu',
-             'valtype'     => 'gauge',
-             'category'    => 'System',
-             'device'      => 'CPU',
-             'graphgroup'  => 'CPULoad',
-		},
+            'metric'     => 'CPU_Use_5min',
+            'valbase'    => '1.3.6.1.4.1.9.9.109.1.1.1.1.5.1',
+            'graphdef'   => 'CiscoCpu',
+            'valtype'    => 'gauge',
+            'category'   => 'System',
+            'device'     => 'CPU',
+            'graphgroup' => 'CPULoad',
+        },
     ];
-    
+
 }
 
 1;
