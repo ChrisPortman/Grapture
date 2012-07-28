@@ -13,8 +13,8 @@ Required Packages (Debian)
  - libsnmp-perl
  - libnet-snmp-perl
  - liblog-any-adapter-dispatch-perl
+ - libconfig-auto-perl
  - rrdtool
- - librrdtool-oo-perl
  - beanstalkd
  - postgresql
  - pgadmin3 (recommended)

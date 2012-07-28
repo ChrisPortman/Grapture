@@ -50,24 +50,21 @@ sub loadConfig {
 	
                      
 my $run = 1;
-my $reload = 0;
+my $reload = 1;
 
-$SIG{HUP} = { $reload++ };
-$SIG{__DIE__} = { $run = 0 };
+$SIG{HUP} = sub { $reload++ };
+$SIG{__DIE__} = sub { $run = 0 };
 
 while ($run) {
 
-        if ($reload) { loadConfig(); $reload = 0 }
+    if ($reload) { loadConfig(); $reload = 0 }
 
 	my $res = $sth->execute();
 	
 	my %jobs;
 	
 	for my $job ( @{ $sth->fetchall_arrayref( {} ) } ) {
-	    #manual bits for now...    
-		my $version   = '2';
-		my $community = 'oidR0rk0';
-		
+
 		#stuff from the DB
 		my $target = $job->{'target'};
 		my $metricDetails = {
@@ -118,11 +115,6 @@ while ($run) {
 		print "FIFO not created, is the pollerMaster running?\n";
 # FIXME, should now probably exit?
 	}
-
-    #~ my $command = 
-	#~ "echo '$encodedJobs' | perl PollerMaster.pl -s localhost -p 11300 -i stdin -v";
-	#~ print "$command\n";
-	#~ my @results = `$command`;
 
 	sleep 45; # FIXME, this should probably be configurable
 
