@@ -49,7 +49,7 @@ if ( not $dbh ) {
 
 my $getTargetsQuery = q/select target, snmpversion, snmpcommunity
                        from targets
-                       where lastdiscovered is NULL--/;
+                       where lastdiscovered is NULL --/;
 
 my $sth = $dbh->prepare($getTargetsQuery);
 my $res = $sth->execute();

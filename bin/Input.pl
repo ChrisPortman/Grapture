@@ -141,6 +141,7 @@ sub getConfig {
 
 sub loadConfig {
 
+    $logger->info('Loading config');
     $config = getConfig($cfgfile);
     $fifo   = $config->{'MASTER_FIFO'};
     my $DBHOST = $config->{'DB_HOSTNAME'};
