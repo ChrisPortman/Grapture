@@ -1,9 +1,9 @@
 #!/usr/bin/env perl
 #$Id: Munge.pm,v 1.5 2012/06/07 03:43:34 cportman Exp $
 
-=head 1 Jobsdoer::Munge
+=head1 Jobsdoer::Munge
 
-=head 2 Description
+=head2 Description
 
   The Munge module provides various methods that perform manipulations
   and calculations on FetchSnmp results.
@@ -12,7 +12,7 @@
   enabling subsequent iterations to run on different worker hosts and
   still have access to the data.
 
-=head 2 Methods
+=head2 Methods
 
 =cut
 
@@ -48,7 +48,7 @@ sub new {
     return $self;	
 }
 
-=head 3 perSecond()
+=head3 perSecond()
 
   The perSecond method compares the current result with the previous one
   as well as the timestamps to determine the average rate per second
@@ -153,7 +153,7 @@ sub perSecond {
     return $mungedResult; 
 }
 
-=head 3 asPercentage()
+=head3 asPercentage()
 
   Takes the value and a max value, calculates the percentage of the max
   represented by value and returns the result.
@@ -188,7 +188,7 @@ sub asPercentage {
 	return $mungedResult;
 }
 
-=head 3 changeSinceLast()
+=head3 changeSinceLast()
 
   The changeSinceLast method compares the current result with the 
   previous one and calculates the difference resulting in the number of
@@ -277,7 +277,7 @@ sub changeSinceLast {
     return $mungedResult; 
 }
 
-=head 3 availToUsed()
+=head3 availToUsed()
 
   Implemented to support memory usage due to snmp providing the avail
   memory as opposed to used.  This method uses the total memory and 

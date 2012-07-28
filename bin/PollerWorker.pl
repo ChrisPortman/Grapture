@@ -28,7 +28,7 @@ use Jobsdoer;
 use XML::Simple;
 use POSIX;
 
-$| ++;
+$|++;
 
 #Setup
 my $bsserver;
@@ -120,7 +120,7 @@ exit 1;
 
 sub parseConfig {
     my $rawConfig = shift;
-    if ( not ref($rawConfig) ) { return; }
+    return unless ref $rawConfig;
 
     my %config;
     $config{'Poller'} = {};
@@ -191,7 +191,8 @@ sub HUNTSMAN {
 }
 
 sub debugOut {
-    if ( not $debug ) { return; }
+
+    return unless $debug;
 
     my $output = shift;
     chomp $output;

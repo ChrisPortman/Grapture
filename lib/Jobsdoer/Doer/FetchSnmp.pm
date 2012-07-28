@@ -52,17 +52,17 @@
   would more correctly be associated with a 'CPU' device), 'Memory Usage'
   , swap etc.
   
-=head 1 DATA STRUCTURE
+=head1 DATA STRUCTURE
 
   The following describes in further detail each of the key/values that 
   make up the data structure and how they are used.
   
-head 2 Target
+=head2 Target
   
   Target is the IP address or hostname (that can be resolved to the 
   correct IP address) of the system to be polled/monitored.
 
-head 2 Version
+=head2 Version
   
   The version referes to the SNMP version that should be used when 
   retrieving data from the system.  This module currently supports
@@ -70,30 +70,30 @@ head 2 Version
   or '2'.  At this time, version 3 is not supported but will be added 
   when the need arrises.
 
-head 2 Community
+=head2 Community
 
   The community value should be the SNMP community configured on the 
   target allowing read access.
   
-head 2 Metrics
+=head2 Metrics
 
   Metrics is a key that stores a list of hash refs describing the 
   individual pieces of data that should be retrived from the device and
   how to handle it.  Each hash will have the following keys (optional
   ones will be marked so):
   
-head 3 Name
+=head3 Name
   
   Name is the name of the metric such as 'Octects In'
   
-head 3 Device (optional)
+=head3 Device (optional)
  
   As discussed previously, device referes to a specific component in the
   system such as a network interface or hard drive.  If this is not 
   provided, the metric is assumed to relate to the system as a whole and
   provided 'system' as the device name.
   
-head 3 Mapbase (optional)
+=head3 Mapbase (optional)
 
   Mapbase is used in the mapping process. The mapping process allows the
   polling logic to poll devices specified by name (eg 'eth0'). The map
@@ -114,7 +114,7 @@ head 3 Mapbase (optional)
   interface will have the same map base OID. Despite this, the map base
   will only be retrieved once and reused for each interface.
   
-head 3 Base
+=head3 Base
 
   This is the base oid corresponding to the metric being retrieved. It 
   may be a full OID for a leaf object in the case of a system wide value
@@ -122,7 +122,7 @@ head 3 Base
   the map table (see Mapbase) would be appended to derive the complete
   OID.
   
-head 3 CounterBits (optional)
+=head3 CounterBits (optional)
 
   When polling counters generally they can be 32bit or 64bit counters
   (often systems will offer the same metric in both 32 and 64 bit using 
@@ -133,7 +133,7 @@ head 3 CounterBits (optional)
   value is not used in this particular module but rather passed on to the
   munging functions to help in their manipulations of the data.
   
-head 3 Munge (optional)
+=head3 Munge (optional)
 
   The munge values is the name of a function that will process and
   manipulate the value in some way.  Eg, one munging function takes the
@@ -142,33 +142,33 @@ head 3 Munge (optional)
   
   The term 'Munge' was ripped off from the SNMP::Info modules.
   
-head 2 OUTPUT
+=head2 OUTPUT
 
   The result and return value is a reference to an array of hash 
   references each hash ref is the original hashref stored in metrics key
   of the input with a couple of keys added:
   
-head 3 Value
+=head3 Value
 
   This is the value of the metric after the munging function, if 
   applicable, applied.
 
-head 3 Timestamp
+=head3 Timestamp
 
   This is a timestamp in seconds since the POLLER WORKER systems epoc.
   It is not the time from the target system.
   
-head 3 Oid
+=head3 Oid
 
   This is the actual oid queried for the gigen metric on the given device.
   It will be the base plus the map index if applicable.
   
-head Target
+=head3 Target
  
   This is simply the target value from the input copied to the metric
   output so that the information is available to further processing.
   
-head 3 Output Structure
+=head3 Output Structure
 
   The structure of the output looks like the following, see the above
   sections for descriptions on each key/value.
