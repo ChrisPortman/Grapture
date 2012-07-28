@@ -42,7 +42,7 @@ sub run {
 		my $category  = $result->{'category'};
 		my $device    = $result->{'device'};
 		my $metric    = $result->{'metric'};
-		my $value     = $result->{'value'} || 'U';
+		my $value     = $result->{'value'} || 0;
 		my $timestamp = $result->{'timestamp'};
 		my $valtype   = $result->{'valtype'};
 		my $max       = $result->{'max'};
