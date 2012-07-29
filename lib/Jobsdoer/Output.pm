@@ -2,10 +2,6 @@
 
 package Jobsdoer::Output;
 
-@ISA = ( 'Jobsdoer' );
-
-use strict;
-use warnings;
-use Jobsdoer;
+our $VERSION = 0.1;
 
 1;
