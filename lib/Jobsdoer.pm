@@ -101,8 +101,8 @@ sub new {
 
     my $args = shift;
 
-    die 'Argument to ' . $class . '->new() must be a hash ref';
-    unless ref $args eq 'HASH';
+    die 'Argument to ' . $class . '->new() must be a hash ref'
+      unless ref $args eq 'HASH';
 
     die 'Args hash must contain at least bsclient and bstubes.'
       unless ( $args->{'bsserver'} and $args->{'bstubes'} );

@@ -12,6 +12,7 @@
     <script type="text/javascript" src="/jsapp/flot/jquery.js"></script>
     <script type="text/javascript" src="/jsapp/flot/jquery.flot.js"></script>
     <script type="text/javascript" src="/jsapp/flot/jquery.flot.selection.js"></script>
+    <script type="text/javascript" src="/jsapp/flot/jquery.flot.stack.js"></script>
 
 <!--    
     <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/binaryXHR.js"></script>

@@ -370,9 +370,16 @@ function renderGraph(panel, eopts, rraChange) {
 			autoscaleMargin: 0.2,
 		},
 		selection: { mode: "xy" },
+		series: {
+			lines: {
+				show:  true,
+				fill:  true,
+			},
+//			stack: true,
+		}
 	}
-
-	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts);
+	
+	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts );
 	
 	var overviewOpts = {
 		legend: { show: false },
@@ -388,6 +395,13 @@ function renderGraph(panel, eopts, rraChange) {
         yaxis: { ticks: 3, },
         grid: { color: "#999" },
         selection: { mode: "xy" },
+		series: {
+			lines: {
+				show:  true,
+				fill:  true,
+			},
+//			stack: true,
+		}
 	}
 	
 	var overView = $.plot( '#'+smlGraphPh, initialData, overviewOpts);
