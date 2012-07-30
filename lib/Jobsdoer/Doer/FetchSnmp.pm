@@ -197,8 +197,17 @@ use strict;
 use warnings;
 use Net::SNMP;
 use Data::Dumper;
+use Log::Dispatch;
 
-my $debug = 0;
+my $logger = Log::Dispatch->new(
+    outputs   => [
+        [ 'Syslog', 'min_level' => 'info', 'ident'  => 'JobWorker' ],
+        [ 'Screen', 'min_level' => 'info', 'stderr' => 1, 'newline' => 1 ],
+    ],
+    callbacks => [
+        \&_logPrependLevel,
+    ]
+);
 
 sub new {
     my $class = shift;
@@ -209,17 +218,14 @@ sub new {
 
     my %maps;
     my %polls;
-    my $target    = '';
-    my $version   = '';
-    my $community = '';
+    my $target;
+    my $version;
+    my $community;
 
     if ($params) {
-        #we dont want the values to be undef and break interpolation
-        #but they should still test false if tested and they havent
-        #recieved data.
-        $target    = $params->{'target'}    || '';
-        $version   = $params->{'version'}   || '';
-        $community = $params->{'community'} || '';
+        $target    = $params->{'target'};
+        $version   = $params->{'version'};
+        $community = $params->{'community'};
         
         #build a deduped list of map table oids. and a hash of metrics
         for my $job ( @{$params->{'metrics'}} ) {
@@ -275,15 +281,13 @@ sub run {
     my %mapResultsHash;
     my @mapResults;
     
-    debug( "\t- Starting SNMP fetch for $target with community string $community\n" );
+    $logger->debug( "Starting SNMP fetch for $target with community string $community" );
 
     #Create the SNMP session to the device.
     my ( $session, $error ) = Net::SNMP->session(
         -hostname    => $target,
         -version     => $version,
         -community   => $community,
-      #  -nonblocking => 1,
-#        -maxmsgsize => '5000',
     );
 
     if ($error) {
@@ -292,7 +296,7 @@ sub run {
     }
     
     if ($session) {
-		debug( "\t- Connected to $target\n" );
+		$logger->debug( "Connected to $target" );
 	}
 	else {
 		return;
@@ -300,26 +304,21 @@ sub run {
 	
     #get all the map tables.
     for my $mapBase ( keys %maps ) {
-        debug( "\t- Getting maptable $mapBase..." );
+        $logger->debug( "Getting map table $mapBase..." );
         my $result = $session->get_table( '-baseoid'         => $mapBase,
                                           '-maxrepetitions'  => 10, );
 
         unless ($result) {
-			debug( " FAILED\n" );
+			$logger->error( "Getting map table FAILED" );
             if ( $error = $session->error() ) {
-				debug ("$error\n");
+				$logger->error($error);
                 $self->{'_error'} = $error;
             }
             $session->close();
             return;
         }
-        debug( " Done\n" );
         push @mapResults, $result;
     }
-    if ($mapResults[0]) {
-		debug( "\t- Got the maps OK\n" );
-	}
-	
     
     #push each hash into a single hash
     for my $hash ( @mapResults ) {
@@ -361,10 +360,7 @@ sub run {
 			#if this is a mapped metric, then get the whole val table
 			#otherwise just get the oid
 			my $result;
-			debug( "Checking for $oid in fullResultHash... " );
 			unless ( exists($fullResultHash{$oid}) ) {
-				debug( "Not Found\n" );
-				debug( "\t- Getting table for metric $metric->{'metric'}..." );
 				if ($metric->{'mapbase'}) {
 			        $result = $session->get_table(
 			            -baseoid  => $metric->{'valbase'},
@@ -391,10 +387,8 @@ sub run {
 		        for my $key ( keys(%{$result}) ) {
 					$fullResultHash{$key} = $result->{$key};
 				}
-				debug( " OK\n" );
 			}
 			else {
-				debug( "Found\n" );
 			}
 
             #get the timestamp from when the snmp data was actually 
@@ -409,7 +403,7 @@ sub run {
     }
 
     $session->close();
-    debug( "\t- Finished snmp getting $target\n" );
+    $logger->debug( "Finished snmp getting $target" );
     
     return \@pollsResults;
 }
@@ -444,85 +438,16 @@ sub error {
     return;
 }
 
-### ACCESSOR SUBS ###
-#really shouldnt get used but someone may have a use for them.
-
-sub target {
-    my $self = shift;
-    my ($target) = @_;
-
-    if ( not $target ) {
-        return $self->{'_target'} if $self->{'_target'};
-        $self->{'_error'} =
-          'Target is not currently set and no target was supplied';
-        return;
-    }
-    else {
-        $self->{'_target'} = $target;
-        return 1;
-    }
-
-    #if we get to here, somethings wrong.
-    $self->{'_error'} =
-'Something unrecoverable happened. This would be a bug in the module code';
-    return;
-}
-
-sub version {
-    my $self = shift;
-    my ($version) = @_;
-
-    if ( not $version ) {
-        return $self->{'_version'} if $self->{'_version'};
-        $self->{'_error'} =
-          'version is not currently set and no version was supplied';
-        return;
-    }
-    else {
-        if ( $version =~ m/^[123]$/ ) {
-            $self->{'_version'} = $version;
-        }
-        else {
-            $self->{'_error'} =
-              'Invalid snmp version supplied, needs to be 1, 2 or 3';
-            return;
-        }
-        return 1;
-    }
-
-    #if we get to here, somethings wrong.
-    $self->{'_error'} =
-'Something unrecoverable happened. This would be a bug in the module code';
-    return;
-}
-
-sub community {
-    my $self = shift;
-    my ($community) = @_;
-
-    if ( not $community ) {
-        return $self->{'_community'} if $self->{'_community'};
-        $self->{'_error'} =
-          'community is not currently set and no community was supplied';
-        return;
-    }
-    else {
-        $self->{'_community'} = $community;
-        return 1;
-    }
-
-    #if we get to here, somethings wrong.
-    $self->{'_error'} =
-'Something unrecoverable happened. This would be a bug in the module code';
-    return;
-}
-
-sub debug {
-	my $message = shift;
+sub _logPrependLevel {
+	my %options = @_;
 	
-	$debug and print $message;
+	my $message = $options{'message'};
+	my $level   = uc($options{'level'});
 	
-	return 1;
+	$message = "($level) $message"
+	  if $level;
+	
+	return $message;
 }
 
 1;

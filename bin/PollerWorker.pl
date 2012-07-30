@@ -19,7 +19,7 @@
 use strict;
 use warnings;
 
-use lib '../lib';
+use lib '/home/chris/git/Grasshopper/lib';
 use Sys::Hostname qw(hostname);
 use JSON::XS;
 use Getopt::Long;
@@ -27,8 +27,8 @@ use Data::Dumper;
 use Jobsdoer;
 use XML::Simple;
 use POSIX;
-
-$|++;
+use Log::Dispatch::Config;
+use Log::Any::Adapter;
 
 #Setup
 my $bsserver;
@@ -37,16 +37,33 @@ my $bsclient;
 my @bstubes;
 my $debug;
 my $cfgfile;
-my $config;
+my $logcfg;
+my $daemon;
+
+$|++;
 
 my $optsOk = GetOptions(
-    'msgserver|s=s' => \$bsserver,
-    'msgport|p=s'   => \$bsport,
-    'tubes|t=s'     => \@bstubes,
-    'debug|d'       => \$debug,
     'cfgfile|c=s'   => \$cfgfile,
-);
-die "Invalid options\n" unless $optsOk;
+    'logcfg|l=s'    => \$logcfg,
+    'daemon|d'      => \$daemon,
+)
+  or die "Invalid options\n";
+
+#Setup logging
+Log::Dispatch::Config->configure($logcfg);
+my $logger = Log::Dispatch::Config->instance;
+$logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobWorker';
+Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
+
+#daemonize here if appropriate.
+if ($daemon) {
+    daemonize();	
+}
+
+unless ( $cfgfile and -f $cfgfile ) {
+	$logger->emergency('Require an existing configuration file (-c)');
+	exit;
+}
 
 =head1 USAGE
 
@@ -54,23 +71,9 @@ FIXME
 
 =cut
 
-#Load the config file, if a config file is specified, any options it
-#supplies will take precedence over command line options.
-if ($cfgfile) {
-    $config = XMLin($cfgfile);
-    $config = parseConfig($config);
-
-    #pick out the config elements.
-    $bsserver = $config->{'Poller'}->{'Server'}
-      if $config->{'Poller'}->{'Server'};
-
-    $bsport = $config->{'Poller'}->{'Port'}
-      if $config->{'Poller'}->{'Port'};
-
-    @bstubes = @{ $config->{'Tubes'} }
-      if $config->{'Tubes'};
-}
-
+#Load the config file
+loadConfig($cfgfile)
+  or ($logger->emergency('Config file invalid') and exit);
 
 #create a jobsdoer object with the Beanstalk details
 $bsserver .= ':' . $bsport if $bsport;
@@ -83,13 +86,7 @@ my $jobsDoer = Jobsdoer->new(
 
 # Setup a HUP handler to refresh available job modules.
 # kill -HUP <pid>
-local $SIG{'HUP'} = sub {
-    debugOut('HUP received!');
-
-    $jobsDoer->loadModules();
-    kill 'INT', keys %{ $jobsDoer->{'childPids'} };
-};
-
+$SIG{HUP}  = \&HUPHANDLE; 
 $SIG{CHLD} = \&REAPER;
 $SIG{INT}  = \&HUNTSMAN;
 $SIG{TERM} = \&HUNTSMAN;
@@ -101,11 +98,11 @@ MAINLINE:
 while ($run) {    #loop almost indefinitely
 
     #start a thread if there are free slots.
-    debugOut('Looking to start thread...');
+    $logger->info('Looking to start thread...');
     my $thread = $jobsDoer->startThread();
 
-    debugOut('Started $thread. '.$jobsDoer->{'childCount'}.' running') if $thread;
-    debugOut('Slots are full.') unless $thread;
+    $logger->info('Started $thread. '.$jobsDoer->{'childCount'}.' running') if $thread;
+    $logger->info('Slots are full.') unless $thread;
 
     #Keep going round as long as threads are created
     next if $thread;
@@ -118,9 +115,12 @@ exit 1;
 
 ############# Sub Routines ###############
 
-sub parseConfig {
-    my $rawConfig = shift;
-    return unless ref $rawConfig;
+sub loadConfig {
+    my $cfgfile = shift;
+    $logger->info('Loading config file '.$cfgfile);
+
+    #read in the xml
+    my $rawConfig = XMLin($cfgfile);
 
     my %config;
     $config{'Poller'} = {};
@@ -157,8 +157,38 @@ sub parseConfig {
             print "Subscribing to tube $tube\n";
         }
     }
+    
+    #pick out the config elements.
+	$bsserver = $config{'Poller'}->{'Server'};
+	$bsport   = $config{'Poller'}->{'Port'};
+	@bstubes  = @{ $config{'Tubes'} };
+	
+	unless ($bsserver and $bsport and scalar @bstubes) {
+		return;
+	}
 
-    return wantarray ? %config : \%config;
+    return 1;
+}
+
+sub daemonize {
+	POSIX::setsid or die "setsid: $!";
+	my $pid = fork ();
+	
+	if ($pid < 0) {
+		die "fork: $!";
+	} elsif ($pid) {
+		#Parent process exits leaving the daemonized process to run.
+		exit 0;
+	}
+	
+	chdir "/";
+	umask 0;
+	
+	open (STDIN,  "</dev/null");
+	open (STDOUT, ">/dev/null");
+	open (STDERR, ">&STDOUT"  );
+
+	1;
 }
 
 # Set up sig handlers
@@ -180,23 +210,25 @@ sub REAPER {
 
 sub HUNTSMAN {
 	# Murder all the children.
-	print "We need to exit.  Kill the children!\n";
-
+	$run = 0;
+    $logger->notice('Shutting Down.  Waiting for worker processes');
+    
+    kill 'INT', keys %{ $jobsDoer->{'childPids'} };
+    
     while ( $jobsDoer->{'childCount'} ) {
-		print "Waiting for children to die, $jobsDoer->{'childCount'} left.\n";
+		$logger->notice("$jobsDoer->{'childCount'} workers left.");
 		sleep;
 	}
+	
+	$logger->notice('All workers are gone.  Goodbye');
 
 	exit;	
 }
 
-sub debugOut {
+sub HUPHANDLE {
+    $logger->info('HUP received!');
 
-    return unless $debug;
+    $jobsDoer->loadModules();
+    kill 'INT', keys %{ $jobsDoer->{'childPids'} };
+};
 
-    my $output = shift;
-    chomp $output;
-    print $output . "\n";
-
-    return 1;
-}

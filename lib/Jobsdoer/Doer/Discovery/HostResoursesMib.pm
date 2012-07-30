@@ -14,15 +14,25 @@ sub discover {
    	         'mapbase'     => '1.3.6.1.2.1.25.2.3.1.3',
 	         'valbase'     => '1.3.6.1.2.1.25.2.3.1.6',
 	         'maxbase'     => '1.3.6.1.2.1.25.2.3.1.5',
-	         'munge'       => 'asPercentage',
 	         'category'    => 'Storage',
-	         'inclregex'   => '^/',
-	         'graphdef'    => 'FsSpaceUsed',
              'valtype'     => 'gauge',
+             'filterSub'   => \&includeFilter,
 		},
     ];
 
 }
 
+sub includeFilter {
+    my $devId   = shift;
+    my $device  = shift;
+    my $options = shift;
+    my $session = shift;
+
+    if ( $device =~ m|^/| ) {
+		return 1;
+	}
+    
+    return;
+}
 
 1;

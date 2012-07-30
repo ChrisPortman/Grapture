@@ -3,10 +3,11 @@
 
 use strict;
 use Config::Auto;
-use Log::Dispatch;
+use Log::Dispatch::Config;
 use Getopt::Long;
 use JSON::XS;
 use DBI;
+use POSIX;
 
 my $fifo;
 my $dbh;
@@ -14,32 +15,31 @@ my $sth;
 my $config;
 my $cfgfile;
 my $interval;
-my $run    = 1;
+my $daemon;
 my $reload = 1;
+my $run    = 1;
+my $ident  = 'PollerInput';
 
-#some signal handling
-$SIG{HUP} = sub { $reload++ };
-$SIG{__DIE__} = sub { $run = 0 };
-
-#set up logging
-my $logger = Log::Dispatch->new(
-    outputs => [
-        [ 'Syslog', 'min_level' => 'info', 'ident' => 'PollerInput' ],
-        [ 'Screen', 'min_level' => 'info', 'stdout' => 1, 'newline' => 1 ],
-    ],
-    callbacks => [ \&logPrependLevel, ]
-);
 
 # Process command line options
 my $optsOk = GetOptions(
     'cfgfile|c=s'  => \$cfgfile,
     'interval|i=i' => \$interval,
-);
-die "Invalid options.\n" unless $optsOk;
+    'daemon|d'     => \$daemon,
+) 
+  or die "Invalid options.\n";
+
 
 unless ( $cfgfile and -f $cfgfile ) {
-    $logger->emergency('Must supply valid config file (-c)');
-    exit;
+    die "Config file not specified or does not exist\n";
+}
+
+Log::Dispatch::Config->configure($cfgfile);
+my $logger = Log::Dispatch::Config->instance;
+$logger->{'outputs'}->{'syslog'}->{'ident'} = 'PollerInput';
+
+if ($daemon) {
+	daemonize();
 }
 
 #Init notices
@@ -52,6 +52,12 @@ if ($interval) {
 else {
     $logger->notice('Submitting a single batch of jobs.');
 }
+
+#some signal handling
+$SIG{HUP}     = sub { $reload++ };
+$SIG{__DIE__} = sub { $run = 0 };
+$SIG{TERM}    = sub { $run = 0 };
+$SIG{INT}     = sub { $run = 0 };
 
 #Job harvesting query
 my $getSchedQuery = q/select 
@@ -66,7 +72,6 @@ my $getSchedQuery = q/select
 
 #Main loop
 while ($run) {
-
     if ($reload) { loadConfig(); $reload = 0 }
 
     my $res = $sth->execute();
@@ -129,9 +134,9 @@ while ($run) {
 
     last unless $interval;
     sleep $interval;
-
 }
 
+## SUBs
 sub getConfig {
     my $file = shift;
     return unless ( $file and -f $file );
@@ -161,19 +166,27 @@ sub loadConfig {
     $sth = $dbh->prepare($getSchedQuery);
 
     return 1
-
 }
 
-sub logPrependLevel {
-    my %options = @_;
-
-    my $message = $options{'message'};
-    my $level   = uc( $options{'level'} );
-
-    $message = "($level) $message"
-      if $level;
-
-    return $message;
+sub daemonize {
+	POSIX::setsid or die "setsid: $!";
+	my $pid = fork ();
+	
+	if ($pid < 0) {
+		die "fork: $!";
+	} elsif ($pid) {
+		#Parent process exits leaving the daemonized process to run.
+		exit 0;
+	}
+	
+	chdir "/";
+	umask 0;
+	
+	open (STDIN,  "</dev/null");
+	open (STDOUT, ">/dev/null");
+	open (STDERR, ">&STDOUT"  );
+	
+	1;
 }
 
 $logger->notice('Shutting Down');

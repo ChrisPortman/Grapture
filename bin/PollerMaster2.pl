@@ -9,11 +9,12 @@ use Getopt::Long;
 use Sys::Hostname;
 use POSIX;
 use Log::Dispatch;
+use Config::Auto;
 use Data::Dumper;
 
 my $logger = Log::Dispatch->new(
     outputs   => [
-        [ 'Syslog', 'min_level' => 'info', 'ident' => 'JobDispatch' ],
+        [ 'Syslog', 'min_level' => 'info', 'ident'  => 'JobDispatch' ],
         [ 'Screen', 'min_level' => 'info', 'stderr' => 1, 'newline' => 1 ],
     ],
     callbacks => [
@@ -21,28 +22,43 @@ my $logger = Log::Dispatch->new(
     ]
 );
 
-$logger->notice('POLLER MASTER STARTING UP');
-
 # Initialise command line options
-my $bsserver;
-my $bsport;
-my $jobTube = 'Jobs';
-my $debug;
+my $cfgfile;
+my $daemon;
 
 #Process commandline options
 my $optsOk = GetOptions(
-    'msgserver|s=s' => \$bsserver,
-    'msgport|p=s'   => \$bsport,
-    'jobtube|j=s'   => \$jobTube,
-    'debug|d'       => \$debug,
+    'cfgfile|c=s'   => \$cfgfile,
+    'daemon|d'      => \$daemon,
 );
-die "Invalid options\n" unless $optsOk;
+
+#Daemonize if appropriate
+if ($daemon) {
+	daemonize();
+}
+
+$logger->notice('POLLER MASTER STARTING UP');
+unless ($optsOk and $cfgfile and -f $cfgfile) {
+    $logger->emergency('Invalid options. Must supply -c <config file> with valid file');
+    exit;	
+}
+
+#Load config
+my $config   = getConfig($cfgfile);
+my $fifo     = $config->{'MASTER_FIFO'};
+my $bsserver = $config->{'BS_SERVER'};
+my $bsport   = $config->{'BS_PORT'};
+my $jobTube  = $config->{'BS_JOBQ'};
+
+unless ( $fifo and $bsserver and $bsport and $jobTube ){
+	$logger->emergency('Options missing from config file.  Must include: MASTER_FIFO, BS_SERVER, BS_PORT, BS_JOBQ');
+	exit;
+}
 
 #Initialise other internal vars
 my $pid      = $$;
 my $hostname = hostname();
 my $logTube  = $hostname . $pid;
-my $fifo     = '/tmp/pollermaster.cmd';
 my $run      = 1;
 my $bsclient;
 my $error;
@@ -56,6 +72,8 @@ my %returnCodes = (
     4 => 'Output module returned a failure',
     5 => 'Some unknown error occured',
 );
+
+$logger->notice('Logs tube is '.$logTube);
 
 #Handles for child processes
 my $jobFetchProcFh;
@@ -547,6 +565,7 @@ sub mainSigIntHandler {
 	$logger->notice('SHUTTING DOWN!');
     
     $run = 0;
+    kill 'INT', keys %childPids;
     
     while ( $children ) {
 		sleep;
@@ -564,6 +583,34 @@ sub childSigIntHandler {
 	# Wait while the children are being murdered
     $run = 0;
     1;
+}
+
+sub daemonize {
+	POSIX::setsid or die "setsid: $!";
+	my $pid = fork ();
+	
+	if ($pid < 0) {
+		die "fork: $!";
+	} elsif ($pid) {
+		#Parent process exits leaving the daemonized process to run.
+		exit 0;
+	}
+	
+	chdir "/";
+	umask 0;
+	
+	open (STDIN,  "</dev/null");
+	open (STDOUT, ">/dev/null");
+	open (STDERR, ">&STDOUT"  );
+	
+	1;
+}
+
+sub getConfig {
+    my $file = shift;
+    return unless ( $file and -f $file );
+    my $config = Config::Auto::parse($file);
+    return $config;
 }
 
 sub logPrependLevel {

@@ -13,6 +13,7 @@ Required Packages (Debian)
  - libsnmp-perl
  - libnet-snmp-perl
  - liblog-any-adapter-dispatch-perl
+ - liblog-dispatch-config-perl
  - libconfig-auto-perl
  - rrdtool
  - beanstalkd
@@ -100,6 +101,13 @@ that idea will join us in reallity the near to mid term future.
  12. Load the web interface:
     http://localhost:3000/js
     
+UPDATES
+=======
+
+Processes can now be daemonized on the cli:
+perl Input.pl -c <full_path_to_cfg> -i 45 -d
+perl PollerMaster2.pl -c <full_path_to_cfg> -d
+perl PollerWorker.pl -c <full_path_to_Job Dist.cfg> -l <full_path_to_cfg> -d
 
 TODO
 ====

@@ -28,3 +28,21 @@ DB_PASSWORD =
 
 # Directorys and paths
 DIR_RRD     = 
+MASTER_FIFO = 
+
+# Beantalk server details
+BS_SERVER   = 
+BS_PORT     = 
+BS_JOBQ     =      #Queue used to send jobs to the workers
+
+#Logging
+dispatchers = screen syslog
+
+screen.class     = Log::Dispatch::Screen
+screen.min_level = info
+screen.stderr    = 1
+screen.format    = %d (%p) %m%n
+
+syslog.class     = Log::Dispatch::Syslog
+syslog.min_level = info
+syslog.format    = (%p) %m

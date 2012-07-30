@@ -232,63 +232,29 @@ sub runDiscParams {
 
                 my %deviceHash;
 
-                my $inclregex = $metricDef->{'inclregex'};
-                my $exclregex = $metricDef->{'exclregex'};
-
                 $deviceHash{'enabled'} = 1;
 
                 #If theres a filter sub run it now.
                 if ( defined &filterInclude ) {
-                    print "Testing filter for $device: $metric\n";
 
                     if ( defined $devStateCache{$device} ) {
-                        print "Using cached result for $device: $metric\n";
                         $deviceHash{'enabled'} = $devStateCache{$device};
                     }
                     else {
                         eval {
                             unless (
-                                filterInclude( $devId, $metricDef, $session ) )
+                                filterInclude( $devId, $device, $metricDef, $session ) )
                             {
                                 $deviceHash{'enabled'} = 0;
                             }
                         };
 
                         if ($@) {
-
                             #If there was any error at all, force the device
                             #enabled
                             $deviceHash{'enabled'} = 1;
                         }
                         $devStateCache{$device} = $deviceHash{'enabled'};
-                    }
-                    print "Device state is $devStateCache{$device}\n";
-                }
-                else {
-                    print " - no filter apparently\n";
-                }
-
-                #inclregex and exclregex can be a single regex or an
-                #array of regexes.
-                if ($inclregex) {
-                    if ( ref($inclregex) and ref($inclregex) eq 'ARRAY' ) {
-                        for my $regex ( @{$inclregex} ) {
-                            next DEVICE if $device =~ m/$regex/;
-                        }
-                    }
-                    else {
-                        next DEVICE if $device !~ m/$inclregex/;
-                    }
-                }
-
-                if ($exclregex) {
-                    if ( ref($exclregex) and ref($exclregex) eq 'ARRAY' ) {
-                        for my $regex ( @{$exclregex} ) {
-                            next DEVICE if $device =~ m/$regex/;
-                        }
-                    }
-                    else {
-                        next DEVICE if $device =~ m/$exclregex/;
                     }
                 }
 
@@ -329,8 +295,6 @@ sub runDiscParams {
 
             #If theres a filter sub run it now.
             if ( defined &filterInclude ) {
-                print "Testing filter\n";
-
                 eval {
                     unless ( filterInclude( undef, $metricDef, $session ) )
                     {
@@ -338,7 +302,6 @@ sub runDiscParams {
                     }
                 };
                 if ($@) {
-
                     #If there was any error at all, force the device
                     #enabled
                     $deviceHash{'enabled'} = 1;

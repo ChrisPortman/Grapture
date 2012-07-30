@@ -84,14 +84,17 @@ use Sys::Hostname qw(hostname);
 use Beanstalk::Client;
 use JSON::XS;
 use Data::Dumper;
+use Log::Any qw ( $log );
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
   search_path => ['Jobsdoer::Doer'],
+  except      => qr/^Jobsdoer::Doer::.+::/, #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
 use Module::Pluggable
   search_path => ['Jobsdoer::Output'],
+  except      => qr/^Jobsdoer::Output::.+::/, #limit to 1 level.
   require     => 1,
   sub_name    => 'outputs';
 
@@ -194,6 +197,14 @@ sub loadModules {
         $mod =~ s/^Jobsdoer::Output:://;
         $mod => $_
     } $self->outputs();
+    
+    for my $module ( keys %doers ) {
+		$log->info("Loaded doer module $module");
+	}
+	
+    for my $module ( keys %outputs ) {
+		$log->info("Loaded output module $module");
+	}
 
     $self->{'doers'}   = \%doers;
     $self->{'outputs'} = \%outputs;
@@ -241,6 +252,8 @@ sub runJob {
     my $job  = shift;
 
     return unless $job;
+    
+    $log->debug('Processing job');
 
     my $bsclientObj = $self->{'bsclient'};
 
@@ -249,6 +262,8 @@ sub runJob {
           . localtime()
           . " for $jobData->{'methodInput'}->{'target'}" );
 
+    $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
+    
     #Stash some useful details regarding the job
     $self->{'currentJobData'} = {
         'jobId'       => $job->{'id'},
@@ -443,7 +458,7 @@ sub debug {
     my $message = shift;
     my $threadid = $$ || 'UNKNOWN';
 
-    print "Thread ID $threadid - $message\n";
+    $log->info("Thread ID $threadid - $message");
 
     return 1;
 }
@@ -510,5 +525,18 @@ sub _jobDoerThread {
 
     return 1;
 }
+
+#~ sub _logPrependLevel {
+	#~ my %options = @_;
+	#~ 
+	#~ my $message = $options{'message'};
+	#~ my $level   = uc($options{'level'});
+	#~ 
+	#~ $message = "($level) $message"
+	  #~ if $level;
+	#~ 
+	#~ return $message;
+#~ }
+
 
 1;
