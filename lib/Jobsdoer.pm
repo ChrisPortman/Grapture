@@ -260,23 +260,24 @@ sub runJob {
     my $jobData = decode_json( $job->{'data'} );
     debug(  "Starting job ID $job->{'id'} at "
           . localtime()
-          . " for $jobData->{'methodInput'}->{'target'}" );
+          . " for $jobData->{'processOptions'}->{'target'}" );
 
     $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
     
     #Stash some useful details regarding the job
     $self->{'currentJobData'} = {
-        'jobId'       => $job->{'id'},
-        'jobData'     => $jobData,
-        'module'      => $jobData->{'module'},
-        'outModule'   => $jobData->{'output'},
-        'methodInput' => $jobData->{'methodInput'},
-        'logsTube'    => $jobData->{'logsTube'},
+        'jobId'          => $job->{'id'},
+        'jobData'        => $jobData,
+        'process'        => $jobData->{'process'},
+        'output'         => $jobData->{'output'},
+        'processOptions' => $jobData->{'processOptions'},
+        'outputOptions'  => $jobData->{'outputOptions'} || {}, #optional
+        'logsTube'       => $jobData->{'logsTube'},
     };
 
     if (
         not(    $self->{'currentJobData'}->{'jobData'}
-            and $self->{'currentJobData'}->{'module'} )
+            and $self->{'currentJobData'}->{'process'} )
       )
     {
         $self->log('Received malformed job data.  Job will be deleted.');
@@ -298,19 +299,19 @@ sub runJob {
         return wantarray ? %resultData : \%resultData;
     }
     $self->log( 'Doer module '
-          . $self->{'currentJobData'}->{'module'}
+          . $self->{'currentJobData'}->{'process'}
           . ' did not return a result' );
     return 3;
 
 }
 
 sub runDoerModule {
-    my $self   = shift;
-    my $module = $self->{'currentJobData'}->{'module'};
-    my $data   = $self->{'currentJobData'}->{'methodInput'};
-    my $jobId  = $self->{'currentJobData'}->{'jobId'};
+    my $self    = shift;
+    my $module  = $self->{'currentJobData'}->{'process'};
+    my $options = $self->{'currentJobData'}->{'processOptions'};
+    my $jobId   = $self->{'currentJobData'}->{'jobId'};
 
-    unless ( $module or $data or $jobId ) {
+    unless ( $module or $options or $jobId ) {
         $self->log('Did not get the required details');
         return;
     }
@@ -324,7 +325,7 @@ sub runDoerModule {
     my $error;
 
     eval {
-        my $work = $self->{'doers'}->{$module}->new($data);
+        my $work = $self->{'doers'}->{$module}->new($options);
         $work or die "Couldn't construct object for module $module";
 
         $result = $work->run();
@@ -345,17 +346,17 @@ sub runDoerModule {
         return;
     }
 
-    return $result
-        if $result;
+    return $result if $result;
 
     return;
 }
 
 sub runOutputModule {
-    my $self   = shift;
-    my $result = shift;
-    my $module = $self->{'currentJobData'}->{'outModule'};
-
+    my $self       = shift;
+    my $result     = shift;
+    my $module     = $self->{'currentJobData'}->{'output'};
+    my $moduleOpts = $self->{'currentJobData'}->{'outputOptions'};
+ 
     return unless $module;
 
     #If theres no module, just return, this is valid as it may be
@@ -370,7 +371,7 @@ sub runOutputModule {
     my $resultData = $result->{'result'};
 
     eval {
-        my $work = $self->{'outputs'}->{$module}->new($resultData);
+        my $work = $self->{'outputs'}->{$module}->new($resultData, $moduleOpts);
 
         if ($work) {
 
@@ -383,7 +384,7 @@ sub runOutputModule {
     };
 
     if ($@) {
-        print "Whoops!\n";
+        $log->error("Output module $module returned error $@");
         $self->log($@);
         return;
     }
@@ -418,8 +419,6 @@ sub deleteJob {
               . $self->{'currentJobData'}->{'jobId'} . ' at '
               . localtime() );
     }
-
-    #$self->{'currentJobData'} = undef;
 
     return 1;
 }
@@ -525,18 +524,5 @@ sub _jobDoerThread {
 
     return 1;
 }
-
-#~ sub _logPrependLevel {
-	#~ my %options = @_;
-	#~ 
-	#~ my $message = $options{'message'};
-	#~ my $level   = uc($options{'level'});
-	#~ 
-	#~ $message = "($level) $message"
-	  #~ if $level;
-	#~ 
-	#~ return $message;
-#~ }
-
 
 1;

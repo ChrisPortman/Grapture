@@ -217,7 +217,7 @@ sub HUNTSMAN {
     
     while ( $jobsDoer->{'childCount'} ) {
 		$logger->notice("$jobsDoer->{'childCount'} workers left.");
-		sleep;
+		sleep 2;
 	}
 	
 	$logger->notice('All workers are gone.  Goodbye');

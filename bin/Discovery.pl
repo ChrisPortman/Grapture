@@ -2,8 +2,9 @@
 #$Id: testDiscovery.pl,v 1.4 2012/06/18 02:57:37 cportman Exp $
 
 use strict;
+use Getopt::Long;
 use Config::Auto;
-use Log::Dispatch;
+use Log::Dispatch::Config;
 use JSON::XS;
 use Data::Dumper;
 use DBI;
@@ -19,13 +20,9 @@ unless ( $cfgfile and -f $cfgfile ) {
 }
 
 #set up logging
-my $logger = Log::Dispatch->new(
-    outputs => [
-        [ 'Syslog', 'min_level' => 'info', 'ident' => 'PollerInput' ],
-        [ 'Screen', 'min_level' => 'info', 'stdout' => 1, 'newline' => 1 ],
-    ],
-    callbacks => [ \&logPrependLevel, ]
-);
+Log::Dispatch::Config->configure($cfgfile);
+my $logger = Log::Dispatch::Config->instance;
+$logger->{'outputs'}->{'syslog'}->{'ident'} = 'Discovery';
 
 my $GHCONFIG = getConfig($cfgfile);
 my $fifo     = $GHCONFIG->{'MASTER_FIFO'};
@@ -65,15 +62,22 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
 
     push @jobList,
       {
-        'module'      => $module,
-        'output'      => $output,
-        'methodInput' => {
+        'process'        => $module,
+        'output'         => $output,
+        'processOptions' => {
             'target'    => $target,
             'version'   => $version,
             'community' => $community,
         },
+        'outputOptions' => {
+			'dbhost' => $DBHOST,
+			'dbname' => $DBNAME,
+			'dbuser' => $DBUSER,
+			'dbpass' => $DBPASS,
+		},
       };
-
+      
+    $logger->info("Queued discovery for $target");
 }
 
 my $encodedJobs = encode_json( \@jobList );
@@ -84,7 +88,7 @@ if ( -p $fifo ) {
         and exit );
 
     print $fifoFH "$encodedJobs\n";
-
+    $logger->info('Added discovery jobs');
     close $fifoFH;
 }
 else {
@@ -97,18 +101,6 @@ sub getConfig {
     return unless ( $file and -f $file );
     my $config = Config::Auto::parse($file);
     return $config;
-}
-
-sub logPrependLevel {
-    my %options = @_;
-
-    my $message = $options{'message'};
-    my $level   = uc( $options{'level'} );
-
-    $message = "($level) $message"
-      if $level;
-
-    return $message;
 }
 
 exit 1;

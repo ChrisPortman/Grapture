@@ -17,7 +17,6 @@
                                            mapbase => '<mapbase>',
                                            base    => '<oidbase>',
                                            counterbits => '<No.ofBits>'
-                                           munge   => '<mungename>',
                                          },
                                          ...
                                      ],
@@ -133,15 +132,6 @@
   value is not used in this particular module but rather passed on to the
   munging functions to help in their manipulations of the data.
   
-=head3 Munge (optional)
-
-  The munge values is the name of a function that will process and
-  manipulate the value in some way.  Eg, one munging function takes the
-  interface Octet In and Out values which come off the system in the form
-  of a counter value, and translates them into an Octets per second value.
-  
-  The term 'Munge' was ripped off from the SNMP::Info modules.
-  
 =head2 OUTPUT
 
   The result and return value is a reference to an array of hash 
@@ -192,22 +182,11 @@
 
 package Jobsdoer::Doer::FetchSnmp;
 
-use lib '../../';
 use strict;
 use warnings;
 use Net::SNMP;
 use Data::Dumper;
-use Log::Dispatch;
-
-my $logger = Log::Dispatch->new(
-    outputs   => [
-        [ 'Syslog', 'min_level' => 'info', 'ident'  => 'JobWorker' ],
-        [ 'Screen', 'min_level' => 'info', 'stderr' => 1, 'newline' => 1 ],
-    ],
-    callbacks => [
-        \&_logPrependLevel,
-    ]
-);
+use Log::Any qw ( $log );
 
 sub new {
     my $class = shift;
@@ -244,6 +223,9 @@ sub new {
 			push $polls{$device}, $job;
 		}
     }
+    else {
+		return;
+    } 
 
     #build the opbject    
     my %jobParams = (
@@ -256,7 +238,7 @@ sub new {
     );
 
     my $self = bless \%jobParams, $class;
-
+    
     return $self;
 }
 
@@ -281,7 +263,7 @@ sub run {
     my %mapResultsHash;
     my @mapResults;
     
-    $logger->debug( "Starting SNMP fetch for $target with community string $community" );
+    $log->debug( "Starting SNMP fetch for $target with community string $community" );
 
     #Create the SNMP session to the device.
     my ( $session, $error ) = Net::SNMP->session(
@@ -296,7 +278,7 @@ sub run {
     }
     
     if ($session) {
-		$logger->debug( "Connected to $target" );
+		$log->debug( "Connected to $target" );
 	}
 	else {
 		return;
@@ -304,14 +286,14 @@ sub run {
 	
     #get all the map tables.
     for my $mapBase ( keys %maps ) {
-        $logger->debug( "Getting map table $mapBase..." );
+        $log->debug( "Getting map table $mapBase..." );
         my $result = $session->get_table( '-baseoid'         => $mapBase,
                                           '-maxrepetitions'  => 10, );
 
         unless ($result) {
-			$logger->error( "Getting map table FAILED" );
+			$log->error( "Getting map table FAILED" );
             if ( $error = $session->error() ) {
-				$logger->error($error);
+				$log->error($error);
                 $self->{'_error'} = $error;
             }
             $session->close();
@@ -403,7 +385,7 @@ sub run {
     }
 
     $session->close();
-    $logger->debug( "Finished snmp getting $target" );
+    $log->debug( "Finished snmp getting $target" );
     
     return \@pollsResults;
 }
@@ -436,18 +418,6 @@ sub error {
     }
 
     return;
-}
-
-sub _logPrependLevel {
-	my %options = @_;
-	
-	my $message = $options{'message'};
-	my $level   = uc($options{'level'});
-	
-	$message = "($level) $message"
-	  if $level;
-	
-	return $message;
 }
 
 1;

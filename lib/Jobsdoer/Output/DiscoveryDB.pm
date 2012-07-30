@@ -6,47 +6,31 @@ use strict;
 use warnings;
 use Data::Dumper;
 use DBI;
+use Log::Any qw ( $log );
 
-sub _getConfig {
-	my $cfgFile = shift;
-	
-	unless ($cfgFile and -f $cfgFile) {
+sub new {
+    my $class   = shift;
+    my $result  = shift;
+    my $options = shift;
+    
+    $class = ref $class || $class;
+        
+    unless ( ref($result) and ref($result) eq 'ARRAY' ) {
+		$log->error('Output module requires results in the form of a ARRAY ref.');
 		return;
 	}
 	
-	open(my $fh, '<', $cfgFile)
-	  or die "Could not open $cfgFile: $!\n";
-	
-	my %config = map  {
-		             $_ =~ s/^\s+//;    #remove leading white space
-		             $_ =~ s/\s+$//;    #remove trailing white space
-		             $_ =~ s/\s*#.*$//; #remove trailing comments 
-		             my ($opt, $val) = split(/\s*=\s*/, $_);
-		             $opt => $val ;
-				 }
-	             grep { $_ !~ /(?:^\s*#)|(?:^\s*$)/ } #ignore comments and blanks
-	             <$fh>;
-	
-	return \%config;
-}
-
-my $GHCONFIG = _getConfig( '../etc/grasshopper.cfg' );
-my $DBHOST = $GHCONFIG->{'DB_HOSTNAME'};
-my $DBNAME = $GHCONFIG->{'DB_DBNAME'};
-my $DBUSER = $GHCONFIG->{'DB_USERNAME'};
-my $DBPASS = $GHCONFIG->{'DB_PASSWORD'};
-
-sub new {
-    my $class  = ref $_[0] || $_[0];
-    my $args   = $_[1];
-    
-    unless ( ref($args) and ref($args) eq 'ARRAY' ) {
-		warn "Output module requires arguments in the form of a ARRAY ref.\n";
-		return;
+	unless ($options and ref $options eq 'HASH') {
+		unless (    $options->{'dbhost'} and $options->{'dbname'}
+			    and $options->{'dbuser'} and $options->{'dbpass'} ) {
+			$log->error('DiscoverDB needs options containing DB details');
+			return;
+		}
 	}
     
     my %selfHash;
-    $selfHash{'resultset'} = $args;
+    $selfHash{'resultset'} = $result;
+    $selfHash{'dboptions'} = $options;
     
     my $self = bless(\%selfHash, $class);
     
@@ -55,6 +39,11 @@ sub new {
 
 sub run {
 	my $self = shift;
+
+	my $DBHOST = $self->{'dboptions'}->{'dbhost'};
+	my $DBNAME = $self->{'dboptions'}->{'dbname'};
+	my $DBUSER = $self->{'dboptions'}->{'dbuser'};
+	my $DBPASS = $self->{'dboptions'}->{'dbpass'};
 	
     my $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST",
 	                       $DBUSER,

@@ -8,19 +8,9 @@ use JSON::XS;
 use Getopt::Long;
 use Sys::Hostname;
 use POSIX;
-use Log::Dispatch;
+use Log::Dispatch::Config;
 use Config::Auto;
 use Data::Dumper;
-
-my $logger = Log::Dispatch->new(
-    outputs   => [
-        [ 'Syslog', 'min_level' => 'info', 'ident'  => 'JobDispatch' ],
-        [ 'Screen', 'min_level' => 'info', 'stderr' => 1, 'newline' => 1 ],
-    ],
-    callbacks => [
-        \&logPrependLevel,
-    ]
-);
 
 # Initialise command line options
 my $cfgfile;
@@ -30,7 +20,13 @@ my $daemon;
 my $optsOk = GetOptions(
     'cfgfile|c=s'   => \$cfgfile,
     'daemon|d'      => \$daemon,
-);
+)
+  or die "Invalid options\n";
+
+#Setup logging
+Log::Dispatch::Config->configure($cfgfile);
+my $logger = Log::Dispatch::Config->instance;
+$logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobDispatch';
 
 #Daemonize if appropriate
 if ($daemon) {
@@ -611,16 +607,4 @@ sub getConfig {
     return unless ( $file and -f $file );
     my $config = Config::Auto::parse($file);
     return $config;
-}
-
-sub logPrependLevel {
-	my %options = @_;
-	
-	my $message = $options{'message'};
-	my $level   = uc($options{'level'});
-	
-	$message = "($level) $message"
-	  if $level;
-	
-	return $message;
 }

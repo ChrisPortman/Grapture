@@ -95,10 +95,10 @@ while ($run) {
 
         unless ( $jobs{$target} ) {
             $jobs{$target} = {
-                'module'      => $job->{'module'},
-                'output'      => $job->{'output'},
-                'waitTime'    => 300,
-                'methodInput' => {
+                'process'        => $job->{'module'},
+                'output'         => $job->{'output'},
+                'waitTime'       => 300,
+                'processOptions' => {
                     'target'    => $target,
                     'version'   => $job->{'snmpversion'},
                     'community' => $job->{'snmpcommunity'},
@@ -107,7 +107,7 @@ while ($run) {
             };
         }
 
-        push @{ $jobs{$target}->{'methodInput'}->{'metrics'} }, $metricDetails;
+        push @{ $jobs{$target}->{'processOptions'}->{'metrics'} }, $metricDetails;
     }
 
     my @jobList;

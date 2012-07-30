@@ -6,6 +6,7 @@ package Jobsdoer::Doer::Discovery;
 use strict;
 use warnings;
 use Net::SNMP;
+use Log::Any qw ( $log );
 use Data::Dumper;
 
 #Use plugable modules to allow on the fly expansion of functionality
@@ -107,8 +108,6 @@ sub runDiscParams {
         my $valbase = $metricDef->{'valbase'};
         my $max;
 
-        print "\nExamining $metric for $target...\n" if $metric;
-
         if ( $metricDef->{'group'} ) {
 
             #this is a group definition hash
@@ -137,7 +136,7 @@ sub runDiscParams {
 
                 if ( $sysDesc =~ m/$exp/ ) {
                     $group = $metricDef->{'group'};
-                    print "Setting Group = $group\n";
+                    $log->info("Setting Group $group for $target");
                     last EXPRESSION;
                 }
 
@@ -156,17 +155,9 @@ sub runDiscParams {
         if (    ref( $metricDef->{'filterSub'} )
             and ref( $metricDef->{'filterSub'} ) eq 'CODE' )
         {
-            print "Setting filterSub for $metric\n";
             *filterInclude = delete $metricDef->{'filterSub'};
-            if ( defined &filterInclude ) {
-                print "Filtersub successfully defined\n";
-            }
-            else {
-                print "Filtersub FAILED to define!\n";
-            }
         }
         else {
-            print "No filterSub for $metric\n";
             undef *filterInclude;
         }
 
@@ -174,6 +165,8 @@ sub runDiscParams {
         unless ( $metricDef->{'metric'} and $metricDef->{'valbase'} ) {
             next METRIC;
         }
+        
+        $log->info("Checking $metric for $target");
 
         if ( $metricDef->{'mapbase'} ) {
             my $map;
@@ -194,6 +187,8 @@ sub runDiscParams {
             ) or next METRIC;
 
             $map = { reverse( %{$map} ) };
+            
+            $log->debug("Got the map table for $metric");
 
             if ( $metricDef->{'maxbase'} ) {
                 $max = $session->get_table(
@@ -208,10 +203,13 @@ sub runDiscParams {
 
                     $max->{$index} = delete $max->{$key};
                 }
+                
+                $log->debug("Got the max table for $metric");
             }
 
-          DEVICE:
+            DEVICE:
             for my $device ( keys( %{$map} ) ) {
+				$log->debug("Checking for $metric on target device $device");
 
                 #make sure that the device appears in the $vals for this
                 #metric.  Not all devices in the map will have all the
@@ -221,21 +219,19 @@ sub runDiscParams {
                 my $devValOid = $valbase . '.' . $devId;
                 $devValOid =~ s/\.\././;
 
-                print
-"Looking for $devValOid in vals table for device $device metric $metric... ";
-
                 unless ( defined $vals->{$devValOid} ) {
-                    print "NOT FOUND, SKIPPING\n";
+                    $log->debug("Metric not found on $target $device");
                     next DEVICE;
                 }
-                print "FOUND\n";
-
+                $log->debug("Found $metric on $target $device");
+                
                 my %deviceHash;
 
                 $deviceHash{'enabled'} = 1;
 
                 #If theres a filter sub run it now.
                 if ( defined &filterInclude ) {
+					$log->debug("Checking to see if $device should be monitored");
 
                     if ( defined $devStateCache{$device} ) {
                         $deviceHash{'enabled'} = $devStateCache{$device};
@@ -255,11 +251,15 @@ sub runDiscParams {
                             $deviceHash{'enabled'} = 1;
                         }
                         $devStateCache{$device} = $deviceHash{'enabled'};
+                        
+                        if ($deviceHash{'enabled'}){
+							$log->debug("Determined that $device SHOULD be monitored");
+						}
+						else {
+							$log->debug("Determined that $device SHOULD NOT be monitored");
+						}
                     }
                 }
-
-                my ($deviceIndex) = $map->{$device} =~ m/(\d+)$/;
-                $deviceIndex or next DEVICE;
 
                 #essentials for a mapped metric (tested earlier)
                 $deviceHash{'target'}  = $target;
@@ -276,7 +276,7 @@ sub runDiscParams {
                 $metricDef->{'counterbits'}
                   and $deviceHash{'counterbits'} = $metricDef->{'counterbits'};
                 $metricDef->{'maxbase'}
-                  and $deviceHash{'max'} = $max->{$deviceIndex};
+                  and $deviceHash{'max'} = $max->{$devId};
                 $metricDef->{'graphdef'}
                   and $deviceHash{'graphdef'} = $metricDef->{'graphdef'};
                 $metricDef->{'valtype'}
@@ -289,12 +289,15 @@ sub runDiscParams {
         }
         else {
             #this is not a mapped device.
-
+            my $device = $metricDef->{'device'} ? $metricDef->{'device'}
+                                                : 'System';
             my %deviceHash;
             $deviceHash{'enabled'} = 1;
 
             #If theres a filter sub run it now.
             if ( defined &filterInclude ) {
+    			$log->debug("Checking to see if $device should be monitored");
+
                 eval {
                     unless ( filterInclude( undef, $metricDef, $session ) )
                     {
@@ -306,21 +309,27 @@ sub runDiscParams {
                     #enabled
                     $deviceHash{'enabled'} = 1;
                 }
+                
+				if ($deviceHash{'enabled'}){
+					$log->debug("Determined that $device SHOULD be monitored");
+				}
+				else {
+					$log->debug("Determined that $device SHOULD NOT be monitored");
+				}
             }
 
             #test the valbase
-            print "Testing $target/$metric...\n";
             my $val = $session->get_request(
                 '-varbindlist' => [ $metricDef->{'valbase'} ] )
               or next METRIC;
 
-            unless (defined($val)
-                and defined( $val->{ $metricDef->{'valbase'} } )
+            unless (defined( $val->{ $metricDef->{'valbase'} } )
                 and $val->{ $metricDef->{'valbase'} } ne 'noSuchObject' )
             {
                 next METRIC;
             }
-            print "\tPASSED\n";
+            
+            $log->debug("Found $metric on $target $device");
 
             #See if there should be a max value for this metric
             if ( $metricDef->{'maxbase'} ) {
@@ -330,18 +339,14 @@ sub runDiscParams {
                 ( $max and $max->{ $metricDef->{'maxbase'} } ) or next METRIC;
 
                 $max = $max->{ $metricDef->{'maxbase'} };
-                print
-                  "\tGot $max for the maximum val for $metricDef->{'metric'}\n";
+                $log->debug("Got the max $max for $metric");
             }
 
             #essentials for a non-mapped metric (tested earlier)
             $deviceHash{'target'}  = $target;
             $deviceHash{'metric'}  = $metric;
             $deviceHash{'valbase'} = $valbase;
-            $deviceHash{'device'} =
-                $metricDef->{'device'}
-              ? $metricDef->{'device'}
-              : 'System';
+            $deviceHash{'device'}  = $device;
 
             #optionals
             $metricDef->{'category'}
