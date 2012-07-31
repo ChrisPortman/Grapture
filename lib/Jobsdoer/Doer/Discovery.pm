@@ -68,11 +68,11 @@ sub run {
             next;
         }
 
-        if ( $params and ref($params) and ref($params) eq 'ARRAY' ) {
+        if ( ref $params eq 'ARRAY' ) {
 
             my $result = $self->runDiscParams($params);
 
-            if ( ref($result) and ref($result) eq 'ARRAY' ) {
+            if ( ref $result eq 'ARRAY' ) {
                 push @{ $self->{'metrics'} }, @{$result};
             }
         }
@@ -85,17 +85,14 @@ sub runDiscParams {
     my $self   = shift;
     my $params = shift;
 
-    ref($params) or return;
-    ref($params) eq 'ARRAY' or return;
+    return unless ref $params eq 'ARRAY';
 
     my $target  = $self->{'target'};
     my $session = $self->{'session'};
     my $sysDesc;
     my $group;
 
-    unless ( $target and $session ) {
-        return;
-    }
+    return unless ( $target and $session );
 
     my @return;
     my %devStateCache;    #Cache the results of filterInclude for each Dev
@@ -116,7 +113,8 @@ sub runDiscParams {
             next METRIC if $group;
 
             #We only want to get the sysDesc once per target
-            unless ($sysDesc) {
+            unless ($sysDesc)
+            { # FIXME, sysdesc would be better off in its own module next to IFMIB and friends. the trick is to be able to return the title values in a disscovery module.
 
                 #get the system description
                 $sysDesc = $session->get_request(
@@ -132,7 +130,8 @@ sub runDiscParams {
             }
 
           EXPRESSION:
-            for my $exp ( @{ $metricDef->{'sysDesc'} } ) {
+            for my $exp ( @{ $metricDef->{'sysDesc'} } )
+            {    # FIXME, i wonder if we can move this out to a config file?
 
                 if ( $sysDesc =~ m/$exp/ ) {
                     $group = $metricDef->{'group'};
@@ -152,20 +151,20 @@ sub runDiscParams {
         }
 
         #look for a filter code ref
-        if (    ref( $metricDef->{'filterSub'} )
-            and ref( $metricDef->{'filterSub'} ) eq 'CODE' )
-        {
-            *filterInclude = delete $metricDef->{'filterSub'};
+        if ( ref $metricDef->{'filterSub'} eq 'CODE' ) {
+            *filterInclude = delete $metricDef->{'filterSub'
+            };   # FIXME, why not just load this as a code ref in to a variable?
         }
         else {
-            undef *filterInclude;
+            undef *filterInclude
+              ;    # FIXME, if this is a variable then just set it to '';
         }
 
         #essential params
-        unless ( $metricDef->{'metric'} and $metricDef->{'valbase'} ) {
-            next METRIC;
-        }
-        
+        next METRIC
+          unless ( $metricDef->{'metric'}
+            and $metricDef->{'valbase'} );
+
         $log->info("Checking $metric for $target");
 
         if ( $metricDef->{'mapbase'} ) {
@@ -187,7 +186,7 @@ sub runDiscParams {
             ) or next METRIC;
 
             $map = { reverse( %{$map} ) };
-            
+
             $log->debug("Got the map table for $metric");
 
             if ( $metricDef->{'maxbase'} ) {
@@ -197,19 +196,19 @@ sub runDiscParams {
                 ) or next METRIC;
 
          #knock the max keys down to just the index part of the OID (last digit)
-                for my $key ( keys( %{$max} ) ) {
+                for my $key ( keys %{$max} ) {
                     my ($index) = $key =~ m/(\d+)$/;
                     $index or next METRIC;
 
                     $max->{$index} = delete $max->{$key};
                 }
-                
+
                 $log->debug("Got the max table for $metric");
             }
 
-            DEVICE:
-            for my $device ( keys( %{$map} ) ) {
-				$log->debug("Checking for $metric on target device $device");
+          DEVICE:
+            for my $device ( keys %{$map} ) {
+                $log->debug("Checking for $metric on target device $device");
 
                 #make sure that the device appears in the $vals for this
                 #metric.  Not all devices in the map will have all the
@@ -224,14 +223,16 @@ sub runDiscParams {
                     next DEVICE;
                 }
                 $log->debug("Found $metric on $target $device");
-                
+
                 my %deviceHash;
 
                 $deviceHash{'enabled'} = 1;
 
                 #If theres a filter sub run it now.
-                if ( defined &filterInclude ) {
-					$log->debug("Checking to see if $device should be monitored");
+                if ( defined &filterInclude )
+                {   # FIXME, this should be just a variable containing a coderef
+                    $log->debug(
+                        "Checking to see if $device should be monitored");
 
                     if ( defined $devStateCache{$device} ) {
                         $deviceHash{'enabled'} = $devStateCache{$device};
@@ -239,25 +240,34 @@ sub runDiscParams {
                     else {
                         eval {
                             unless (
-                                filterInclude( $devId, $device, $metricDef, $session ) )
+                                filterInclude(
+                                    $devId, $device, $metricDef, $session
+                                )
+                              )    #FIXME $foo->(@args)
                             {
                                 $deviceHash{'enabled'} = 0;
                             }
+
+                            # FIXME, make sure eval returns true
                         };
 
                         if ($@) {
+
                             #If there was any error at all, force the device
                             #enabled
                             $deviceHash{'enabled'} = 1;
                         }
                         $devStateCache{$device} = $deviceHash{'enabled'};
-                        
-                        if ($deviceHash{'enabled'}){
-							$log->debug("Determined that $device SHOULD be monitored");
-						}
-						else {
-							$log->debug("Determined that $device SHOULD NOT be monitored");
-						}
+
+                        if ( $deviceHash{'enabled'} ) {
+                            $log->debug(
+                                "Determined that $device SHOULD be monitored");
+                        }
+                        else {
+                            $log->debug(
+"Determined that $device SHOULD NOT be monitored"
+                            );
+                        }
                     }
                 }
 
@@ -289,33 +299,39 @@ sub runDiscParams {
         }
         else {
             #this is not a mapped device.
-            my $device = $metricDef->{'device'} ? $metricDef->{'device'}
-                                                : 'System';
+            my $device =
+                $metricDef->{'device'}
+              ? $metricDef->{'device'}
+              : 'System';
             my %deviceHash;
             $deviceHash{'enabled'} = 1;
 
             #If theres a filter sub run it now.
-            if ( defined &filterInclude ) {
-    			$log->debug("Checking to see if $device should be monitored");
+            if ( defined &filterInclude )
+            { #FIXME, should just be variable containing a code ref $foo->(@args)
+                $log->debug("Checking to see if $device should be monitored");
 
                 eval {
-                    unless ( filterInclude( undef, $metricDef, $session ) )
+                    unless (
+                        filterInclude( undef, $metricDef, $session ) )   # FIXME
                     {
                         $deviceHash{'enabled'} = 0;
                     }
                 };
                 if ($@) {
+
                     #If there was any error at all, force the device
                     #enabled
                     $deviceHash{'enabled'} = 1;
                 }
-                
-				if ($deviceHash{'enabled'}){
-					$log->debug("Determined that $device SHOULD be monitored");
-				}
-				else {
-					$log->debug("Determined that $device SHOULD NOT be monitored");
-				}
+
+                if ( $deviceHash{'enabled'} ) {
+                    $log->debug("Determined that $device SHOULD be monitored");
+                }
+                else {
+                    $log->debug(
+                        "Determined that $device SHOULD NOT be monitored");
+                }
             }
 
             #test the valbase
@@ -323,12 +339,12 @@ sub runDiscParams {
                 '-varbindlist' => [ $metricDef->{'valbase'} ] )
               or next METRIC;
 
-            unless (defined( $val->{ $metricDef->{'valbase'} } )
+            unless ( defined( $val->{ $metricDef->{'valbase'} } )
                 and $val->{ $metricDef->{'valbase'} } ne 'noSuchObject' )
             {
                 next METRIC;
             }
-            
+
             $log->debug("Found $metric on $target $device");
 
             #See if there should be a max value for this metric
