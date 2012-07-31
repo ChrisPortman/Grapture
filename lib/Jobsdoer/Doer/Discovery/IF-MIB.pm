@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # $Id: Ifmib.pm,v 1.7 2012/06/18 02:57:42 cportman Exp $
 
-package Jobsdoer::Doer::Discovery::Ifmib;
+package Jobsdoer::Doer::Discovery::IF-MIB;
 
 use strict;
 use warnings;
