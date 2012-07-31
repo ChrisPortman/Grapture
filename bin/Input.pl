@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
-#$Id: testInput.pl,v 1.9 2012/06/07 03:43:34 cportman Exp $
 
 use strict;
+use File::Pid;
 use Config::Auto;
 use Log::Dispatch::Config;
 use Getopt::Long;
@@ -38,9 +38,21 @@ Log::Dispatch::Config->configure($cfgfile);
 my $logger = Log::Dispatch::Config->instance;
 $logger->{'outputs'}->{'syslog'}->{'ident'} = 'PollerInput';
 
+#some signal handling
+$SIG{HUP}     = sub { $reload++ };
+$SIG{__DIE__} = sub { die @_ if $^S; $logger->critical(@_); };
+$SIG{TERM}    = sub { $run = 0 };
+$SIG{INT}     = sub { $run = 0 };
+
 if ($daemon) {
 	daemonize();
 }
+
+# Check if this process is already running, Don't run twice!
+my ($thisFile) = $0 =~ m|([^/]+)$|;
+my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+die "Process is already running\n" if $pidfile->running;
+$pidfile->write or die "Could not create pidfile: $!\n";
 
 #Init notices
 $logger->notice('Input starting...');
@@ -52,12 +64,6 @@ if ($interval) {
 else {
     $logger->notice('Submitting a single batch of jobs.');
 }
-
-#some signal handling
-$SIG{HUP}     = sub { $reload++ };
-$SIG{__DIE__} = sub { $run = 0 };
-$SIG{TERM}    = sub { $run = 0 };
-$SIG{INT}     = sub { $run = 0 };
 
 #Job harvesting query
 my $getSchedQuery = q/select 
@@ -120,7 +126,7 @@ while ($run) {
 
     if ( -p $fifo ) {
         open( my $fifoFH, '>', $fifo )
-          or ( $logger->emergency(q|Could not open FIFO, can't continue.|)
+          or ( $logger->critical(q|Could not open FIFO, can't continue.|)
             and die );
 
         print $fifoFH "$encodedJobs\n";
@@ -128,7 +134,7 @@ while ($run) {
         close $fifoFH;
     }
     else {
-        $logger->emergency('FIFO not created, is the pollerMaster running?');
+        $logger->critical('FIFO not created, is the pollerMaster running?');
         exit;
     }
 
@@ -160,7 +166,7 @@ sub loadConfig {
 
         #{'RaiseError' => 1},
       )
-      or ( $logger->emergency("Failed to connect to the database: $DBI::errstr")
+      or ( $logger->critical("Failed to connect to the database: $DBI::errstr")
         and exit );
 
     $sth = $dbh->prepare($getSchedQuery);
@@ -189,5 +195,6 @@ sub daemonize {
 	1;
 }
 
+$pidfile->remove;
 $logger->notice('Shutting Down');
 exit;

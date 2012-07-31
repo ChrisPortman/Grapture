@@ -1,18 +1,21 @@
 #!/usr/bin/env perl
-# $Id: PollerWorker.pl,v 1.16 2012/05/30 04:48:56 cportman Exp $
 
 =head1 NAME
 
   PollerWorker.pl
 
-=head1 SYNOPSIS
+=head1 USAGE
 
-  PollerWorker.pl -s <beanstalk_server> -p <beanstalk_port>
+  PollerWorker.pl -c <config file> [-d]
+  
+      -c|--cfgfile : Full path to configuration file
+      -d|--daemon  : Daemonize the process.
 
 =head1 DESCRIPTION
 
-  Takes configuration from an XML file and creates and manages a
-  JobsDoer object
+  Takes configuration from configuration file specified by -c which 
+  should specify the Beanstalk server address, port and tube to watch as
+  well as logging options.
   
 =cut
 
@@ -20,37 +23,47 @@ use strict;
 use warnings;
 
 use lib '/home/chris/git/Grasshopper/lib';
-use Sys::Hostname qw(hostname);
-use JSON::XS;
-use Getopt::Long;
-use Data::Dumper;
-use Jobsdoer;
-use XML::Simple;
+use File::Pid;
 use POSIX;
+use Sys::Hostname qw(hostname);
+use Getopt::Long;
+use Config::Auto;
 use Log::Dispatch::Config;
 use Log::Any::Adapter;
+use JSON::XS;
+use Jobsdoer;
 
 #Setup
 my $bsserver;
 my $bsport;
 my $bsclient;
-my @bstubes;
+my $bstube;
 my $debug;
 my $cfgfile;
-my $logcfg;
 my $daemon;
 
 $|++;
 
+# Setup handlers inc. a HUP handler to refresh available job modules.
+# kill -HUP <pid>
+$SIG{HUP}       = \&HUPHANDLE; 
+$SIG{CHLD}      = \&REAPER;
+$SIG{INT}       = \&HUNTSMAN;
+$SIG{TERM}      = \&HUNTSMAN;
+$SIG{ __DIE__ } = \&dieHandle;
+
 my $optsOk = GetOptions(
     'cfgfile|c=s'   => \$cfgfile,
-    'logcfg|l=s'    => \$logcfg,
     'daemon|d'      => \$daemon,
 )
   or die "Invalid options\n";
 
+unless ( $cfgfile and -f $cfgfile ) {
+	die "Require an existing configuration file (-c)\n";
+}
+
 #Setup logging
-Log::Dispatch::Config->configure($logcfg);
+Log::Dispatch::Config->configure($cfgfile);
 my $logger = Log::Dispatch::Config->instance;
 $logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobWorker';
 Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
@@ -60,36 +73,26 @@ if ($daemon) {
     daemonize();	
 }
 
-unless ( $cfgfile and -f $cfgfile ) {
-	$logger->emergency('Require an existing configuration file (-c)');
-	exit;
-}
+# Check if this process is already running, Don't run twice!
+my ($thisFile) = $0 =~ m|([^/]+)$|;
+my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+die "Process is already running\n" if $pidfile->running;
+$pidfile->write or die "Could not create pidfile: $!\n";
 
-=head1 USAGE
-
-FIXME
-
-=cut
+$logger->notice('POLLER WORKER STARTING UP');
 
 #Load the config file
 loadConfig($cfgfile)
-  or ($logger->emergency('Config file invalid') and exit);
+  or ($logger->critical('Config file invalid') and exit);
 
 #create a jobsdoer object with the Beanstalk details
 $bsserver .= ':' . $bsport if $bsport;
 my $jobsDoer = Jobsdoer->new(
     {
         'bsserver' => $bsserver,
-        'bstubes'  => \@bstubes,
+        'bstubes'  => [ $bstube ],
     }
 );
-
-# Setup a HUP handler to refresh available job modules.
-# kill -HUP <pid>
-$SIG{HUP}  = \&HUPHANDLE; 
-$SIG{CHLD} = \&REAPER;
-$SIG{INT}  = \&HUNTSMAN;
-$SIG{TERM} = \&HUNTSMAN;
 
 #Start a loop that will continually attempt to start threads.
 my $run = 1;
@@ -117,57 +120,19 @@ exit 1;
 
 sub loadConfig {
     my $cfgfile = shift;
-    $logger->info('Loading config file '.$cfgfile);
-
-    #read in the xml
-    my $rawConfig = XMLin($cfgfile);
-
-    my %config;
-    $config{'Poller'} = {};
-    $config{'Tubes'}  = [];
-
-    my $hostname = hostname()
-      or warn "Could not get hostname: $!\n";
-    chomp($hostname);
-
-    #Parse the Poller settings (Beanstalk server port etc)
-    for my $key ( keys $rawConfig->{'Pollers'}->{'Defaults'} ) {
-
-        #Load the defaults into the poller settings first
-        $config{'Poller'}->{$key} =
-          $rawConfig->{'Pollers'}->{'Defaults'}->{$key};
-    }
-
-    if ( $rawConfig->{'Pollers'}->{$hostname} ) {
-        for my $key ( keys $rawConfig->{'Pollers'}->{$hostname} ) {
-
-            #Load the host specific poller settings over the defaults.
-            $config{'Poller'}->{$key} =
-              $rawConfig->{'Pollers'}->{'Defaults'}->{$key};
-        }
-    }
-
-    #Work out what tubes we're subscribing to.
-    for my $tube ( keys( $rawConfig->{'Tubes'} ) ) {
-        my %pollers =
-          map { $_ => 1 } @{ $rawConfig->{'Tubes'}->{$tube}->{'Poller'} };
-
-        if ( $pollers{$hostname} ) {
-            push @{ $config{'Tubes'} }, ($tube);
-            print "Subscribing to tube $tube\n";
-        }
-    }
     
-    #pick out the config elements.
-	$bsserver = $config{'Poller'}->{'Server'};
-	$bsport   = $config{'Poller'}->{'Port'};
-	@bstubes  = @{ $config{'Tubes'} };
-	
-	unless ($bsserver and $bsport and scalar @bstubes) {
-		return;
-	}
+    return unless ( $cfgfile and -f $cfgfile );
+    my $config = Config::Auto::parse($cfgfile);
 
-    return 1;
+	$bsserver = $config->{'BS_SERVER'};
+	$bsport   = $config->{'BS_PORT'};
+	$bstube   = $config->{'BS_JOBQ'};
+
+    if ( $bsserver and $bsport and $bstube ) {
+		return 1;
+	}
+	
+	return;
 }
 
 sub daemonize {
@@ -219,7 +184,8 @@ sub HUNTSMAN {
 		$logger->notice("$jobsDoer->{'childCount'} workers left.");
 		sleep 2;
 	}
-	
+
+    $pidfile->remove;
 	$logger->notice('All workers are gone.  Goodbye');
 
 	exit;	
@@ -231,4 +197,10 @@ sub HUPHANDLE {
     $jobsDoer->loadModules();
     kill 'INT', keys %{ $jobsDoer->{'childPids'} };
 };
+
+sub dieHandle {
+	die @_ if $^S; #Dont do anything special in an eval
+	$logger->critical(@_);
+	return 1;
+}
 

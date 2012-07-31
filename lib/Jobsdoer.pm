@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-# $Id: Jobsdoer.pm,v 1.15 2012/06/07 03:41:22 cportman Exp $
 
 =head1 TITLE
 
@@ -357,10 +356,7 @@ sub runOutputModule {
     my $module     = $self->{'currentJobData'}->{'output'};
     my $moduleOpts = $self->{'currentJobData'}->{'outputOptions'};
  
-    return unless $module;
-
-    #If theres no module, just return, this is valid as it may be
-    #desired to just get the result back via Beanstalk.
+    return 1 unless $module; #no output module is valid.
 
     unless ( $self->{'outputs'}->{$module} ) {
         $self->log("Output module specified ($module) is not valid");

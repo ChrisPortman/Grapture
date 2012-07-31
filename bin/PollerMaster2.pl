@@ -1,6 +1,78 @@
 #!/usr/bin/env perl
 
+=head1 NAME
+
+  PollerMaster.pl
+  
+=head1 USAGE
+
+  PollerMaster.pl -c <config file> [-d]
+  
+      -c|--cfgfile : Full path to configuration file
+      -d|--daemon  : Daemonize the process.
+  
+=head1 DESCRIPTION
+
+  Poller Master listens on a FIFO for JSON formatted job specifications
+  and submits them to Beanstalkd for processing by a worker.  It also
+  sets up a return 'tube' on Beanstalkd on which it expects to receive 
+  any log messages as well as a result code for jobs as they are
+  completed.
+  
+  Submitted jobs are tracked until completion.  Jobs are regarded as
+  completeted when either a result code for the job is received or the
+  job has been on the queue for longer than the timeout at which point
+  PollerMaster will cancel it.  This protects the overall system from
+  a situation where the Master is receiving and queuing them when no
+  workers are active and servicing the queue.  Without cancelling the
+  jobs, they will stay in the queue indefinately and when a worker comes
+  online, it will run through all the jobs as fast as possible even 
+  though many of the jobs would no longer be relevant.
+  
+  The timeout, if required, should be specified using the 'waitTime' key
+  on the job data.
+
+=head1 JOB FORMAT
+
+  Jobs can be submitted in batches and should be submitted to the master
+  as a JSON string via the FIFO. Its structure is as follows:
+  
+  $job = [
+      {
+		  'process'  => <processor module>,
+		  'output'   => <output module>,
+		  'waitTime' => <no of secconds job can be queued>,
+		  'processOptions => {
+		      <hash of options required by the process module>
+		  },
+		  'outputOptions' => {
+			  <hash of options required by the output module>
+		  } 
+      },
+      ...
+  ];
+  
+  The 'process' key is really the only mandatory key.  Without this key,
+  no logic can be employed to actually do any work.
+  
+  The 'output' key can be used to specify a module that will actually
+  'do' something with the results of the process. This isn't mandatory
+  because, potentially the process may not produce any data or
+  potentially the process can actually do any outputting itself.  Using
+  an output module however allows the same process to be run with
+  different output modules so that you can direct output in a way that
+  is appropriate for various environments without having to mess with
+  the process logic.
+  
+  The 'processOptions' and 'outputOptions' keys should contain hashes of
+  options pertaining to the 'process' and 'output' modules respectively.
+  Please see the documentation of the modules you are using for an idea
+  of what is appropriate here.
+  
+=cut
+
 use strict;
+use File::Pid;
 use IO::Select;
 use IO::Handle;
 use Beanstalk::Client;
@@ -28,14 +100,27 @@ Log::Dispatch::Config->configure($cfgfile);
 my $logger = Log::Dispatch::Config->instance;
 $logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobDispatch';
 
+#Set up signal handlers for the children processes (overwrite for the 
+#main once all the children are spawned where needed
+$SIG{'TERM'}    = \&childSigTermHandler;
+$SIG{'INT'}     = \&childSigIntHandler;
+$SIG{ __DIE__ } = \&dieHandle;
+
 #Daemonize if appropriate
 if ($daemon) {
 	daemonize();
 }
 
+# Check if this process is already running, Don't run twice!
+my ($thisFile) = $0 =~ m|([^/]+)$|;
+my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+die "Process is already running\n" if $pidfile->running;
+$pidfile->write or die "Could not create pidfile: $!\n";
+
 $logger->notice('POLLER MASTER STARTING UP');
+
 unless ($optsOk and $cfgfile and -f $cfgfile) {
-    $logger->emergency('Invalid options. Must supply -c <config file> with valid file');
+    $logger->critical('Invalid options. Must supply -c <config file> with valid file');
     exit;	
 }
 
@@ -47,7 +132,7 @@ my $bsport   = $config->{'BS_PORT'};
 my $jobTube  = $config->{'BS_JOBQ'};
 
 unless ( $fifo and $bsserver and $bsport and $jobTube ){
-	$logger->emergency('Options missing from config file.  Must include: MASTER_FIFO, BS_SERVER, BS_PORT, BS_JOBQ');
+	$logger->critical('Options missing from config file.  Must include: MASTER_FIFO, BS_SERVER, BS_PORT, BS_JOBQ');
 	exit;
 }
 
@@ -83,11 +168,6 @@ my $mainProc_WTR;
 my $jfPid;
 my $lfPid;
 my $twPid;
-
-#Set up signal handlers for the children processes (overwrite for the 
-#main once all the children are spawned
-$SIG{'TERM'} = \&childSigTermHandler;
-$SIG{'INT'}  = \&childSigIntHandler;
 
 #Create a beanstalk client object that all the children can use
 #Don't connect though the child processes will have to do that for 
@@ -150,6 +230,8 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 			STDERR->autoflush(1);
 			
 			mainLineProc();
+			
+			$pidfile->remove;
 			exit;
 		}
 		else {
@@ -306,8 +388,8 @@ sub logFetchProc {
         eval {
 			#Need to have specific sig handlers for the reserve so we can
 			#stop it.
-			local $SIG{'INT'}  = sub { $run = 0; die; };
-			local $SIG{'TERM'} = sub { $run = 0; die; };
+			local $SIG{'INT'}   = sub { $run = 0; die; };
+			local $SIG{'TERM'}  = sub { $run = 0; die; };
             $log = $bsclient->reserve(); #blocks until a job is ready
 	    };
         last unless $run;
@@ -356,7 +438,7 @@ sub timeWatchProc {
 		$logger->debug('Timeout Monitor - Checking for new jobs');
 		for my $handle ( $select->can_read(1) ) {
 			eval {
-				local $SIG{'ALRM'} = sub { die; };
+				local $SIG{'ALRM'}  = sub { die; };
 				alarm 2;
 				
 		  		while ( <$handle> ) {
@@ -579,6 +661,12 @@ sub childSigIntHandler {
 	# Wait while the children are being murdered
     $run = 0;
     1;
+}
+
+sub dieHandle {
+	die @_ if $^S; #Dont do anything special in an eval
+	$logger->critical(@_);
+	return 1;
 }
 
 sub daemonize {

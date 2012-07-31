@@ -15,6 +15,7 @@ Required Packages (Debian)
  - liblog-any-adapter-dispatch-perl
  - liblog-dispatch-config-perl
  - libconfig-auto-perl
+ - libfile-pid-perl
  - rrdtool
  - beanstalkd
  - postgresql
@@ -105,9 +106,13 @@ UPDATES
 =======
 
 Processes can now be daemonized on the cli:
-perl Input.pl -c <full_path_to_cfg> -i 45 -d
-perl PollerMaster2.pl -c <full_path_to_cfg> -d
-perl PollerWorker.pl -c <full_path_to_Job Dist.cfg> -l <full_path_to_cfg> -d
+perl Input.pl -c <full path to cfg> -i 45 -d
+perl PollerMaster2.pl -c <full path to cfg> -d
+perl PollerWorker.pl -c <full path to cfg> -d
+
+There are also some init scripts under etc/init/ note however they
+currently contain hardcoded paths applicable to my dev environment. You
+will have to update the paths for the DAEMON and DAEMON_OPTS variables.
 
 TODO
 ====
