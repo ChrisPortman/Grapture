@@ -56,10 +56,11 @@ sub readRrdDir {
 
     closedir $dh;
     
-    my %objsByGroups;
-
-	my $time = time();
     
+    my $graphGroupSettings = $c->model('Postgres')->getGraphGroupSettings(); 
+    my %objsByGroups;
+	my $time = time();
+	
     for my $rrd (@rrdFiles) {
 		# Go through each RRD file and work out what data sources they 
 		# have and what groups the data sources belong to.
@@ -85,6 +86,7 @@ sub readRrdDir {
 	GROUPS:
 	for my $group ( keys %objsByGroups ) {
 		
+		my $dsCounter = 0;
 		DATAS:
 		for my $ds ( keys %{$objsByGroups{$group}} ) {
 			my $file = $objsByGroups{$group}->{$ds};
@@ -115,21 +117,74 @@ sub readRrdDir {
 			    my $error = RRDs::error;
 			    print "$error\n" if $error;
 
+				#store a cumulative sum so we can get the ds average
+				my $sum;
+				my $count;
+					
                 for my $metricData ( @{$data} ) {
 					#$metricData is an Array of arrays. Each inner Array
 					#is the vals for each metric on a specific time slot
+					
 					for my $value ( @{$metricData} ) {
+						if ($value) {
+							if ( $graphGroupSettings->{$group}->{'mirror'} 
+							     and ($dsCounter % 2) ) {
+							    $value = -$value;
+							}
+						    $sum += $value;
+						    $count ++;
+						}
 						push @plots, [ $start * 1000, $value ];
 					}
-
+					
 					$start += $step;
+				}
+
+				#add the average as the last element, we'll sort on
+				#it and remove it later
+				if ($sum and $count) {
+					my $avg = $sum / $count;
+					push @plots, $avg;
+					print "Average of $ds: $avg\n";
+				}
+				else {
+					push @plots, 0;
+					print "Average of $ds: 0\n";
 				}
 
 				push @{$objsByGroups{$group}->{$earliestData}},
 				  { 'label' => $ds, 'plots' => \@plots };
 				  
+				#Sort the metrics within the group on their average
+				#Order depends on whether the graph is to be stacked or
+				#not.
+				if ( $graphGroupSettings->{$group}->{'stack'} ) {
+					#Sort on Average ascending
+					@{$objsByGroups{$group}->{$earliestData}} =
+					    sort { $a->{'plots'}->[-1] <=> $b->{'plots'}->[-1] }
+					    @{$objsByGroups{$group}->{$earliestData}};
+				}
+				else {
+					#Sort on Average decending
+					@{$objsByGroups{$group}->{$earliestData}} =
+					    sort { $b->{'plots'}->[-1] <=> $a->{'plots'}->[-1] }
+					    @{$objsByGroups{$group}->{$earliestData}};
+				}
+				#remove the averages
+				for (@{$objsByGroups{$group}->{$earliestData}}) {
+					pop @{$_->{'plots'}};
+				}
+				
+				  
 				$rraNo ++;
 			}
+			$dsCounter ++;
+		}
+		#Add some graph settings to the group.
+		$objsByGroups{$group}->{'settings'} = {};
+		for my $key ( keys %{$graphGroupSettings->{$group}} ){
+			$objsByGroups{$group}->{'settings'}->{$key} = 
+			  $graphGroupSettings->{$group}->{$key};
 		}
 	}
 

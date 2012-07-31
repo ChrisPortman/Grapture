@@ -288,6 +288,8 @@ function renderGraph(panel, eopts, rraChange) {
     
     //retreive the data for this group from the 'global' space (yuck)
 	var data = GH[group];
+	var settings = data['settings'];
+	//delete data['settings']; 
 	
     var rraKeys = new Array();
     for ( key in data ) {
@@ -352,14 +354,23 @@ function renderGraph(panel, eopts, rraChange) {
     
     var initialData = getData();
     
+    //work out some display opts
+    var fill;
+    var stack;
+    if (settings['fill']) {
+		console.log('filling graph');
+		fill = true;
+	}
+	if (settings['stack']) {
+		console.log('stacking graph');
+		stack = true;
+	}
+    
     var graphOpts = {
 		legend: {
 			show: true,
 			noColumns: 4,
 			position: 'nw'
-		},
-		series: {
-			lines: { show: true, },
 		},
 		xaxis: {
 			mode: 'time',
@@ -373,9 +384,9 @@ function renderGraph(panel, eopts, rraChange) {
 		series: {
 			lines: {
 				show:  true,
-				fill:  true,
+				fill:  fill,
 			},
-//			stack: true,
+			stack: stack,
 		}
 	}
 	
@@ -398,9 +409,9 @@ function renderGraph(panel, eopts, rraChange) {
 		series: {
 			lines: {
 				show:  true,
-				fill:  true,
+				fill:  fill,
 			},
-//			stack: true,
+			stack: stack,
 		}
 	}
 	

@@ -214,6 +214,26 @@ sub getMetricGrp {
 	return $groups[0];
 }
 
+sub getGraphGroupSettings {
+	my $self = shift;
+	my $dbh = $self->dbh;
+    my %groupSettings;
+    	
+	my $groupQuery = q(select * from graphgroupsettings);
+    my $sth = $dbh->prepare($groupQuery);
+    my $res = $sth->execute();
+
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		$groupSettings{$row->{'graphgroup'}} = {
+			'fill'   => $row->{'fill'},
+			'stack'  => $row->{'stack'},
+			'mirror' => $row->{'mirror'},
+		};
+    }
+	
+	return wantarray ? %groupSettings : \%groupSettings;
+}
+
 sub sortNatural {
 	my $a = shift;
 	my $b = shift;
