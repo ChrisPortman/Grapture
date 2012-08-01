@@ -215,67 +215,82 @@ function loadGraphs(node, record, item, index, event) {
 	var target      = GH.currentTarget;
 	var category    = GH.currentCat;
 	var device      = record.data.title;
+	
+	//Blast any old graph data
+	$['cache'] = {};
+	GH['graphdata'] = {};
 
+    //clear any graphs previously on display.
 	this.getGraphsRef().removeAll();
 	
 	//remove unfrendly chars from the device
 	device = device.replace(/\//g,'_');
 	
+	//Get the graphdata from the server.
 	Ext.Ajax.request({
-		url: '/rest/graphdata/'+target+'/'+category+'/'+device,
-		scope: this,
-		success: function(response) { buildGraphs(response,target,device,this.getGraphsRef()); },
+		url    : '/rest/graphdata/'+target+'/'+category+'/'+device,
+		scope  : this,
+		success: buildGraphs, 
     });
-}
 
-function buildGraphs(response,target,device, graphsPanel) {
-
-	var rrdData = response.responseText;
-	var panels = [];
-	
-	resonse = undefined;
-	rrdData = Ext.JSON.decode(rrdData)['data'];
-	
-	for (group in rrdData) {
-		var bigGraphPh = group;
-		var smlGraphPh = group+'-ov';
+	function buildGraphs (response) {
 		
-		//Having to stash the data somewhere globally accessable seems
-		//yucky however I cant find a good way of passing it to the 
-		//call back.
-		GH[group] = rrdData[group];
+		//Scope in some variables
+		var rrdData = response.responseText;
+		var target  = target;
+		var device  = device;
+		var graphsPanel = this.getGraphsRef();
+	
+		var panels = [];
 		
-        panels.push(
-			{
-				xtype  : 'panel',
-				title  : group,
-				margin : '10 auto 10 auto',
-				layout: 'fit',
-				html: '<div style = "float: left;">                                                                            \
-				           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
-				           <div style = "float: left;">                                                                        \
-					           <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
-					           <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
-					               Resolution:<br />                                                                           \
-					               <select id="'+group+'-sel" onchange="renderGraph(\''+group+'\', null, true)"></select>      \
-					               <br /><br />                                                                                \
-					               <button type="button" onclick="renderGraph(\''+group+'\', null, true)">Reset Area</button>  \
-					           </div>                                                                                          \
-					       </div>                                                                                              \
-				       </div>',
-				minHeight: 200,
-				minWidth: 400,
-				listeners: {
-					afterrender: {
-						scope: this,
-						fn: renderGraph,
+		resonse = undefined;
+		rrdData = Ext.JSON.decode(rrdData)['data'];
+		
+		//each 'group' represents one graph on the page.
+		for (group in rrdData) {
+			var bigGraphPh = group;
+			var smlGraphPh = group+'-ov';
+			
+			//Having to stash the data somewhere globally accessable seems
+			//yucky however I cant find a good way of passing it to the 
+			//call back.
+			GH['graphdata'][group] = {};  //Create the obj
+			GH['graphdata'][group]['settings'] = rrdData[group]['settings'];
+			delete rrdData[group]['settings']; //the rest of rrdData is actual data
+			GH['graphdata'][group]['data'] = rrdData[group]; //store the remainder of rrdData
+			
+	        panels.push(
+				{
+					xtype  : 'panel',
+					title  : group,
+					margin : '10 auto 10 auto',
+					layout: 'fit',
+					html: '<div style = "float: left;">                                                                            \
+					           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
+					           <div style = "float: left;">                                                                        \
+						           <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
+						           <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
+						               Resolution:<br />                                                                           \
+						               <select id="'+group+'-sel" onchange="renderGraph(\''+group+'\', null, true)"></select>      \
+						               <br /><br />                                                                                \
+						               <button type="button" onclick="renderGraph(\''+group+'\', null, true)">Reset Area</button>  \
+						           </div>                                                                                          \
+						       </div>                                                                                              \
+					       </div>',
+					minHeight: 200,
+					minWidth: 400,
+					listeners: {
+						afterrender: {
+							scope: this,
+							fn: renderGraph,
+						},
 					},
-				},
-			}
-		);
+				}
+			);
+		}
+		graphsPanel.setTitle( device + ' Performance Graphs');
+		graphsPanel.add( panels );
 	}
-	graphsPanel.setTitle( device + ' Performance Graphs');
-	graphsPanel.add( panels );
 }
 
 //call back fired after a graph pannel loads.  Is responcible for 
@@ -287,17 +302,20 @@ function renderGraph(panel, eopts, rraChange) {
     var group = panel.title || panel;
     
     //retreive the data for this group from the 'global' space (yuck)
-	var data = GH[group];
-	var settings = data['settings'];
-	//delete data['settings']; 
+	var settings = GH['graphdata'][group]['settings'];
+	var data = GH['graphdata'][group]['data'];
 	
+	//Each key is the time of the first metric val in the series
     var rraKeys = new Array();
     for ( key in data ) {
 		rraKeys.push(key);
 	}
 	
+	//Sort decending so the most recent time is on top.
 	rraKeys.sort(function(a,b){ return b-a });
 
+    //On the initial load (ie not a time series change) build the list
+    //of options to go into the time series dropdown.
     if ( !rraChange ){
 		for (key in rraKeys) {
 			//create an option object
@@ -311,61 +329,24 @@ function renderGraph(panel, eopts, rraChange) {
 	    }
 	}
 
-	function getData(start, end) {
-	    var plotData  = [];
-	    var rraKeyIdx = 0;
-	    
-	    if (rraChange) {
-			//This was prompted by a res change. Select the new rra key
-			var select = document.getElementById( group+'-sel' );
-			rraKeyIdx = select.selectedIndex;
-		}
-			
-			
-		for (j in data[rraKeys[rraKeyIdx]] ) {
-			var label = data[rraKeys[rraKeyIdx]][j]['label'];
-			var plots = data[rraKeys[rraKeyIdx]][j]['plots'];
-			
-			if ( start && end ) {
-				var filteredPlots = [];
-				
-				for ( i in plots ) {
-					var timestamp = plots[i][0];
-					if ( timestamp >= start && timestamp <= end ) {
-						filteredPlots.push(plots[i]);
-					}
-				
-					if (timestamp > end) {
-						break;
-					}
-				}
-				plots = filteredPlots;
-			}
-			
-			//var first = data[rraKeys[0]][j]['plots'][0][0];
-			plotData.push( { label: label, data: plots } );
-	    }
-    
-        return plotData;
-    }
-    
+    //Determine the placeholder divs for the main and preveiw graph.
     var bigGraphPh = group;
     var smlGraphPh = group + '-ov';
     
+    //Calculate the data
     var initialData = getData();
     
     //work out some display opts
     var fill;
     var stack;
     if (settings['fill']) {
-		console.log('filling graph');
 		fill = true;
 	}
 	if (settings['stack']) {
-		console.log('stacking graph');
 		stack = true;
 	}
     
+    //Graph display options
     var graphOpts = {
 		legend: {
 			show: true,
@@ -377,9 +358,6 @@ function renderGraph(panel, eopts, rraChange) {
 			timeformat: "%d/%m/%y %h:%M",
 			ticks: 5,
 		},
-		yaxis: {
-			autoscaleMargin: 0.2,
-		},
 		selection: { mode: "xy" },
 		series: {
 			lines: {
@@ -390,8 +368,10 @@ function renderGraph(panel, eopts, rraChange) {
 		}
 	}
 	
+	//Plot the main graph
 	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts );
 	
+	//Preview graph display options
 	var overviewOpts = {
 		legend: { show: false },
 		series: {
@@ -415,6 +395,7 @@ function renderGraph(panel, eopts, rraChange) {
 		}
 	}
 	
+	//Plot the preview graph
 	var overView = $.plot( '#'+smlGraphPh, initialData, overviewOpts);
 	
 	//Connect the 2 graphs
@@ -438,4 +419,45 @@ function renderGraph(panel, eopts, rraChange) {
     $('#'+smlGraphPh).bind("plotselected", function (event, ranges) {
         plot.setSelection(ranges);
     });
+    
+	function getData(start, end) {
+	    //function to build the data set    
+	
+	    var plotData  = [];
+	    var rraKeyIdx = 0;
+	    
+	    if (rraChange) {
+			//This was prompted by a res change. Select the new rra key
+			var select = document.getElementById( group+'-sel' );
+			rraKeyIdx = select.selectedIndex;
+		}
+	
+		for (j in data[rraKeys[rraKeyIdx]] ) {
+			var label = data[rraKeys[rraKeyIdx]][j]['label'];
+			var plots = data[rraKeys[rraKeyIdx]][j]['plots'];
+			
+			if ( start && end ) {
+				var filteredPlots = [];
+				
+				for ( i in plots ) {
+					var timestamp = plots[i][0];
+					if ( timestamp >= start && timestamp <= end ) {
+						filteredPlots.push(plots[i]);
+					}
+				
+					if (timestamp > end) {
+						break;
+					}
+				}
+				plots = filteredPlots;
+			}
+			
+			//var first = data[rraKeys[0]][j]['plots'][0][0];
+			plotData.push( { label: label, data: plots } );
+	    }
+	
+		return plotData;
+	}
 }
+
+

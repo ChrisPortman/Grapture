@@ -3,6 +3,7 @@ use Moose;
 use namespace::autoclean;
 
 use RRDs;
+use Time::Local qw(timelocal_nocheck timegm_nocheck);
 use Data::Dumper;
 
 extends 'Catalyst::Model';
@@ -60,6 +61,7 @@ sub readRrdDir {
     my $graphGroupSettings = $c->model('Postgres')->getGraphGroupSettings(); 
     my %objsByGroups;
 	my $time = time();
+	my $timeZoneOffset = $time - timelocal_nocheck(gmtime($time));
 	
     for my $rrd (@rrdFiles) {
 		# Go through each RRD file and work out what data sources they 
@@ -89,13 +91,11 @@ sub readRrdDir {
 		my $dsCounter = 0;
 		DATAS:
 		for my $ds ( keys %{$objsByGroups{$group}} ) {
-			my $file = $objsByGroups{$group}->{$ds};
+			my $file = delete $objsByGroups{$group}->{$ds};
 			
 			my $info = RRDs::info($file);
 			my $step = $info->{'step'};
             
-            delete $objsByGroups{$group}->{$ds};
-            		
 			#process each RRA (archive) in the object.
 			NEWRRA:
 			my $rraNo = 0;
@@ -117,6 +117,8 @@ sub readRrdDir {
 			    my $error = RRDs::error;
 			    print "$error\n" if $error;
 
+                $start += $timeZoneOffset;
+                
 				#store a cumulative sum so we can get the ds average
 				my $sum;
 				my $count;
@@ -145,47 +147,65 @@ sub readRrdDir {
 				if ($sum and $count) {
 					my $avg = $sum / $count;
 					push @plots, $avg;
-					print "Average of $ds: $avg\n";
 				}
 				else {
 					push @plots, 0;
-					print "Average of $ds: 0\n";
 				}
 
 				push @{$objsByGroups{$group}->{$earliestData}},
 				  { 'label' => $ds, 'plots' => \@plots };
 				  
-				#Sort the metrics within the group on their average
-				#Order depends on whether the graph is to be stacked or
-				#not.
-				if ( $graphGroupSettings->{$group}->{'stack'} ) {
-					#Sort on Average ascending
-					@{$objsByGroups{$group}->{$earliestData}} =
-					    sort { $a->{'plots'}->[-1] <=> $b->{'plots'}->[-1] }
-					    @{$objsByGroups{$group}->{$earliestData}};
-				}
-				else {
-					#Sort on Average decending
-					@{$objsByGroups{$group}->{$earliestData}} =
-					    sort { $b->{'plots'}->[-1] <=> $a->{'plots'}->[-1] }
-					    @{$objsByGroups{$group}->{$earliestData}};
-				}
-				#remove the averages
-				for (@{$objsByGroups{$group}->{$earliestData}}) {
-					pop @{$_->{'plots'}};
-				}
-				
-				  
 				$rraNo ++;
 			}
+
 			$dsCounter ++;
 		}
-		#Add some graph settings to the group.
-		$objsByGroups{$group}->{'settings'} = {};
+		
+		#Sort the metrics within the group on their average
+		#Order depends on whether the graph is to be stacked or
+		#not.
+		for my $rra ( keys %{$objsByGroups{$group}} ) {
+			next unless ref $objsByGroups{$group}->{$rra};
+			
+			if ( $graphGroupSettings->{$group}->{'stack'} ) {
+				#Sort on Average ascending
+				@{$objsByGroups{$group}->{$rra}} = sort
+				    { $a->{'plots'}->[-1] <=> $b->{'plots'}->[-1] }
+				    @{$objsByGroups{$group}->{$rra}};
+			}
+			else {
+				#Sort on Average decending
+				@{$objsByGroups{$group}->{$rra}} = sort
+				    { $b->{'plots'}->[-1] <=> $a->{'plots'}->[-1] }
+				    @{$objsByGroups{$group}->{$rra}};
+			}
+			#remove the averages
+			for (@{$objsByGroups{$group}->{$rra}}) {
+				pop @{$_->{'plots'}};
+			}
+		}
+				
+		#Add graph settings to the group that come from the database
 		for my $key ( keys %{$graphGroupSettings->{$group}} ){
+			unless ( $objsByGroups{$group}->{'settings'} ) {
+				$objsByGroups{$group}->{'settings'} = {};
+			}
+
 			$objsByGroups{$group}->{'settings'}->{$key} = 
 			  $graphGroupSettings->{$group}->{$key};
 		}
+		
+		#If there are no static graph settings from the DB, apply some
+		#sencible ones
+		unless ($objsByGroups{$group}->{'settings'}) {
+			$objsByGroups{$group}->{'settings'} = {};
+			
+			if ( $dsCounter == 1 ) {
+				#if there is only 1 metric, make it a filled area
+				$objsByGroups{$group}->{'settings'}->{'fill'} = 1;
+			}
+		}
+		
 	}
 
     return wantarray ? %objsByGroups : \%objsByGroups;

@@ -16,6 +16,7 @@ Required Packages (Debian)
  - liblog-dispatch-config-perl
  - libconfig-auto-perl
  - libfile-pid-perl
+ - libchart-clicker-perl
  - rrdtool
  - beanstalkd
  - postgresql
