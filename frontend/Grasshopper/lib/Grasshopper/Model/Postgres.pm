@@ -221,18 +221,20 @@ sub getGroupMetrics {
 	
 	my $dbh = $self->dbh;
 	
-	my $groupQuery = q(select metric from targetmetrics
+	my $groupQuery = q(select metric, graphorder from targetmetrics
 	                   where target = ?
-	                   and graphgroup = ?
-                       group by metric --
+	                   and (graphgroup = ? or metric = ?)
+                       group by metric, graphorder --
                       );
                       
     my $sth = $dbh->prepare($groupQuery);
-    my $res = $sth->execute($target, $group);
+    my $res = $sth->execute($target, $group, $group);
 
     my @metrics;
     
-    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+    for my $row ( sort { $a->{'graphorder'} <=> $b->{'graphorder'} }
+                        @{$sth->fetchall_arrayref( {} ) } 
+                ) {
 		push @metrics, $row->{'metric'};
 	}
 	

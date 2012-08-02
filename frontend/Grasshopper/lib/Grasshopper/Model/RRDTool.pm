@@ -34,6 +34,11 @@ my $STATIC_GRAPH_BASE_DIR = '/home/chris/git/Grasshopper/frontend/Grasshopper/ro
 $RRDFILELOC =~ s|([^/])$|$1/|;
 $STATIC_GRAPH_BASE_DIR =~ s|([^/])$|$1/|;
 
+#Blue Red  Green Yellow Pink Peach DGreen Ivory Lavendar
+my @COLOURS = qw( a8d0d8 eabcbf bddcb3 
+                  f2de7d ddadbd efc5ac 
+                  a4ce9e f3e3bf d7c3cf);
+
 
 sub readRrdDir {
 	#suck in all the RRDS in $dir and extract all the metric data.
@@ -231,6 +236,7 @@ sub createRrdImage {
     my $settings;
 	my $imagefile = $STATIC_GRAPH_BASE_DIR;
 	my @DEFS;
+	my @CDEFS;
 	my @DRAWS;
     
     #get metrics in the group
@@ -256,19 +262,40 @@ sub createRrdImage {
 	}
 	$imagefile .= $group.'.png';
 
-	#check the metric RRD files exist
+	#check the metric RRD files exist and ready the metric details for the graph
+	my $style  = $settings->{'fill'} ? 'AREA' : 'LINE'; 
+	my $count = 0;
+	
 	for my $met ( @{$metrics} ) {
+		my $draw;
+		my $cdef;
+		
 		my $rrdfile = $RRDFILELOC.$target.'/'.$category.'/'.$device.'/'.$met.'.rrd';
+		print "$rrdfile\n";
 
 		unless ( -f $rrdfile ) {
 			$c->response->body('The RRD file '.$rrdfile.' does not exist');
 			return;
 		}
-
+		
 		my $def  = "DEF:$met=$rrdfile:$met:AVERAGE";
-		my $draw = "LINE:$met#FF0000:$met";
+		
+		if ( $settings->{'mirror'} and ($count % 2) ) {
+			$cdef = "CDEF:c$met=$met,-1,*";
+			
+			$draw = "$style:c$met#$COLOURS[$count]:$met";
+			$draw   .= ':STACK' if $settings->{'stack'};
+		}
+		else {
+			$draw = "$style:$met#$COLOURS[$count]:$met";
+			$draw   .= ':STACK' if $settings->{'stack'};
+		}
+		
 		push @DEFS, $def;
+		push @CDEFS, $cdef if $cdef;
 		push @DRAWS, $draw;
+		
+		$count ++;
 	}
 
     #Generate the graph.
@@ -279,6 +306,7 @@ sub createRrdImage {
         '--width'  => $width,
         '--height' => $height,
         @DEFS,
+        @CDEFS,
         @DRAWS,
     );
     
