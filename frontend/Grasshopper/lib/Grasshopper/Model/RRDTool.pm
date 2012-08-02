@@ -30,7 +30,10 @@ it under the same terms as Perl itself.
 __PACKAGE__->meta->make_immutable;
 
 my $RRDFILELOC = $Grasshopper::GHCONFIG->{'DIR_RRD'};
+my $STATIC_GRAPH_BASE_DIR = '/home/chris/git/Grasshopper/frontend/Grasshopper/root/graphs';
 $RRDFILELOC =~ s|([^/])$|$1/|;
+$STATIC_GRAPH_BASE_DIR =~ s|([^/])$|$1/|;
+
 
 sub readRrdDir {
 	#suck in all the RRDS in $dir and extract all the metric data.
@@ -209,6 +212,85 @@ sub readRrdDir {
 	}
 
     return wantarray ? %objsByGroups : \%objsByGroups;
+}
+
+sub createRrdImage {
+	my $self   = shift;
+	my $c      = shift;	
+
+    #Get the GET request variables.
+    my $target     = $c->request->params->{'target'};
+    my $category   = $c->request->params->{'category'};
+    my $device     = $c->request->params->{'device'};
+    my $group      = $c->request->params->{'group'};
+    my $start      = $c->request->params->{'start'}  || (time - (48 * 3600));
+    my $height     = $c->request->params->{'height'} || 280;
+    my $width      = $c->request->params->{'width'}  || 730;
+    
+    my $metrics;
+    my $settings;
+	my $imagefile = $STATIC_GRAPH_BASE_DIR;
+	my @DEFS;
+	my @DRAWS;
+    
+    #get metrics in the group
+	$metrics = $c->model('Postgres')->getGroupMetrics($target,$group);
+	
+	#get graph group settings
+	$settings = $c->model('Postgres')->getGraphGroupSettings();
+	$settings = $settings->{$group};
+	
+	#create the file and path
+    unless ( -d $imagefile ) {
+		$c->response->body('Image base dir does not exist');
+		return;
+	}
+	
+    for my $path ( $target, $device ) {
+		$imagefile .= $path.'/';
+		unless (-d $imagefile) {
+			mkdir $imagefile 
+			  or $c->response->body('Could not create $imagedir')
+			     and return;
+	    }
+	}
+	$imagefile .= $group.'.png';
+
+	#check the metric RRD files exist
+	for my $met ( @{$metrics} ) {
+		my $rrdfile = $RRDFILELOC.$target.'/'.$category.'/'.$device.'/'.$met.'.rrd';
+
+		unless ( -f $rrdfile ) {
+			$c->response->body('The RRD file '.$rrdfile.' does not exist');
+			return;
+		}
+
+		my $def  = "DEF:$met=$rrdfile:$met:AVERAGE";
+		my $draw = "LINE:$met#FF0000:$met";
+		push @DEFS, $def;
+		push @DRAWS, $draw;
+	}
+
+    #Generate the graph.
+    RRDs::graph(
+        $imagefile,
+        '--start'  => $start,
+        '--title'  => $group,
+        '--width'  => $width,
+        '--height' => $height,
+        @DEFS,
+        @DRAWS,
+    );
+    
+    my $error = RRDs::error();
+    if ($error) {
+		print "$error\n";
+		$c->response->body('Failed to create RRD graph: '.$error);
+		return;
+	}
+
+    #~ ($imagefile) = $imagefile =~ m|/([^/]+)$|;
+    return $imagefile;
 }
 
 1;

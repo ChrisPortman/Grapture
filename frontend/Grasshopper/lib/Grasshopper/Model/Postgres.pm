@@ -214,6 +214,31 @@ sub getMetricGrp {
 	return $groups[0];
 }
 
+sub getGroupMetrics {
+	my $self   = shift || return;
+	my $target = shift || return;
+	my $group  = shift || return;
+	
+	my $dbh = $self->dbh;
+	
+	my $groupQuery = q(select metric from targetmetrics
+	                   where target = ?
+	                   and graphgroup = ?
+                       group by metric --
+                      );
+                      
+    my $sth = $dbh->prepare($groupQuery);
+    my $res = $sth->execute($target, $group);
+
+    my @metrics;
+    
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		push @metrics, $row->{'metric'};
+	}
+	
+    return wantarray ? @metrics : \@metrics;
+}
+
 sub getGraphGroupSettings {
 	my $self = shift;
 	my $dbh = $self->dbh;
