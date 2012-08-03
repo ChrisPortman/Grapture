@@ -300,11 +300,6 @@ sub mainLineProc {
 sub jobFetchProc {
 	#run an endless loop
     while ($run) {
-		#Check for a BS connection and connect if not connected.
-		unless ($bsclient and $bsclient->socket()) {
-			beanstalkConnect($bsclient, {'use' => $jobTube} );
-			$logger->info('Job Fetch connected to Beanstalk');
-		}
 		
 	    my $fifoFh;	
 	    my $input;
@@ -357,9 +352,21 @@ sub jobFetchProc {
 			if ( $job->{'waitTime'} ) {
 				$timeout = $job->{'waitTime'} + time;
 			}
-			
+		
+    		#Check for a BS connection and connect if not connected.
+			unless ($bsclient and $bsclient->socket()) {
+				beanstalkConnect($bsclient, {'use' => $jobTube} );
+				$logger->info('Job Fetch connected to Beanstalk');
+			}
+		
 			#Put the job on beanstalk
-			my $jobObj = $bsclient->put( { 'ttr' => 30 }, $job );
+			my $jobObj = $bsclient->put( { 'ttr' => 120 }, $job );
+
+			unless ($jobObj) {
+				$logger->critical('Could not put job on Beanstalk queue');
+				next JOB;
+			}
+			
 			$logger->info('JobFetch - Put job ID '.$jobObj->id().' to Beanstalk');
 			#print to STDOUT which goes to the parent
 			print $jobObj->id().":$timeout\n";
