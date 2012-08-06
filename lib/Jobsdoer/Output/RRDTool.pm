@@ -8,22 +8,29 @@ use warnings;
 
 use Data::Dumper;
 use RRDs;
-
-my $RRDFILELOC = '/home/chris/git/Grasshopper/rrds/';
+use Log::Any qw ( $log );
 
 sub new {
     my $class  = ref $_[0] || $_[0];
-    my $args   = $_[1];
+    my $data   = $_[1];
+    my $opts   = $_[2];
     
-    unless ( ref($args) and ref($args) eq 'ARRAY' ) {
-		print "Arg not an array\n";
+    unless ( ref($data) and ref($data) eq 'ARRAY' ) {
+		$log->error('Data not an array');
 		return;
 	}
     
     my %selfHash;
-    $selfHash{'resultset'}     = $args;
-    $selfHash{'rrdfileloc'}    = $RRDFILELOC;
+    $selfHash{'resultset'}     = $data;
+    $selfHash{'rrdfileloc'}    = $opts->{'rrdfileloc'};
+    $selfHash{'rrdcached'}     = $opts->{'rrdcached'};
     $selfHash{'newGraphStart'} = time - 300; 
+    
+    unless ( $selfHash{'rrdfileloc'} ) {
+		$log->error('RRD file location not specified');
+		return;
+	}
+    
     my $self = bless(\%selfHash, $class);
     
     return $self;
@@ -72,7 +79,7 @@ sub run {
         if ($target) {
         	$rrdFile = $self->{'rrdfileloc'}.$target.'/';
     		unless ( -d $rrdFile ) {
-				print "Creating dir $rrdFile for $updDevice\n";
+				$log->debug("Creating dir $rrdFile for $updDevice");
 				mkdir $rrdFile
 				  or return;
 			}
@@ -85,7 +92,7 @@ sub run {
 		if ($category) {
 			$rrdFile .= $category.'/';
 			unless ( -d $rrdFile ) {
-				print "Creating dir $rrdFile for $updDevice\n";
+				$log->debug("Creating dir $rrdFile for $updDevice");
 				mkdir $rrdFile
 				  or return;
 			}
@@ -101,7 +108,7 @@ sub run {
 
 			$rrdFile .= $devFileName.'/';
 			unless ( -d $rrdFile ) {
-				print "Creating dir $rrdFile for $updDevice\n";
+				$log->debug("Creating dir $rrdFile for $updDevice");
 				mkdir $rrdFile
 				  or return;
 			}
@@ -144,6 +151,7 @@ sub _pushUpdate {
     my $rrdFile    = shift;
     my $updateHash = shift;
     my $rrdObj;
+    my @daemonSettings;
     
     #check that $updateHash is a hash ref.
     unless ( ref($updateHash) and ref($updateHash) eq 'HASH') {
@@ -165,10 +173,17 @@ sub _pushUpdate {
 	}
 	
 	$values =~ s/:$//;
-    RRDs::update($rrdFile, $updateHash->{'time'}.':'.$values);
+	
+	#if using daemon use a relative path (remove the RRD base location
+	if ($self->{'rrdcached'}) {
+		$rrdFile =~ s/^$self->{'rrdfileloc'}//;
+		@daemonSettings = ('--daemon', $self->{'rrdcached'});
+	}
+	
+    RRDs::update($rrdFile, $updateHash->{'time'}.':'.$values, @daemonSettings);
     
     my $error = RRDs::error;
-    print "$error\n" if $error;
+    $log->error($error) if $error;
 		  
     return 1;
 }
@@ -199,7 +214,7 @@ sub _createRrd {
 	              @rras,
 	            );
     my $error = RRDs::error;
-    print "$error\n" if $error;
+    $log->error($error) if $error;
 
 	return 1;
 }

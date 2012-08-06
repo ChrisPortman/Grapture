@@ -60,16 +60,17 @@ sub run {
 	                       ( target,  device,      metric,  valbase,
 	                         mapbase, counterbits, max,     category,
 	                         module,  output,      valtype, graphgroup,
-	                         enabled
+	                         graphorder, enabled
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
 	                       
 	my $updMetricsQuery = 'update targetmetrics set
 	                       valbase = ?,     mapbase = ?, 
 	                       counterbits = ?, max = ?,
 	                       category = ?,    module = ?,  
-	                       output = ?,      valtype = ?
-	                       graphgroup = ?   enabled = ?
+	                       output = ?,      valtype = ?,
+	                       graphgroup = ?,  graphorder = ?,
+	                       enabled = ?
 	                       where  
 	                       target = ? and device = ? and metric = ? --';
 
@@ -78,9 +79,9 @@ sub run {
                            groupname = ?
                            where target = ? --';
                            
-	my $sthaddmet   = $dbh->prepare($addMetricsQuery);
-	my $sthupdmet   = $dbh->prepare($updMetricsQuery);
-	my $sthupdtgt   = $dbh->prepare($updTargetQuery);
+	my $sthaddmet = $dbh->prepare($addMetricsQuery);
+	my $sthupdmet = $dbh->prepare($updMetricsQuery);
+	my $sthupdtgt = $dbh->prepare($updTargetQuery);
 	
 	my %seenTargets;
 	
@@ -101,16 +102,18 @@ sub run {
 		    $result->{'counterbits'}, $result->{'max'},
 		    $result->{'category'},    'FetchSnmp',
 		    'RRDTool',                $result->{'valtype'},
-		    $result->{'graphgroup'},  $result->{'enabled'}
+		    $result->{'graphgroup'},  $result->{'graphorder'},
+		    $result->{'enabled'}
 		)
 		or
-		$sthupdmet->execute(      $result->{'valbase'},
-	        $result->{'mapbase'}, $result->{'counterbits'}, 
-	        $result->{'max'},     $result->{'category'},
-	        'FetchSnmp',          'RRDTool',           
-	        $result->{'valtype'}, $result->{'graphgroup'},
-	        $result->{'enabled'}, $result->{'target'},
-	        $result->{'device'},  $result->{'metric'},
+		$sthupdmet->execute(         $result->{'valbase'},
+	        $result->{'mapbase'},    $result->{'counterbits'}, 
+	        $result->{'max'},        $result->{'category'},
+	        'FetchSnmp',             'RRDTool',           
+	        $result->{'valtype'},    $result->{'graphgroup'},
+	        $result->{'graphorder'}, $result->{'enabled'}, 
+	        $result->{'target'},     $result->{'device'},
+	        $result->{'metric'},
 	    );
 	}
 

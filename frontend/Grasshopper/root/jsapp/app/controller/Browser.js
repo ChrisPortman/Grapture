@@ -237,8 +237,7 @@ function loadGraphs(node, record, item, index, event) {
 		
 		//Scope in some variables
 		var rrdData = response.responseText;
-		var target  = target;
-		var device  = device;
+		
 		var graphsPanel = this.getGraphsRef();
 	
 		var panels = [];
@@ -264,7 +263,32 @@ function loadGraphs(node, record, item, index, event) {
 					xtype  : 'panel',
 					title  : group,
 					margin : '10 auto 10 auto',
-					layout: 'fit',
+					layout : 'fit',
+					tools  : [
+						{ 
+							type: 'save', 
+							tooltip: 'Static Image Link',
+							handler: function(event, toolEl, owner, tool){
+								var proto = window.location['protocol'];
+								var host = window.location['host'];
+								var link = proto+'//'+host+'/static/rrd?target='+target+'&category='+category+'&device='+device+'&group='+owner['title'];
+								var linkPanel = Ext.create('Ext.panel.Panel',
+							        {
+										xtype         : 'panel',
+										title         : 'Static Link',
+										layout        : 'fit',
+										floating      : true,
+										focusOnToFront: true,
+										draggable     : true,
+										closable      : true,
+										html          : '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>',
+										renderTo      : Ext.getBody(),
+									}
+								);
+								linkPanel.show();
+							},
+						}
+					],
 					html: '<div style = "float: left;">                                                                            \
 					           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
 					           <div style = "float: left;">                                                                        \

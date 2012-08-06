@@ -10,13 +10,14 @@ sub discover {
 
     [
         {
-            ' metric '    => ' SpaceUsed ',
-            ' mapbase '   => ' 1.3.6.1.2.1.25.2.3.1.3 ',
-            ' valbase '   => ' 1.3.6.1.2.1.25.2.3.1.6 ',
-            ' maxbase '   => ' 1.3.6.1.2.1.25.2.3.1.5 ',
-            ' category '  => ' Storage ',
-            ' valtype '   => ' gauge ',
-            ' filterSub ' => \&includeFilter,
+           'metric'     =>'SpaceUsed',
+           'mapbase'    =>'1.3.6.1.2.1.25.2.3.1.3',
+           'valbase'    =>'1.3.6.1.2.1.25.2.3.1.6',
+           'maxbase'    =>'1.3.6.1.2.1.25.2.3.1.5',
+           'category'   =>'Storage',
+           'valtype'    =>'gauge',
+           'graphorder' => 10,
+           'filterSub'  => \&includeFilter,
         },
     ];
 

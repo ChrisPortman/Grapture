@@ -17,6 +17,7 @@ sub discover {
 			'counterbits' => '32',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOCount',
+            'graphorder'  => 10,
 			'filterSub'   => \&filter,
 	    },
   	    {
@@ -27,6 +28,7 @@ sub discover {
 			'counterbits' => '32',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOCount',
+            'graphorder'  => 20,
 			'filterSub'   => \&filter,
 	    },
   	    {
@@ -37,6 +39,7 @@ sub discover {
 			'counterbits' => '32',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOBytes',
+            'graphorder'  => 10,
             'filterSub'   => \&filter,
 	    },
   	    {
@@ -47,6 +50,7 @@ sub discover {
 			'counterbits' => '32',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOBytes',
+            'graphorder'  => 20,
             'filterSub'   => \&filter,
 	    },
 
@@ -59,6 +63,7 @@ sub discover {
 			'counterbits' => '64',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOBytes',
+            'graphorder'  => 10,
             'filterSub'   => \&filter,
 	    },
   	    {
@@ -69,6 +74,7 @@ sub discover {
 			'counterbits' => '64',
 			'valtype'     => 'counter',
 			'graphgroup'  => 'StorageIOBytes',
+            'graphorder'  => 20,
             'filterSub'   => \&filter,
 	    },
 	];

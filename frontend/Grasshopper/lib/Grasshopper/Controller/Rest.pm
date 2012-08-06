@@ -11,10 +11,7 @@ __PACKAGE__->config( 'map'     => {'text/html' => 'JSON'} );
 __PACKAGE__->config( 'default' => 'application/json'      );
 
 my $RRDFILELOC = $Grasshopper::GHCONFIG->{'DIR_RRD'};
-my $RRDHTMLLOC = '/static/rrddata/';
-
 $RRDFILELOC =~ s|([^/])$|$1/|;
-$RRDHTMLLOC =~ s|([^/])$|$1/|;
 
 =head1 NAME
 

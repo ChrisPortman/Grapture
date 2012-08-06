@@ -10,6 +10,8 @@ use DBI;
 use POSIX;
 
 my $fifo;
+my $rrdbasedir;
+my $rrdcached;
 my $dbh;
 my $sth;
 my $config;
@@ -110,6 +112,10 @@ while ($run) {
                     'community' => $job->{'snmpcommunity'},
                     'metrics'   => [],
                 },
+                'outputOptions'  => {
+					'rrdfileloc' => $rrdbasedir,
+					'rrdcached'  => $rrdcached,
+				},
             };
         }
 
@@ -153,12 +159,16 @@ sub getConfig {
 sub loadConfig {
 
     $logger->info('Loading config');
-    $config = getConfig($cfgfile);
-    $fifo   = $config->{'MASTER_FIFO'};
-    my $DBHOST = $config->{'DB_HOSTNAME'};
-    my $DBNAME = $config->{'DB_DBNAME'};
-    my $DBUSER = $config->{'DB_USERNAME'};
-    my $DBPASS = $config->{'DB_PASSWORD'};
+    $config     = getConfig($cfgfile);
+    $fifo       = $config->{'MASTER_FIFO'};
+    $rrdbasedir = $config->{'DIR_RRD'};
+    $rrdcached  = $config->{'RRD_BIND_ADDR'};
+    my $DBHOST  = $config->{'DB_HOSTNAME'};
+    my $DBNAME  = $config->{'DB_DBNAME'};
+    my $DBUSER  = $config->{'DB_USERNAME'};
+    my $DBPASS  = $config->{'DB_PASSWORD'};
+    
+    
 
     $dbh->disconnect if $dbh;    # disconnect if connected
     $dbh = DBI->connect(

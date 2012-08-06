@@ -18,6 +18,7 @@ Required Packages (Debian)
  - libfile-pid-perl
  - libchart-clicker-perl
  - rrdtool
+ - rrdcached
  - beanstalkd
  - postgresql
  - pgadmin3 (recommended)
@@ -110,6 +111,11 @@ Processes can now be daemonized on the cli:
 perl Input.pl -c <full path to cfg> -i 45 -d
 perl PollerMaster2.pl -c <full path to cfg> -d
 perl PollerWorker.pl -c <full path to cfg> -d
+
+RRD Cached can now also be used do reduce the IO writes:
+Set at least the RRD_BIND_ADDR option in the config file and start
+rrdcached with: 
+sudo rrdcached -b <DIR_RRD> -F -w 600 -z 300 -l 127.0.0.1
 
 There are also some init scripts under etc/init/ note however they
 currently contain hardcoded paths applicable to my dev environment. You

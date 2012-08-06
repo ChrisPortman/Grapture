@@ -21,6 +21,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceTraffic',
+            'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
@@ -32,6 +33,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceTraffic',
+            'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
@@ -43,6 +45,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceErrors',
+            'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Errors out
@@ -53,6 +56,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceErrors',
+            'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
@@ -66,6 +70,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceTraffic',
+            'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
@@ -77,6 +82,7 @@ sub discover {
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
             'graphgroup'  => 'InterfaceTraffic',
+            'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
     ];

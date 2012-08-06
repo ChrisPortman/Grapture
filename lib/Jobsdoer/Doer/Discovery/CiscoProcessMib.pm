@@ -16,6 +16,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 10,
         },
         {
             'metric'     => 'CPU_Use_1min',
@@ -25,6 +26,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 20,
         },
         {
             'metric'     => 'CPU_Use_5min',
@@ -34,6 +36,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 30,
         },
     ];
 

@@ -29,10 +29,11 @@ it under the same terms as Perl itself.
 
 __PACKAGE__->meta->make_immutable;
 
-my $RRDFILELOC = $Grasshopper::GHCONFIG->{'DIR_RRD'};
-my $STATIC_GRAPH_BASE_DIR = '/home/chris/git/Grasshopper/frontend/Grasshopper/root/graphs';
-$RRDFILELOC =~ s|([^/])$|$1/|;
-$STATIC_GRAPH_BASE_DIR =~ s|([^/])$|$1/|;
+my $RRDFILELOC            = $Grasshopper::GHCONFIG->{'DIR_RRD'};
+my $STATIC_GRAPH_BASE_DIR = $Grasshopper::GHCONFIG->{'STATIC_GRAPH'};
+my $RRDCACHED_ADDR        = $Grasshopper::GHCONFIG->{'RRD_BIND_ADDR'};
+$RRDFILELOC               =~ s|([^/])$|$1/|;
+$STATIC_GRAPH_BASE_DIR    =~ s|([^/])$|$1/|;
 
 #Blue Red  Green Yellow Pink Peach DGreen Ivory Lavendar
 my @COLOURS = qw( a8d0d8 eabcbf bddcb3 
@@ -77,9 +78,22 @@ sub readRrdDir {
 	    
 		next unless -f $rrd;
 		
+		#if using daemon use a relative path flush the files first
+		if ($RRDCACHED_ADDR) {
+			my $relativeRrd = $rrd;
+			$relativeRrd =~ s/^$RRDFILELOC//;
+			RRDs::flushcached($relativeRrd, '--daemon', $RRDCACHED_ADDR);
+			my $error = RRDs::error;
+		    print "RRD ERROR: $error\n" if $error;
+		}
+		
+		my $rrdinfo = RRDs::info($rrd);
+		my $error = RRDs::error;
+	    print "RRD ERROR: $error\n" if $error;
+		
 		my %dataSources = map { m/\[(.+)\]/; $1 => 1; }
 		                  grep { /^ds/ }
-		                  keys %{ RRDs::info($rrd) };
+		                  keys %{ $rrdinfo };
 		
 		for my $ds ( keys %dataSources ) {
 			my $group = $c->model('Postgres')->getMetricGrp($target, $dev, $ds)
@@ -263,22 +277,31 @@ sub createRrdImage {
 	$imagefile .= $group.'.png';
 
 	#check the metric RRD files exist and ready the metric details for the graph
-	my $style  = $settings->{'fill'} ? 'AREA' : 'LINE'; 
+	my $style  = $settings->{'fill'} ? 'AREA' : 'LINE2'; 
 	my $count = 0;
 	
 	for my $met ( @{$metrics} ) {
 		my $draw;
 		my $cdef;
 		
-		my $rrdfile = $RRDFILELOC.$target.'/'.$category.'/'.$device.'/'.$met.'.rrd';
-		print "$rrdfile\n";
+		my $rrdFile = $RRDFILELOC.$target.'/'.$category.'/'.$device.'/'.$met.'.rrd';
+		print "$rrdFile\n";
 
-		unless ( -f $rrdfile ) {
-			$c->response->body('The RRD file '.$rrdfile.' does not exist');
+		unless ( -f $rrdFile ) {
+			$c->response->body('The RRD file '.$rrdFile.' does not exist');
 			return;
 		}
 		
-		my $def  = "DEF:$met=$rrdfile:$met:AVERAGE";
+		#if using daemon use a relative path flush the files first
+		if ($RRDCACHED_ADDR) {
+			my $relativeRrd = $rrdFile;
+			$relativeRrd =~ s/^$RRDFILELOC//;
+			RRDs::flushcached($relativeRrd, '--daemon', $RRDCACHED_ADDR);
+			my $error = RRDs::error;
+		    print "RRD ERROR: $error\n" if $error;
+		}
+    	
+    	my $def  = "DEF:$met=$rrdFile:$met:AVERAGE";
 		
 		if ( $settings->{'mirror'} and ($count % 2) ) {
 			$cdef = "CDEF:c$met=$met,-1,*";

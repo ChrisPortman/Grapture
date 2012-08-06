@@ -16,6 +16,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 10,
         },
         {
             'metric'     => 'Load-5',
@@ -24,6 +25,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 20,
         },
         {
             'metric'     => 'Load-15',
@@ -32,6 +34,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
+            'graphorder'  => 30,
         },
         {
             'metric'      => 'CpuUserTime',
@@ -41,6 +44,7 @@ sub discover {
             'category'    => 'System',
             'device'      => 'CPU',
             'graphgroup'  => 'CPUUsage',
+            'graphorder'  => 40,
         },
         {
             'metric'      => 'CpuSystemTime',
@@ -50,6 +54,7 @@ sub discover {
             'category'    => 'System',
             'device'      => 'CPU',
             'graphgroup'  => 'CPUUsage',
+            'graphorder'  => 30,
         },
 
         #Disabled.  I dont think it really adds anything to the info
@@ -65,15 +70,6 @@ sub discover {
         #~ 'graphgroup'  => 'CPUUsage',
         #~ },
         {
-            'metric'      => 'CpuKernelTime',
-            'valbase'     => '1.3.6.1.4.1.2021.11.55.0',
-            'counterbits' => '32',
-            'valtype'     => 'counter',
-            'category'    => 'System',
-            'device'      => 'CPU',
-            'graphgroup'  => 'CPUUsage',
-        },
-        {
             'metric'      => 'CpuWaitTime',
             'valbase'     => '1.3.6.1.4.1.2021.11.54.0',
             'counterbits' => '32',
@@ -81,6 +77,17 @@ sub discover {
             'category'    => 'System',
             'device'      => 'CPU',
             'graphgroup'  => 'CPUUsage',
+            'graphorder'  => 20,
+        },
+        {
+            'metric'      => 'CpuKernelTime',
+            'valbase'     => '1.3.6.1.4.1.2021.11.55.0',
+            'counterbits' => '32',
+            'valtype'     => 'counter',
+            'category'    => 'System',
+            'device'      => 'CPU',
+            'graphgroup'  => 'CPUUsage',
+            'graphorder'  => 10,
         },
         {
             'metric'     => 'MemUsedKB',
@@ -90,6 +97,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
+            'graphorder'  => 30,
         },
         {
             'metric'     => 'MemCachedKB',
@@ -99,6 +107,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
+            'graphorder'  => 20,
         },
         {
             'metric'     => 'MemBufferedKB',
@@ -108,6 +117,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
+            'graphorder'  => 10,
         },
     ];
 
