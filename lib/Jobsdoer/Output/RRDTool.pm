@@ -30,6 +30,8 @@ sub new {
 		$log->error('RRD file location not specified');
 		return;
 	}
+	
+	$selfHash{'rrdfileloc'} =~ s|([^/])$|$1/|;
     
     my $self = bless(\%selfHash, $class);
     
