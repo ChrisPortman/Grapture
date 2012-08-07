@@ -144,6 +144,12 @@ sub readRrdDir {
 				#store a cumulative sum so we can get the ds average
 				my $sum;
 				my $count;
+				
+				#if theres a max val involved for a metric, I dont want
+				#go to the DB if max isnt relevant (not in the settings)
+				#but I also only want to go there once. so declare the 
+				#var outside the loop.
+				my $max;
 					
                 for my $metricData ( @{$data} ) {
 					#$metricData is an Array of arrays. Each inner Array
@@ -151,9 +157,17 @@ sub readRrdDir {
 					
 					for my $value ( @{$metricData} ) {
 						if ($value) {
+							
+							#some graph settings require some manipulation of data
 							if ( $graphGroupSettings->{$group}->{'mirror'} 
 							     and ($dsCounter % 2) ) {
+							    #invert every 2nd metric to make negative vals to create the mirror
 							    $value = -$value;
+							}
+							elsif (    $graphGroupSettings->{$group}->{'percent'} 
+		                           and ( $max or $max = $c->model('Postgres')->getMetricMax($target,$dev,$ds) ) ) {
+                                #calculate the percentage
+							    $value = $value / $max * 100;
 							}
 						    $sum += $value;
 						    $count ++;
@@ -242,9 +256,12 @@ sub createRrdImage {
     my $category   = $c->request->params->{'category'};
     my $device     = $c->request->params->{'device'};
     my $group      = $c->request->params->{'group'};
-    my $start      = $c->request->params->{'start'}  || (time - (48 * 3600));
+    my $start      = $c->request->params->{'start'}  || (48 * 3600);
     my $height     = $c->request->params->{'height'} || 280;
     my $width      = $c->request->params->{'width'}  || 730;
+    
+    #Calculate the start time for the graph.
+    $start = time - $start;
     
     my $metrics;
     my $settings;
@@ -301,19 +318,27 @@ sub createRrdImage {
 		    print "RRD ERROR: $error\n" if $error;
 		}
     	
+    	#work out the DEFs, CDEFs and DRAWs
     	my $def  = "DEF:$met=$rrdFile:$met:AVERAGE";
 		
 		if ( $settings->{'mirror'} and ($count % 2) ) {
-			$cdef = "CDEF:c$met=$met,-1,*";
-			
-			$draw = "$style:c$met#$COLOURS[$count]:$met";
-			$draw   .= ':STACK' if $settings->{'stack'};
+			$cdef = "CDEF:mirror$met=$met,-1,*";
+			$draw = "$style:mirror$met#$COLOURS[$count]:$met";
+		}
+		elsif (     $settings->{'percent'} 
+		        and ( my $max = $c->model('Postgres')->getMetricMax($target,$device,$met) ) ) {
+			#draw as a percentage
+			print "Calculating the max\n";
+			$cdef = "CDEF:perc$met=$met,$max,/,100,*";
+			$draw = "$style:perc$met#$COLOURS[$count]:$met";
 		}
 		else {
+			print "No max and no mirror\n";
 			$draw = "$style:$met#$COLOURS[$count]:$met";
-			$draw   .= ':STACK' if $settings->{'stack'};
 		}
+		$draw   .= ':STACK' if $settings->{'stack'};
 		
+		#Add them to the graph definition datas
 		push @DEFS, $def;
 		push @CDEFS, $cdef if $cdef;
 		push @DRAWS, $draw;

@@ -103,6 +103,7 @@ sub runDiscParams {
 
         my $metric  = $metricDef->{'metric'};
         my $valbase = $metricDef->{'valbase'};
+        my $filterInclude;
         my $max;
 
         if ( $metricDef->{'group'} ) {
@@ -152,12 +153,10 @@ sub runDiscParams {
 
         #look for a filter code ref
         if ( ref $metricDef->{'filterSub'} eq 'CODE' ) {
-            *filterInclude = delete $metricDef->{'filterSub'
-            };   # FIXME, why not just load this as a code ref in to a variable?
+            $filterInclude = delete $metricDef->{'filterSub'};  
         }
         else {
-            undef *filterInclude
-              ;    # FIXME, if this is a variable then just set it to '';
+            $filterInclude = '';
         }
 
         #essential params
@@ -229,8 +228,8 @@ sub runDiscParams {
                 $deviceHash{'enabled'} = 1;
 
                 #If theres a filter sub run it now.
-                if ( defined &filterInclude )
-                {   # FIXME, this should be just a variable containing a coderef
+                if ( $filterInclude )
+                {   
                     $log->debug(
                         "Checking to see if $device should be monitored");
 
@@ -240,15 +239,14 @@ sub runDiscParams {
                     else {
                         eval {
                             unless (
-                                filterInclude(
+                                $filterInclude->(
                                     $devId, $device, $metricDef, $session
                                 )
-                              )    #FIXME $foo->(@args)
+                              )    
                             {
                                 $deviceHash{'enabled'} = 0;
                             }
-
-                            # FIXME, make sure eval returns true
+                            1;
                         };
 
                         if ($@) {
@@ -309,13 +307,13 @@ sub runDiscParams {
             $deviceHash{'enabled'} = 1;
 
             #If theres a filter sub run it now.
-            if ( defined &filterInclude )
+            if ( defined $filterInclude )
             { #FIXME, should just be variable containing a code ref $foo->(@args)
                 $log->debug("Checking to see if $device should be monitored");
 
                 eval {
                     unless (
-                        filterInclude( undef, $metricDef, $session ) )   # FIXME
+                        $filterInclude->( undef, $metricDef, $session ) )
                     {
                         $deviceHash{'enabled'} = 0;
                     }

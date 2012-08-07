@@ -251,14 +251,45 @@ sub getGraphGroupSettings {
     my $res = $sth->execute();
 
     for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
-		$groupSettings{$row->{'graphgroup'}} = {
-			'fill'   => $row->{'fill'},
-			'stack'  => $row->{'stack'},
-			'mirror' => $row->{'mirror'},
-		};
+		my $group = delete $row->{'graphgroup'};
+		$groupSettings{$group} = {};
+		
+		for my $key ( keys( %{$row} ) ) {
+			$groupSettings{$group}->{$key} = $row->{$key};
+		}	
     }
-	
+    
 	return wantarray ? %groupSettings : \%groupSettings;
+}
+
+sub getMetricMax {
+	my $self   = shift;
+    my $target = shift;
+    my $device = shift;
+    my $metric = shift;
+    
+    $device =~ s|_|/|g;
+    my $max;
+    
+    unless ( $target and $device and $metric ) {
+		return;
+	} 
+    	
+	my $dbh = $self->dbh;
+	
+	my $maxQuery = q/select max from targetmetrics
+	                 where target = ?
+	                 and device = ?
+	                 and metric = ? --/;
+    
+    my $sth = $dbh->prepare($maxQuery);
+    my $res = $sth->execute($target, $device, $metric);
+    
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		$max = $row->{'max'};		
+	}
+	$max or return;
+	return $max;
 }
 
 sub sortNatural {

@@ -244,7 +244,20 @@ function loadGraphs(node, record, item, index, event) {
 		
 		resonse = undefined;
 		rrdData = Ext.JSON.decode(rrdData)['data'];
-		
+
+		//Create a quick store with units for selection on the static link
+		var timeUnits = Ext.create('Ext.data.Store', {
+		    fields: ['unit', 'name'],
+		    data : [
+		        {"unit":"60",       "name":"Minutes"},
+				{"unit":"3600",     "name":"Hours"  },
+				{"unit":"86400",    "name":"Days"   },
+				{"unit":"604800",   "name":"Weeks"  },
+				{"unit":"2592000",  "name":"Months" },
+				{"unit":"31536000", "name":"Years"  },
+		    ],
+		});
+
 		//each 'group' represents one graph on the page.
 		for (group in rrdData) {
 			var bigGraphPh = group;
@@ -271,17 +284,79 @@ function loadGraphs(node, record, item, index, event) {
 							handler: function(event, toolEl, owner, tool){
 								var proto = window.location['protocol'];
 								var host = window.location['host'];
-								var link = proto+'//'+host+'/static/rrd?target='+target+'&category='+category+'&device='+device+'&group='+owner['title'];
+								var link = proto+'//'+host+'/static/rrd?target='+target+'&category='+category+'&device='+device+'&group='+owner['title']+'&start=604800';
+								var html = '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>';
+								
 								var linkPanel = Ext.create('Ext.panel.Panel',
 							        {
 										xtype         : 'panel',
 										title         : 'Static Link',
-										layout        : 'fit',
+										layout        : {type: 'vbox', align: 'center'},
 										floating      : true,
 										focusOnToFront: true,
 										draggable     : true,
 										closable      : true,
-										html          : '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>',
+										items         : [
+										    {
+												xtype  : 'container',
+												layout : {type: 'hbox', align: 'middle'},
+												height : 40,
+												items: [
+													{
+														xtype     : 'numberfield',
+														itemId    : 'numberField',
+														name      : 'period',
+														fieldLabel: 'Show the last ',
+														labelSeparator: '',
+														labelAlign : 'right',
+														labelWidth : 80,
+														value      : 1,
+														minValue   : 1,
+														allowBlank : false,
+														width      : 135,
+														listeners: {
+															change: {
+																fn: function(field, newValue) {
+                                                                    var currentUnit = linkPanel.down('#unitField').getValue();
+                                                                    var start = newValue * currentUnit;
+                                                                    html = html.replace(/start=\d+/ig,'start='+start);
+                                                                    linkPanel.down('#linkContainer').update(html);
+																},
+															},
+														},
+													},
+													{
+														xtype         : 'combobox',
+														itemId        : 'unitField',
+														store         : timeUnits,
+														queryMode     : 'local',
+														valueField    : 'unit',
+														displayField  : 'name',
+														forceSelection: true,
+														value         : '604800',
+														width         : 80,
+														padding       : '0 10 0 10',
+														listeners: {
+															change: {
+																fn: function(field, newValue) {
+                                                                    var currentNum = linkPanel.down('#numberField').getValue();
+                                                                    var start = newValue * currentNum;
+                                                                    html = html.replace(/start=\d+/ig,'start='+start);
+                                                                    linkPanel.down('#linkContainer').update(html);
+																},
+															},
+														},													
+													},
+											    ],
+										    },
+										    {
+												xtype : 'container',
+												itemId: 'linkContainer',
+												layout: 'fit',
+												html  : '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>',
+											},
+										],
+										
 										renderTo      : Ext.getBody(),
 									}
 								);
