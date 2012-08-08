@@ -90,7 +90,7 @@ sub discover {
             'graphorder'  => 10,
         },
         {
-            'metric'     => 'MemUsedKB',
+            'metric'     => 'MemAvailableKB',
             'valbase'    => '1.3.6.1.4.1.2021.4.6.0',
             'maxbase'    => '1.3.6.1.4.1.2021.4.5.0',
             'valtype'    => 'gauge',

@@ -263,7 +263,7 @@ sub runDiscParams {
                         }
                         else {
                             $log->debug(
-"Determined that $device SHOULD NOT be monitored"
+                              "Determined that $device SHOULD NOT be monitored"
                             );
                         }
                     }
@@ -307,8 +307,7 @@ sub runDiscParams {
             $deviceHash{'enabled'} = 1;
 
             #If theres a filter sub run it now.
-            if ( defined $filterInclude )
-            { #FIXME, should just be variable containing a code ref $foo->(@args)
+            if ( defined $filterInclude ) {
                 $log->debug("Checking to see if $device should be monitored");
 
                 eval {
@@ -317,6 +316,7 @@ sub runDiscParams {
                     {
                         $deviceHash{'enabled'} = 0;
                     }
+                    1;
                 };
                 if ($@) {
 

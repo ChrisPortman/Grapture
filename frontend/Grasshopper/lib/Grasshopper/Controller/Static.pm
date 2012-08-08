@@ -2,15 +2,7 @@ package Grasshopper::Controller::Static;
 use Moose;
 use namespace::autoclean;
 
-use Chart::Clicker;
-use Chart::Clicker::Data::Series;
-use Chart::Clicker::Data::DataSet;
-use Chart::Clicker::Axis::DateTime;
-use Chart::Clicker::Renderer::Area;
-use Chart::Clicker::Renderer::StackedArea;
-
 use Data::Dumper;
-
 
 BEGIN {extends 'Catalyst::Controller'; }
 
