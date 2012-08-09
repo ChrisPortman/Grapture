@@ -1,3 +1,3 @@
 *.rrd
 etc/*.cfg
-*/graphs/*.png
+frontend/Grasshopper/root/graphs/*
