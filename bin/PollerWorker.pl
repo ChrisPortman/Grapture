@@ -22,7 +22,7 @@
 use strict;
 use warnings;
 
-use lib '/home/chris/git/Grasshopper/lib';
+use lib '../lib';
 use File::Pid;
 use POSIX;
 use Sys::Hostname qw(hostname);

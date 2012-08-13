@@ -3,7 +3,6 @@ use Moose;
 use namespace::autoclean;
 
 use Data::Dumper;
-use RRDTool::OO;
 
 BEGIN {extends 'Catalyst::Controller::REST'; }
 

@@ -2,7 +2,7 @@ package Grasshopper::Model::Postgres;
 
 use strict;
 use warnings;
-use parent 'Catalyst::Model::DBI';
+use base 'Catalyst::Model::DBI';
 use Data::Dumper;
 
 my $DBHOST = $Grasshopper::GHCONFIG->{'DB_HOSTNAME'};
