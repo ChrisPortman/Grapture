@@ -107,15 +107,10 @@ $SIG{'INT'}     = \&childSigIntHandler;
 $SIG{ __DIE__ } = \&dieHandle;
 
 #Daemonize if appropriate
+my $pidfile;
 if ($daemon) {
 	daemonize();
 }
-
-# Check if this process is already running, Don't run twice!
-my ($thisFile) = $0 =~ m|([^/]+)$|;
-my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
-die "Process is already running\n" if $pidfile->running;
-$pidfile->write or die "Could not create pidfile: $!\n";
 
 $logger->notice('POLLER MASTER STARTING UP');
 
@@ -231,7 +226,7 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 			
 			mainLineProc();
 			
-			$pidfile->remove;
+			$pidfile->remove if $daemon;
 			exit;
 		}
 		else {
@@ -693,6 +688,13 @@ sub daemonize {
 	open (STDIN,  "</dev/null");
 	open (STDOUT, ">/dev/null");
 	open (STDERR, ">&STDOUT"  );
+	
+	# Check if this process is already running, Don't run twice!
+	my ($thisFile) = $0 =~ m|([^/]+)$|;
+	$pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+	die "Process is already running\n" if $pidfile->running;
+	$pidfile->write or die "Could not create pidfile: $!\n";
+
 	
 	1;
 }

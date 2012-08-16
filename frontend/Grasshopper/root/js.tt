@@ -4,27 +4,16 @@
 <head>
     <title>GrassHopper Graphing</title>
 
-    <link rel="stylesheet" type="text/css" href="/jsapp/extjs/resources/css/ext-all.css">
+    <link rel="stylesheet" type="text/css" href="/extjs/resources/css/ext-all.css">
     
-    <script type="text/javascript" src="/jsapp/extjs/ext-debug.js"></script>
-    <script type="text/javascript" src="/jsapp/jsapp.js"></script>
+    <script type="text/javascript" src="/extjs/ext-debug.js"></script>
+    <script type="text/javascript" src="/app.js"></script>
     
     <script type="text/javascript" src="/jsapp/flot/jquery.js"></script>
     <script type="text/javascript" src="/jsapp/flot/jquery.flot.js"></script>
     <script type="text/javascript" src="/jsapp/flot/jquery.flot.selection.js"></script>
     <script type="text/javascript" src="/jsapp/flot/jquery.flot.stack.js"></script>
 
-<!--    
-    <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/binaryXHR.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/rrdFile.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/rrdFlotSupport.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/rrdFlot.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/src/lib/rrdFlotMatrix.js"></script>
-    
-    <script type="text/javascript" src="/jsapp/javascriptrrd/flot/jquery.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/flot/jquery.flot.js"></script>
-    <script type="text/javascript" src="/jsapp/javascriptrrd/flot/jquery.flot.selection.js"></script>
--->    
 </head>
 <body></body>
 </html>

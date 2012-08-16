@@ -69,15 +69,10 @@ $logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobWorker';
 Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
 
 #daemonize here if appropriate.
+my $pidfile;
 if ($daemon) {
     daemonize();	
 }
-
-# Check if this process is already running, Don't run twice!
-my ($thisFile) = $0 =~ m|([^/]+)$|;
-my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
-die "Process is already running\n" if $pidfile->running;
-$pidfile->write or die "Could not create pidfile: $!\n";
 
 $logger->notice('POLLER WORKER STARTING UP');
 
@@ -152,6 +147,12 @@ sub daemonize {
 	open (STDIN,  "</dev/null");
 	open (STDOUT, ">/dev/null");
 	open (STDERR, ">&STDOUT"  );
+	
+	# Check if this process is already running, Don't run twice!
+	my ($thisFile) = $0 =~ m|([^/]+)$|;
+	$pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+	die "Process is already running\n" if $pidfile->running;
+	$pidfile->write or die "Could not create pidfile: $!\n";
 
 	1;
 }
@@ -185,7 +186,7 @@ sub HUNTSMAN {
 		sleep 2;
 	}
 
-    $pidfile->remove;
+    $pidfile->remove if $daemon;
 	$logger->notice('All workers are gone.  Goodbye');
 
 	exit;	
@@ -200,7 +201,12 @@ sub HUPHANDLE {
 
 sub dieHandle {
 	die @_ if $^S; #Dont do anything special in an eval
-	$logger->critical(@_);
+	if ( $logger ) {
+		$logger->critical(@_);
+	}
+	else {
+		die @_;
+	}
 	return 1;
 }
 

@@ -220,7 +220,7 @@ sub new {
 			
             #create a hash of things to poll
 			unless ( $polls{$device} ) { $polls{$device} = []; };
-			push $polls{$device}, $job;
+			push @{$polls{$device}}, $job;
 		}
     }
     else {
