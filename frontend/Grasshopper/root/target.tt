@@ -1,7 +1,0 @@
-<h1 class="strong">[% target %]</h1>
-
-[% FOREACH cat IN cats %]
-	    <a class="category" href="/target/[% target %]/[% cat %]">
-	        <img src="/static/images/qmark_lge.png" alt="qmark" /> [% cat %]
-	    </a>
-[% END %]

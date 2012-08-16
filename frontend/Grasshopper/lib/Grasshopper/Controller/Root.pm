@@ -32,13 +32,6 @@ sub index :Path :Args() {
     my ( $self, $c, @args) = @_;
 }
 
-sub js :Local :Args() {
-    my ( $self, $c) = @_;
-    
-    $c->stash( 'template' => 'js.tt',
-             );
-}
-
 sub target :Local :Args(1) {
 	my ( $self, $c, $target) = @_;
 	
@@ -72,48 +65,6 @@ sub graph :Path('target') :Args(3) {
 	my ( $self, $c, $target, $cat, $dev) = @_;
 	
 	my $graphs = $c->model('RRDTool')->graph($target, $cat, $dev);
-	
-	#~ my $graphDefs = $c->model('Postgres')->getGraphDefs($target, $cat, $dev);
-	#~ 
-	#~ my %indexedGraphs;
-  	#~ my $count = 1;
-  	#~ 
-    #~ for ( @{$graphDefs} ) {    
-			#~ $indexedGraphs{$count} = $_;
-			#~ $count ++;
-	#~ }
-	#~ 
-	#~ #save the templates into the session so we can get them to edit later
-	#~ $c->session('graphs' => \%indexedGraphs);
-    #~ 
-    #~ my $treeLoc;
-    #~ if ( $c->session->{'graphvars'}->{'graphitetreeloc'} ) {
-		#~ $treeLoc = $c->session->{'graphvars'}->{'graphitetreeloc'};
-	#~ }
-	#~ else {
-		#~ $treeLoc = $c->model('Postgres')->getTargetTreeLoc($c, $target);
-	#~ }
-    #~ 
-    #~ 
-	#~ my $clensedTarget = $target;
-    #~ $clensedTarget =~ s/\./_/g;
-	#~ my $fullTarget = $treeLoc.'.'.$clensedTarget;
-	#~ my %graphUrls;
-	#~ 
-	#~ for my $key ( keys( %indexedGraphs ) ) {
-		#~ my $url = $indexedGraphs{$key};
-	#~ 
-		#~ $url =~ s/%HOSTNAME%/$fullTarget/g;
-		#~ $url =~ s/%DEVICE%/$dev/g;
-		#~ $url =~ s/%PERIOD%/from=-1hours/g;
-		#~ $url =~ s/%GRAPHITEHOST%/chrisp01.dev/;
-		#~ 
-		#~ $graphUrls{$key} = $url;
-	#~ }
-#~ 
-    #~ $c->session->{'graphvars'}->{'target'} = $target;
-    #~ $c->session->{'graphvars'}->{'dev'}    = $dev;
-    #~ $c->session->{'graphvars'}->{'cat'}    = $cat;
 	
 	$c->stash( 'debug'    => Dumper($graphs),
 	           'template' => 'graph.tt',
@@ -239,19 +190,6 @@ sub begin :Private {
     my ( $self, $c) = @_;
     my $tree;
 
-    #~ unless ($c->session->{'tree'}) {
-		#~ print "Getting root tree from DB!!!!!\n";
-		#~ $tree = $c->model('Postgres')->getTargetTree;
-		#~ $c->session('tree' => $tree);
-	#~ }
-	#~ else {
-		#~ $tree = $c->session->{'tree'};
-	#~ }
-	#~ 
-	#~ $c->stash( 'debug'    => Dumper($tree),
-	           #~ 'tree'     => $tree,
-	         #~ );	
-	
 }
 
 =head2 default

@@ -1,8 +1,0 @@
-<h1 class="strong">[% target %] / [% cat %]</h1>
-
-[% FOREACH dev IN devs.keys.sort %]
-	    <a class="device" href="/target/[% target %]/[% cat %]/[% devs.$dev %]">
-	        <img src="/static/images/qmark_sml.png" alt="qmark" /> 
-	        <span class="devtxt">[% dev %]</span>
-	    </a>
-[% END %]
