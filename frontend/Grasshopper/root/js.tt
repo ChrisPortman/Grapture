@@ -9,10 +9,10 @@
     <script type="text/javascript" src="/extjs/ext-debug.js"></script>
     <script type="text/javascript" src="/app.js"></script>
     
-    <script type="text/javascript" src="/jsapp/flot/jquery.js"></script>
-    <script type="text/javascript" src="/jsapp/flot/jquery.flot.js"></script>
-    <script type="text/javascript" src="/jsapp/flot/jquery.flot.selection.js"></script>
-    <script type="text/javascript" src="/jsapp/flot/jquery.flot.stack.js"></script>
+    <script type="text/javascript" src="/flot/jquery.js"></script>
+    <script type="text/javascript" src="/flot/jquery.flot.js"></script>
+    <script type="text/javascript" src="/flot/jquery.flot.selection.js"></script>
+    <script type="text/javascript" src="/flot/jquery.flot.stack.js"></script>
 
 </head>
 <body></body>
