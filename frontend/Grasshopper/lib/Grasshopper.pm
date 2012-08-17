@@ -63,7 +63,8 @@ sub getConfig {
 	return \%config;
 }
 
-our $GHCONFIG = getConfig( '../../etc/grasshopper.cfg' );
+my $configFile = '../../etc/grasshopper.cfg';
+our $GHCONFIG = getConfig( $configFile );
 
 __PACKAGE__->config(
     name => 'Grasshopper',
