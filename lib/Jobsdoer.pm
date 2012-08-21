@@ -333,6 +333,7 @@ sub runDoerModule {
             $error = $work->error();
 
             if ($error) {
+				$log->error($error);
                 $self->log($error);
             }
         }
@@ -341,6 +342,7 @@ sub runDoerModule {
     };
 
     if ($@) {
+		$log->error("Doer module $module returned error $@");
         $self->log($@);
         return;
     }

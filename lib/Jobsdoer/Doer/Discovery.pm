@@ -1,5 +1,5 @@
 #!/usr/bin/env perl
-# $Id: Discovery.pm,v 1.7 2012/06/18 02:57:41 cportman Exp $
+# $Id: Discovery.pm,v 1.2 2012/08/20 23:47:07 cportman Exp $
 
 package Jobsdoer::Doer::Discovery;
 
@@ -47,6 +47,7 @@ sub new {
         'target'  => $options->{'target'},
         'session' => $session,
         'metrics' => [],
+        'error'   => undef,
     );
 
     my $self = bless \%self, $class;
@@ -96,6 +97,20 @@ sub runDiscParams {
 
     my @return;
     my %devStateCache;    #Cache the results of filterInclude for each Dev
+    
+    #Get the sysdesc first.  It will be needed later.  Its also going to
+    #a common requirenment of any device.  We also can use getting the 
+    #sysdesc as an availabiltiy test for the device
+	$sysDesc = $session->get_request(
+		'-varbindlist' => ['.1.3.6.1.2.1.1.1.0'] );
+
+	if ( $sysDesc->{'.1.3.6.1.2.1.1.1.0'} ) {
+		$sysDesc = $sysDesc->{'.1.3.6.1.2.1.1.1.0'};
+	}
+	else {
+		$self->error( "$target did not respond" );
+		return;
+	}
 
   METRIC:
     for my $metricDef ( @{$params} ) {
@@ -112,23 +127,6 @@ sub runDiscParams {
             #If we already have the group sorted. skip.
 
             next METRIC if $group;
-
-            #We only want to get the sysDesc once per target
-            unless ($sysDesc)
-            { # FIXME, sysdesc would be better off in its own module next to IFMIB and friends. the trick is to be able to return the title values in a disscovery module.
-
-                #get the system description
-                $sysDesc = $session->get_request(
-                    '-varbindlist' => ['.1.3.6.1.2.1.1.1.0'] );
-
-                if ( $sysDesc->{'.1.3.6.1.2.1.1.1.0'} ) {
-                    $sysDesc = $sysDesc->{'.1.3.6.1.2.1.1.1.0'};
-                }
-                else {
-                    next METRIC;
-                }
-
-            }
 
           EXPRESSION:
             for my $exp ( @{ $metricDef->{'sysDesc'} } )
@@ -391,9 +389,16 @@ sub runDiscParams {
 }
 
 sub error {
-
-    #dummy for the momoent
-    return 1;
+    my $self  = shift;
+    my $error = shift;
+    
+    if ($error) {
+		$self->{'error'} = $error;
+	}
+	
+	$self->{'error'} and return $self->{'error'};
+    
+    return;
 }
 
 1;

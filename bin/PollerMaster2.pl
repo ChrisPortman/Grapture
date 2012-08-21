@@ -409,11 +409,11 @@ sub logFetchProc {
         
         #print to STDOUT which goes to the parent
         if ( $code ) {
-			print "ID $jobId: $code: $worker - $message\n";
+			print "Job $jobId: $code: $worker - $message\n";
 			$logger->debug("LogFetch - Recieved finish code $code for $jobId");
 		}
 		else {
-			print "ID $jobId: $worker - $message\n";
+			print "Job $jobId: $worker - $message\n";
 			$logger->debug("LogFetch - Recieved log message for $jobId");
 		}
 		
@@ -541,7 +541,7 @@ sub processLogRet {
 		chomp;
 		last if $_ eq 'EOF';
 		
-		if ( /^ID\s(\d+):\s(\d):\s(.+)$/ ) {
+		if ( /^Job\s(\d+):\s(\d):\s(.+)$/ ) {
 			#this is a return code
 			my $jobId   = $1;
 			my $retCode = $2;
@@ -558,8 +558,10 @@ sub processLogRet {
 			print $timeWatchProcFh_WTR "DEL:$jobId\n";
 		}
 		else {
-			#this is a generic log message
-			$logger->info($_);
+			#this is a generic log message.  Use warn. If its not a
+			#successfull job competetion which is handled above, any
+			#other log message is probably dubious.
+			$logger->warn($_);
 		}
 	}
 	
