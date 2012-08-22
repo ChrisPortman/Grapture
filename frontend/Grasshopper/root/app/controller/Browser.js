@@ -224,7 +224,7 @@ function loadGraphs(node, record, item, index, event) {
 	this.getGraphsRef().removeAll();
 	
 	//remove unfrendly chars from the device
-	device = device.replace(/\//g,'_');
+	device = device.replace(/\//g,'_SLSH_');
 	
 	//Get the graphdata from the server.
 	Ext.Ajax.request({

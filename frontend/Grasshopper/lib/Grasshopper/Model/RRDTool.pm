@@ -47,80 +47,64 @@ sub readRrdDir {
     my $c      = shift;
     my $target = shift;
     my $cat    = shift;
-    my $dev    = shift;
+    my $fsdev  = shift;
     
-    my $dir = $RRDFILELOC . $target .'/'.$cat.'/'.$dev;
-	
-	unless ( -d $dir ) {
+    my %metricGroups;
+    my %objsByGroups;
+    my $dev = $fsdev;
+    $dev =~ s|_SLSH_|/|g;
+    
+    my $dir = $RRDFILELOC . $target .'/'.$cat.'/'.$fsdev;
+    unless ( -d $dir ) {
 		print "no directory $dir\n";
 		$self->status_no_content($c);
 		return 1;
 	}
-
-	opendir (my $dh, $dir)
-	  or $self->status_no_content($c) and return 1;
-
-    my @rrdFiles = map  { $dir.'/'.$_ } #Prepend the full path.
-                   grep { m/\.rrd$/   } #keep the *.rrd files.
-                   readdir($dh);
-
-    closedir $dh;
-    
-    
-    my $graphGroupSettings = $c->model('Postgres')->getGraphGroupSettings(); 
-    my %objsByGroups;
-	my $time = time();
-	my $timeZoneOffset = $time - timelocal_nocheck(gmtime($time));
 	
-    for my $rrd (@rrdFiles) {
-		# Go through each RRD file and work out what data sources they 
-		# have and what groups the data sources belong to.
-	    
-		next unless -f $rrd;
-		
-		#if using daemon use a relative path flush the files first
-		if ($RRDCACHED_ADDR) {
-			my $relativeRrd = $rrd;
-			$relativeRrd =~ s/^$RRDFILELOC//;
-			RRDs::flushcached($relativeRrd, '--daemon', $RRDCACHED_ADDR);
-			my $error = RRDs::error;
-		    print "RRD ERROR: $error\n" if $error;
-		}
-		
-		my $rrdinfo = RRDs::info($rrd);
-		my $error = RRDs::error;
-	    print "RRD ERROR: $error\n" if $error;
-		
-		my %dataSources = map { m/\[(.+)\]/; $1 => 1; }
-		                  grep { /^ds/ }
-		                  keys %{ $rrdinfo };
-		
-		for my $ds ( keys %dataSources ) {
-			my $group = $c->model('Postgres')->getMetricGrp($target, $dev, $ds)
-			            || $ds;
+    my $devMetrics = $c->model('Postgres')->getDeviceMetrics($target, $dev);
 
-			unless ( $objsByGroups{$group} ) {
-				$objsByGroups{$group} = {};
-			}
-			
-			$objsByGroups{$group}->{$ds} = $rrd;
+	for my $met ( @{$devMetrics} ){
+		my $metName = $met->{'metric'};
+		my $group   = $met->{'graphgroup'} || $metName;
+		my $order   = $met->{'graphorder'};
+		
+		next unless -f $dir.'/'.$metName.'.rrd';
+		
+		unless ( $metricGroups{$group} ) {
+			$metricGroups{$group} = [];
 		}
+		
+		push @{$metricGroups{$group}}, $metName;
 	}
 	
+    my $graphGroupSettings = $c->model('Postgres')->getGraphGroupSettings(); 
+    
+	my $time = time();
+	my $timeZoneOffset = $time - timelocal_nocheck(gmtime($time));
+
 	GROUPS:
-	for my $group ( keys %objsByGroups ) {
+	for my $group ( keys %metricGroups ) {
+		$objsByGroups{$group} = {};
+    	my $dsCounter = 0;
 		
-		my $dsCounter = 0;
-		DATAS:
-		for my $ds ( keys %{$objsByGroups{$group}} ) {
-			my $file = delete $objsByGroups{$group}->{$ds};
+		for my $metName ( @{$metricGroups{$group}} ) {
+			my $file = $dir.'/'.$metName.'.rrd';
+			
+			#if using daemon use a relative path flush the files first
+			if ($RRDCACHED_ADDR) {
+				my $relativeFile = $file;
+				$relativeFile =~ s/^$RRDFILELOC//;
+				RRDs::flushcached($relativeFile, '--daemon', $RRDCACHED_ADDR);
+				my $error = RRDs::error;
+			    print "RRD ERROR: $error\n" if $error;
+			}
 			
 			my $info = RRDs::info($file);
 			my $step = $info->{'step'};
             
 			#process each RRA (archive) in the object.
-			NEWRRA:
 			my $rraNo = 0;
+			NEWRRA:
 			while ( $info->{'rra['.$rraNo.'].rows'} ) {
 				my $rows   = $info->{'rra['.$rraNo.'].rows'};
 				my $pdpPerRow = $info->{'rra['.$rraNo.'].pdp_per_row'};
@@ -141,10 +125,6 @@ sub readRrdDir {
 
                 $start += $timeZoneOffset;
                 
-				#store a cumulative sum so we can get the ds average
-				my $sum;
-				my $count;
-				
 				#if theres a max val involved for a metric, I dont want
 				#go to the DB if max isnt relevant (not in the settings)
 				#but I also only want to go there once. so declare the 
@@ -165,12 +145,10 @@ sub readRrdDir {
 							    $value = -$value;
 							}
 							elsif (    $graphGroupSettings->{$group}->{'percent'} 
-		                           and ( $max or $max = $c->model('Postgres')->getMetricMax($target,$dev,$ds) ) ) {
+		                           and ( $max or $max = $c->model('Postgres')->getMetricMax($target,$dev,$metName) ) ) {
                                 #calculate the percentage
 							    $value = $value / $max * 100;
 							}
-						    $sum += $value;
-						    $count ++;
 						}
 						push @plots, [ $start * 1000, $value ];
 					}
@@ -178,18 +156,8 @@ sub readRrdDir {
 					$start += $step;
 				}
 
-				#add the average as the last element, we'll sort on
-				#it and remove it later
-				if ($sum and $count) {
-					my $avg = $sum / $count;
-					push @plots, $avg;
-				}
-				else {
-					push @plots, 0;
-				}
-
 				push @{$objsByGroups{$group}->{$earliestData}},
-				  { 'label' => $ds, 'plots' => \@plots };
+				  { 'label' => $metName, 'plots' => \@plots };
 				  
 				$rraNo ++;
 			}
@@ -197,30 +165,6 @@ sub readRrdDir {
 			$dsCounter ++;
 		}
 		
-		#Sort the metrics within the group on their average
-		#Order depends on whether the graph is to be stacked or
-		#not.
-		for my $rra ( keys %{$objsByGroups{$group}} ) {
-			next unless ref $objsByGroups{$group}->{$rra};
-			
-			if ( $graphGroupSettings->{$group}->{'stack'} ) {
-				#Sort on Average ascending
-				@{$objsByGroups{$group}->{$rra}} = sort
-				    { $a->{'plots'}->[-1] <=> $b->{'plots'}->[-1] }
-				    @{$objsByGroups{$group}->{$rra}};
-			}
-			else {
-				#Sort on Average decending
-				@{$objsByGroups{$group}->{$rra}} = sort
-				    { $b->{'plots'}->[-1] <=> $a->{'plots'}->[-1] }
-				    @{$objsByGroups{$group}->{$rra}};
-			}
-			#remove the averages
-			for (@{$objsByGroups{$group}->{$rra}}) {
-				pop @{$_->{'plots'}};
-			}
-		}
-				
 		#Add graph settings to the group that come from the database
 		for my $key ( keys %{$graphGroupSettings->{$group}} ){
 			unless ( $objsByGroups{$group}->{'settings'} ) {

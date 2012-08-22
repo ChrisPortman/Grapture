@@ -17,6 +17,11 @@ sub discover {
             'group'   => 'Routers',
             'sysDesc' => [ qr/^\s*Cisco/i, ],
         },
+        {
+            'group'   => 'NetApp',
+            'sysDesc' => [ qr/^\s*NetApp/i, ],
+        },
+
 
         # A catch all!  Leave LAST!
         {

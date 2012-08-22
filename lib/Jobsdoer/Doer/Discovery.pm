@@ -96,7 +96,9 @@ sub runDiscParams {
     return unless ( $target and $session );
 
     my @return;
-    my %devStateCache;    #Cache the results of filterInclude for each Dev
+    my %devStateCache;  #Cache the results of filterInclude for each Dev
+    my %authoritives;   #store a record of authoritive metric defs so that
+                        #they are not over written.  
     
     #Get the sysdesc first.  It will be needed later.  Its also going to
     #a common requirenment of any device.  We also can use getting the 
@@ -120,6 +122,11 @@ sub runDiscParams {
         my $valbase = $metricDef->{'valbase'};
         my $filterInclude;
         my $max;
+        
+        if ( $authoritives{$metric} ) {
+			#We already have a metric def that is authoritive. Skip
+			next METRIC;
+		}
 
         if ( $metricDef->{'group'} ) {
 
@@ -381,7 +388,12 @@ sub runDiscParams {
 
             push @return, \%deviceHash;
         }
-
+        
+        #If we get this far then the metric is valid for this device.
+        #check if its supposed to be authoritive
+        if ( $metricDef->{'authoritive'} ) {
+			$authoritives{$metric} = 1;
+		}
     }
 
     return wantarray ? @return : \@return;

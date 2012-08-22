@@ -106,7 +106,7 @@ sub run {
         # Add the device to the file directory
         if ($updDevice) {
 			my $devFileName = $updDevice;
-			$devFileName =~ s|\/|_|g;
+			$devFileName =~ s|\/|_SLSH_|g;
 
 			$rrdFile .= $devFileName.'/';
 			unless ( -d $rrdFile ) {
@@ -123,7 +123,7 @@ sub run {
 
 			#finish the rrd file name and location with <metric>.rrd
 			my $devFileName = $updMetric.'.rrd';
-			$devFileName    =~ s|\/|_|g;
+			$devFileName    =~ s|\/|_SLSH_|g;
 			
 	        my $finalFileName = $rrdFile . $devFileName;
 	

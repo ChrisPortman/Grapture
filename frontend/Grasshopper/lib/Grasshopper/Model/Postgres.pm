@@ -171,7 +171,7 @@ sub getGraphDefs {
                       );
                       
     my $device = $dev ? $dev : $cat;
-    $device =~ s|_|/|g;
+    $device =~ s|_SLSH_|/|g;
     
     my $sth = $dbh->prepare($graphQuery);
     my $res = $sth->execute($target, $device);
@@ -192,7 +192,7 @@ sub getMetricGrp {
 	my $dev    = shift || return;
 	my $metric = shift || return;
 	
-	$dev =~ s|_|/|g;
+	$dev =~ s|_SLSH_|/|g;
 	
 	my $dbh = $self->dbh;
 	
@@ -214,6 +214,32 @@ sub getMetricGrp {
 	return $groups[0];
 }
 
+sub getDeviceMetrics {
+	my $self   = shift || return;
+	my $target = shift || return;
+	my $dev    = shift || return;
+	
+	$dev =~ s|_SLSH_|/|g;
+	
+	my $dbh = $self->dbh;
+	
+	my $groupQuery = q(select metric, graphgroup, graphorder
+	                   from targetmetrics
+	                   where target = ? and device = ?
+                       order by graphorder --
+                      );
+                      
+    my $sth = $dbh->prepare($groupQuery);
+    my $res = $sth->execute($target, $dev);
+	
+	my @metrics;
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		push @metrics, $row;
+	}
+	
+	return wantarray ? @metrics : \@metrics;
+}
+
 sub getGroupMetrics {
 	my $self   = shift || return;
 	my $target = shift || return;
@@ -224,7 +250,8 @@ sub getGroupMetrics {
 	my $groupQuery = q(select metric, graphorder from targetmetrics
 	                   where target = ?
 	                   and (graphgroup = ? or metric = ?)
-                       group by metric, graphorder --
+                       group by metric, graphorder
+                       order by graphorder --
                       );
                       
     my $sth = $dbh->prepare($groupQuery);
@@ -232,9 +259,7 @@ sub getGroupMetrics {
 
     my @metrics;
     
-    for my $row ( sort { $a->{'graphorder'} <=> $b->{'graphorder'} }
-                        @{$sth->fetchall_arrayref( {} ) } 
-                ) {
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
 		push @metrics, $row->{'metric'};
 	}
 	
@@ -268,7 +293,7 @@ sub getMetricMax {
     my $device = shift;
     my $metric = shift;
     
-    $device =~ s|_|/|g;
+    $device =~ s|_SLSH_|/|g;
     my $max;
     
     unless ( $target and $device and $metric ) {
