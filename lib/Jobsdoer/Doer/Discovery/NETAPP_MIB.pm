@@ -72,7 +72,7 @@ sub discover {
             'maxbase'     => '1.3.6.1.4.1.789.1.5.4.1.29',
             'counterbits' => '64',
             'category'    => 'Volumes',
-            'valtype'     => 'counter',
+            'valtype'     => 'gauge',
             'graphorder'  => 10,
             'filterSub'   => \&noSnapShots,
             'authoritive' => 1,
