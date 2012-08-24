@@ -64,6 +64,7 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
       {
         'process'        => $module,
         'output'         => $output,
+        'priority'       => 100,
         'processOptions' => {
             'target'    => $target,
             'version'   => $version,

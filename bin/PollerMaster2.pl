@@ -347,6 +347,12 @@ sub jobFetchProc {
 			if ( $job->{'waitTime'} ) {
 				$timeout = $job->{'waitTime'} + time;
 			}
+			
+			#See if the job has a priority
+			my $priority = 10;
+			if ( $job->{'priority'} ) {
+				$priority = $job->{'priority'};
+			}
 		
     		#Check for a BS connection and connect if not connected.
 			unless ($bsclient and $bsclient->socket()) {
@@ -355,7 +361,13 @@ sub jobFetchProc {
 			}
 		
 			#Put the job on beanstalk
-			my $jobObj = $bsclient->put( { 'ttr' => 120 }, $job );
+			my $jobObj = $bsclient->put( 
+			    { 
+				  'ttr'      => 120, 
+			      'priority' => $priority,  
+			    }, 
+			    $job 
+		    );
 
 			unless ($jobObj) {
 				$logger->critical('Could not put job on Beanstalk queue');
