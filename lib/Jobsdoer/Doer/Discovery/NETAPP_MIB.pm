@@ -96,6 +96,7 @@ sub discover {
             'category'    => 'System',
             'valtype'     => 'gauge',
             'graphorder'  => 10,
+            'graphgroup'  => 'Latency',
             'authoritive' => 1,
         },
         {    #External cache read latency
@@ -106,6 +107,7 @@ sub discover {
             'category'    => 'System',
             'valtype'     => 'gauge',
             'graphorder'  => 10,
+            'graphgroup'  => 'Latency',
             'authoritive' => 1,
         },
     ];
