@@ -82,7 +82,7 @@ sub discover {
         {    #CPU Busy time percentage
             'metric'      => 'CPU_Busy-Percent',
             'device'      => 'CPU',
-            'valbase'     => '1.3.6.1.4.1.789.1.2.1.3',
+            'valbase'     => '1.3.6.1.4.1.789.1.2.1.3.0',
             'category'    => 'System',
             'valtype'     => 'gauge',
             'graphorder'  => 10,
@@ -91,7 +91,7 @@ sub discover {
         {    #External cache read latency
             'metric'      => 'CacheReadLatencyMs',
             'device'      => 'External Cache',
-            'valbase'     => '1.3.6.1.4.1.789.1.26.16',
+            'valbase'     => '1.3.6.1.4.1.789.1.26.16.0',
             'counterbits' => '64',
             'category'    => 'System',
             'valtype'     => 'gauge',
@@ -102,7 +102,7 @@ sub discover {
         {    #External cache read latency
             'metric'      => 'CacheWriteLatencyMs',
             'device'      => 'External Cache',
-            'valbase'     => '1.3.6.1.4.1.789.1.26.17',
+            'valbase'     => '1.3.6.1.4.1.789.1.26.17.0',
             'counterbits' => '64',
             'category'    => 'System',
             'valtype'     => 'gauge',
