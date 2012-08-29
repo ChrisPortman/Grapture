@@ -39,14 +39,17 @@ BS_JOBQ     =
 # RRD Cached Settings
 RRD_BIND_ADDR  = 127.0.0.1
 
-#Logging
-dispatchers = screen syslog
+#logging
+dispatchers = file syslog
 
-screen.class     = Log::Dispatch::Screen
-screen.min_level = info
-screen.stderr    = 1
-screen.format    = %d (%p) %m%n
+file.class             = Log::Dispatch::File
+file.min_level         = info
+file.format            = %d (%p) %m%n
+file.close_after_write = true
+file.mode              = append
+file.filename          = /var/log/Grasshopper.log
 
 syslog.class     = Log::Dispatch::Syslog
 syslog.min_level = info
 syslog.format    = (%p) %m
+
