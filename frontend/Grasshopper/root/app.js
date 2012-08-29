@@ -21,7 +21,7 @@ Ext.application({
 					items: [
 						{
 							xtype: 'panel',
-							title: 'Targets',
+     						title: 'Targets',
 							flex: 2,
 							padding: '10 0 10 10',
 							layout: { type: 'vbox', align: 'stretch' },
@@ -45,6 +45,13 @@ Ext.application({
 									flex: 1,
 									border: 0,
 								}
+							],
+							tools: [
+							    {
+									type:    'plus',
+									tooltip: 'Add hosts',
+									handler: addTargetGui,
+								},
 							],
 						},
 						{

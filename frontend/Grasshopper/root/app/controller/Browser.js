@@ -5,6 +5,8 @@ Ext.define('GH.controller.Browser', {
     views: [
         'targetTree',
         'targetSearch',
+        'addTarget',
+        'addTargetTabs',
         'searchResults',
         'content',
         'catTabs',
@@ -557,6 +559,16 @@ function renderGraph(panel, eopts, rraChange) {
 	
 		return plotData;
 	}
+}
+
+function addTargetGui(event, toolEl, owner, tool){
+	
+    console.log('add button clicked 2');
+    var addPanel = Ext.create('GH.view.addTarget');
+    console.log(addPanel);
+    
+    addPanel.show();
+        
 }
 
 
