@@ -123,37 +123,45 @@ will have to update the paths for the DAEMON and DAEMON_OPTS variables.
 TODO
 ====
 
- - The Poller Master currently takes in a batch of jobs, waits for them
-   to finish and then takes another batch.  Potentially this will mean 
-   that a single dud job could halt the whole system.  The master should
-   accept jobs constantly, put them into beanstalk and track until a 
-   result code comes back.  The master should also force an optional
-   timeout on jobs so that they will only sit in the queue for a maximum
-   specified time.  This will solve the possible situation whereby if no
-   pollers are running, jobs that are time relative (eg polling tasks)
-   dont just sit and queue up and then all running as fast as possible
-   as soon as a worker comes online when they are no longer relevant
-   anyway.
-   (UPDATE: This is being addressed in PollerMaster2.pl which is working
-   but hasnt had a chance to soak)
- - Find a better way of managing '/' is device names eg /home,
-   GigabitEthernet0/0.  Atm, Im just subbing the / for _ before putting 
-   it in a URL and then subbing it back server side.  It will just be a
-   matter of time before a device really has a _ in it.
- - Build some server side logic that analyses what a graph make-up is
-   and send down graph options the determine the look of the graph.
  - Index the graph groups so that the order in which they appear can be
    specified.  It appears JS will sort therefore, InterfaceErrors
    appears above InterfaceTraffic which is what everyone wants to see.
- - Add more flexible device filtering so that for example, interfaces
-   that are down wont be polled. (UPDATE: The discovery plugins can
-   now have a 'filterSub' option that holds a reference to a sub which
-   will then be globbed into the main discovery process and executed.
-   The sub will be passed an SNMP connection to the device, the metric
-   definition hash and the device ID, using which it can do what ever it 
-   likes to determine a true/false return, true will result in the device
-   being monitored (enabled) and false resulting in it being disabled).
+ - Some operational tasks such as adding new hosts for monitoring and
+   re-discovering hosts require manual and direct manipulation of the
+   database.  While it is expected that these tasks should be automated,
+   the GUI should include the ability to add new hosts and tigger a 
+   re-discovery in addition, automated processes should be facilitated 
+   by an API rather than having external processes send directly to the
+   DB.
 
+
+ - (FIXED)Add more flexible device filtering so that for example, 
+   interfaces that are down wont be polled. 
+     - Metric discovery modules now have to option of including a filter
+       sub routine that can contain logic of arbitrary complexity that
+       will determine if a component should be enabled for monitoring.
+ - (FIXED)Build some server side logic that analyses what a graph make 
+   up is and send down graph options the determine the look of the graph.
+ - (FIXED) Find a better way of managing '/' is device names eg /home,
+   GigabitEthernet0/0.  Atm, Im just subbing the / for _ before putting 
+   it in a URL and then subbing it back server side.  It will just be a
+   matter of time before a device really has a _ in it.
+     - Replaced the substitution of / with _ with _SLSH_ which is much
+       more deliberate and not likely to appear naturally in any device
+       or metric name.
+ - (FIXED) The Poller Master currently takes in a batch of jobs, waits
+   for them to finish and then takes another batch.  Potentially this 
+   will mean that a single dud job could halt the whole system.  The 
+   master should accept jobs constantly, put them into beanstalk and 
+   track until a result code comes back.  The master should also force 
+   an optional timeout on jobs so that they will only sit in the queue 
+   for a maximum specified time.  This will solve the possible situation 
+   whereby if no pollers are running, jobs that are time relative (eg 
+   polling tasks) dont just sit and queue up and then all running as 
+   fast as possible as soon as a worker comes online when they are no 
+   longer relevant anyway.
+   (UPDATE: This is being addressed in PollerMaster2.pl which is working
+   but hasnt had a chance to soak)
  - (FIXED) At the moment, multiple graphs (eg InterfaceTraffic and
    InterfaceErrors) breaks the graph rendering.
  - (FIXED) Create a config file to store environment setup config
