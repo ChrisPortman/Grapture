@@ -154,6 +154,71 @@ Ext.define('GH.view.addTargetTabs', {
 				},
 			],	
 		},
+		{
+		    title: 'Add Group',
+		    bodyPadding: 5,
+			items: [
+				{
+					xtype  : 'form',
+					itemId : 'addGroupForm',
+					url: '/rest/addgroup',
+					header: false,
+					bodyPadding: 5,
+					layout : 'anchor',
+					width  : 350,
+					defaults: {
+						anchor: '100%',
+						allowBlank: false,
+					},
+					fieldDefaults: {
+    					labelWidth: 100,
+						labelSeparator: ' ',
+						labelAlign: 'right',
+					},
+					defaultType: 'textfield',
+					
+					items: [
+					    {
+							itemId    : 'groupname',
+							name      : 'groupname',
+							fieldLabel: 'Group Name',
+						},
+						{
+							itemId    : 'parentgroup',
+							name      : 'parentgroup',
+							fieldLabel: 'Parent Group',
+						},
+				    ],
+					buttons: [
+		    			{
+							text: 'Reset',
+							handler: function() {
+								this.up('#addGroupForm').getForm().reset();
+							}
+						}, 
+						{
+							text: 'Submit',
+							formBind: true, //only enabled once the form is valid
+							disabled: true,
+							handler: function() {
+								var form = this.up('#addGroupForm').getForm();
+								if (form.isValid()) {
+									form.submit({
+										success: function(form, action) {
+										   Ext.Msg.alert('Success', action.result.msg);
+										   form.reset();
+										},
+										failure: function(form, action) {
+											Ext.Msg.alert('Failed', action.result.msg);
+										}
+									});
+								}
+							},
+						},
+					],
+				},
+			],
+		},
     ],
     
 });
