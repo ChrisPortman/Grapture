@@ -4,8 +4,6 @@ Ext.define('GH.view.addTarget', {
 
 	title         : 'Add Target',
 	layout        : 'fit',
-	height        : 75,
-	width         : 200,
 	floating      : true,
 	focusOnToFront: true,
 	draggable     : true,

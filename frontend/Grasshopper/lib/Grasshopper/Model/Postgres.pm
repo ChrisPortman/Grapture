@@ -317,6 +317,113 @@ sub getMetricMax {
 	return $max;
 }
 
+sub addHosts {
+	my ($self, $c) = @_;
+	my $dbh = $self->dbh;
+
+    #set up some db queries
+    my $checkGroupQuery = q/select groupname from groupings
+                            where groupname = ? --/;
+    my $checkGroupSth   = $dbh->prepare( $checkGroupQuery );
+    
+    my $checkHostQuery  = q/select target from targets
+                            where target = ? --/;
+    my $checkHostSth = $dbh->prepare( $checkHostQuery );
+    
+    my $addHostQuery    = q/insert into targets 
+                            (target, snmpversion, snmpcommunity, groupname)
+                            values
+                            (?, ?, ?, ?) -- /;
+    my $addHostSth = $dbh->prepare( $addHostQuery );                           
+	
+	#process the request
+	my @hosts;
+	
+	if ($c->request->params->{'hostDetails'}) {
+		#adding bulk hosts
+		for my $host (split /\n/, $c->request->params->{'hostDetails'}){
+			my ($hostname, $version, $community, $group)
+			  = split /\s?,\s?/, $host;
+			
+			push @hosts, { hostname  => $hostname,
+			               version   => $version,
+			               community => $community,
+			               group     => $group,
+			             };
+		}
+    }
+	else {
+		#adding a single host
+		my $hostname  = $c->request->params->{'hostname'};
+		my $version   = $c->request->params->{'snmpversion'};
+		my $community = $c->request->params->{'snmpcommunity'};
+		my $group     = $c->request->params->{'group'};
+		
+		push @hosts, { hostname  => $hostname,
+			           version   => $version,
+			           community => $community,
+			           group     => $group,
+		             };
+    }
+	
+	my @failedHosts;
+	my $successCount = 0;
+    my $hostname;
+
+	for my $host (@hosts) {	
+		$hostname  = $host->{'hostname'};
+		my $version   = $host->{'version'};
+		my $community = $host->{'community'};
+		my $group     = $host->{'group'};
+		
+		#check that the host doesnt exist
+		my $hostResult = $checkHostSth->execute($hostname);
+		
+		unless ( scalar @{$checkHostSth->fetchall_arrayref( {} ) } ) {
+			#check that the group exists
+			my $groupResult = $checkGroupSth->execute($group);
+			
+			if ( scalar @{$checkGroupSth->fetchall_arrayref( {} ) } ) {
+				#add the new host
+				$addHostSth->execute($hostname, $version, 
+				                     $community, $group);
+				$successCount ++;
+			}
+			else {
+			    push @failedHosts, { host => $hostname, 
+			                         msg  => "The group $group does not exist",
+			                       };
+			}
+		}
+		else {
+		    push @failedHosts, { host => $hostname, 
+		                         msg  => "Hostname already in system",
+		                       };
+		}
+		
+	}
+
+    my $message;
+	my $resultBool;	
+	if ( scalar @failedHosts ) {
+		$message  = "Successfully added $successCount hosts.<br /><br />";
+		$message .= "The following hosts failed:<br />";
+		for my $failed (@failedHosts) {
+			$message .= $failed->{'host'}.' - '.$failed->{'msg'}."<br />";
+		}
+	}
+	elsif ( $successCount > 1 ) {
+		$message = "Successfully added $successCount hosts.<br />";
+		$resultBool = 'true';
+	}
+	else {
+		$message = "Successfully added $hostname<br />";
+		$resultBool = 'true';
+	}
+	
+	return ($resultBool, $message);
+}
+
 sub sortNatural {
 	my $a = shift;
 	my $b = shift;
@@ -364,6 +471,7 @@ sub sortNatural {
 	}
 	die "Couldnt compare\n";
 }
+
 
 =head1 NAME
 

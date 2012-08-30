@@ -29,6 +29,7 @@ sub targetdevices : Local : ActionClass('REST') {}
 sub graphs        : Local : ActionClass('REST') {}
 sub graphdetails  : Local : ActionClass('REST') {}
 sub graphdata     : Local : ActionClass('REST') {}
+sub addhost       : Local : ActionClass('REST') {}
 
 sub targets_GET {
 	my ($self, $c) = @_;
@@ -138,6 +139,23 @@ sub graphdata_GET {
 	    $c,
 	    entity => { 'success' => 'true', 'data' => \%objsByGroups },
     );
+}
+
+sub addhost_POST {
+	my ($self, $c) = @_;
+	
+	my ($success, $message) = $c->model('Postgres')->addHosts($c);
+
+    $message ||= 'An unknown error occured';	
+	
+	$self->status_created(
+		$c,
+		location => $c->req->uri,
+		entity => {
+			'success' => $success,
+			'msg'     => $message,
+		}
+	);
 }
 
 =head1 AUTHOR
