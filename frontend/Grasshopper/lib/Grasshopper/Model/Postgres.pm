@@ -124,6 +124,30 @@ sub getTargetCats {
 	
 }
 
+sub getTargetConfig {
+	my ($self, $c) = @_;
+    my $dbh  = $self->dbh;
+
+    my $target = $c->request->params->{'target'} || return;
+   
+    my $targetConfQuery = q/select * from targets where target = ? --/;
+    my $targetConfSth = $dbh->prepare($targetConfQuery);
+    $targetConfSth->execute($target);
+    
+    my ($targetConf) = @{$targetConfSth->fetchall_arrayref( {} ) };
+    
+    if ($targetConf) {
+		return {
+			name      => $targetConf->{'target'},
+			version   => $targetConf->{'snmpversion'},
+			community => $targetConf->{'snmpcommunity'},
+			group     => $targetConf->{'groupname'},
+		};
+	}
+	
+	return;
+}
+
 sub getTargetDevs {
 	my $self     = shift;
 	my $c        = shift;
@@ -419,6 +443,46 @@ sub addHosts {
 	else {
 		$message = "Successfully added $hostname<br />";
 		$resultBool = 'true';
+	}
+	
+	return ($resultBool, $message);
+}
+
+sub addGroup {
+	my ($self, $c) = @_;
+	my $dbh = $self->dbh;
+	
+	my $groupName   = $c->request->params->{'groupname'};
+	my $parentGroup = $c->request->params->{'parentgroup'};
+	
+	my $resultBool;
+	my $message;
+	
+	$parentGroup = undef if $parentGroup eq 'Targets';
+
+    #set up some db queries
+    my $checkGroupQuery = q/select groupname from groupings
+                            where groupname = ? --/;
+    my $checkGroupSth = $dbh->prepare($checkGroupQuery);
+    
+    my $createGroupQuery = q/insert into groupings (groupname, memberof)
+                             values
+                             (?, ?) --/;
+    my $createGroupSth = $dbh->prepare($createGroupQuery);
+    
+    #check if the group already exists:
+    $checkGroupSth->execute($groupName);
+    if ( scalar @{$checkGroupSth->fetchall_arrayref( {} ) } ) {
+		$message = "The group $groupName already exists.";
+	}
+	else {
+		if ( $createGroupSth->execute($groupName, $parentGroup) ) {
+			$resultBool ++;
+			$message = "Successfully added group $groupName";
+		}
+		else {
+			$message = "An error occured adding group $groupName to the database";
+        }
 	}
 	
 	return ($resultBool, $message);

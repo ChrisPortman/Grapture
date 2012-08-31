@@ -6,5 +6,13 @@ Ext.define('GH.view.catTabs', {
     tabPossition: 'top',
     
     store: 'catTabStore',
+    
+    tools: [
+        {
+			type: 'gear',
+			itemId: 'editHostTool',
+			tooltip: 'Edit Host Configuration',
+		}
+    ]
 });
     

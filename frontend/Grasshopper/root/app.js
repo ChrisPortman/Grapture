@@ -48,9 +48,10 @@ Ext.application({
 							],
 							tools: [
 							    {
-									type:    'plus',
+									type   : 'plus',
 									tooltip: 'Add hosts',
-									handler: addTargetGui,
+									itemId : 'addHostTool',
+									//~ handler: addTargetGui,
 								},
 							],
 						},

@@ -30,6 +30,8 @@ sub graphs        : Local : ActionClass('REST') {}
 sub graphdetails  : Local : ActionClass('REST') {}
 sub graphdata     : Local : ActionClass('REST') {}
 sub addhost       : Local : ActionClass('REST') {}
+sub addgroup      : Local : ActionClass('REST') {}
+sub targetconfig  : Local : ActionClass('REST') {}
 
 sub targets_GET {
 	my ($self, $c) = @_;
@@ -156,6 +158,36 @@ sub addhost_POST {
 			'msg'     => $message,
 		}
 	);
+}
+
+sub addgroup_POST {
+	my ($self, $c) = @_;
+	
+	my ($success, $message) = $c->model('Postgres')->addGroup($c);
+
+    $message ||= 'An unknown error occured';	
+	
+	$self->status_created(
+		$c,
+		location => $c->req->uri,
+		entity => {
+			'success' => $success,
+			'msg'     => $message,
+		}
+	);
+}
+
+sub targetconfig_GET {
+	my ($self, $c) = @_;
+	my $status;
+	
+	my $config = $c->model('Postgres')->getTargetConfig($c);
+	$status = 1 if $config;
+
+	$self->status_ok(
+	    $c,
+	    entity => { 'success' => $status, 'data' => $config },
+    );
 }
 
 =head1 AUTHOR

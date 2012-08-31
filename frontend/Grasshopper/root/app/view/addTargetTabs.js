@@ -184,9 +184,18 @@ Ext.define('GH.view.addTargetTabs', {
 							fieldLabel: 'Group Name',
 						},
 						{
-							itemId    : 'parentgroup',
-							name      : 'parentgroup',
-							fieldLabel: 'Parent Group',
+							xtype       : 'combobox',
+							itemId      : 'parentgroup',
+							name        : 'parentgroup',
+							fieldLabel  : 'Parent Group',
+							store       : Ext.create('Ext.data.Store', {
+	                                          fields: ['name', 'path'],
+	                                          data  : [],
+										  }),
+							queryMode   : 'local',
+							valueField  : 'name',
+							displayField: 'path',
+							forceSelection: true,
 						},
 				    ],
 					buttons: [
@@ -198,22 +207,23 @@ Ext.define('GH.view.addTargetTabs', {
 						}, 
 						{
 							text: 'Submit',
+							itemId: 'addGroupSubmit',
 							formBind: true, //only enabled once the form is valid
 							disabled: true,
-							handler: function() {
-								var form = this.up('#addGroupForm').getForm();
-								if (form.isValid()) {
-									form.submit({
-										success: function(form, action) {
-										   Ext.Msg.alert('Success', action.result.msg);
-										   form.reset();
-										},
-										failure: function(form, action) {
-											Ext.Msg.alert('Failed', action.result.msg);
-										}
-									});
-								}
-							},
+							//~ handler: function() {
+								//~ var form = this.up('#addGroupForm').getForm();
+								//~ if (form.isValid()) {
+									//~ form.submit({
+										//~ success: function(form, action) {
+										   //~ Ext.Msg.alert('Success', action.result.msg);
+										   //~ form.reset();
+										//~ },
+										//~ failure: function(form, action) {
+											//~ Ext.Msg.alert('Failed', action.result.msg);
+										//~ }
+									//~ });
+								//~ }
+							//~ },
 						},
 					],
 				},

@@ -3,10 +3,10 @@ Ext.define('GH.controller.Browser', {
     
     
     views: [
-        'targetTree',
-        'targetSearch',
         'addTarget',
         'addTargetTabs',
+        'targetTree',
+        'targetSearch',
         'searchResults',
         'content',
         'catTabs',
@@ -61,13 +61,21 @@ Ext.define('GH.controller.Browser', {
 			},
 			'deviceList': {
 				itemclick: { fn: loadGraphs },
-			}
+			},
+			'#addHostTool': {
+				click: { fn: addTargetGui },
+			},
+			'#addGroupSubmit': {
+				click: { fn: submitAddGroup },
+			},
+			'#editHostTool': {
+				click: { fn: editHostGui },
+			},
 		});
 		
 		console.log('Browser controller initialised');
 	},
 });
-
 
 function searchTargets(search, event, opts) {
 	if ( search ) {
@@ -123,7 +131,9 @@ function loadTarget(node, record, item, index, event) {
 	}
 	else if (typeof record.isLeaf == 'function') {
 		//target from the tree
-		target = record.data.text;
+		if ( record.isLeaf() ) {
+			target = record.data.text;
+		}
 	}
 	
 	if (target) {
@@ -159,6 +169,7 @@ function loadTarget(node, record, item, index, event) {
 				 } );
 			}
 			
+			catTabs.setTitle(target);
 			catTabs.setActiveTab(0);		
 	    });
 		
@@ -213,8 +224,230 @@ function loadCategory(tabPanel, newTab, oldTab) {
     devStore.load();	
 }
 
+//call back fired after a graph pannel loads.  Is responcible for 
+//rendering a graph inside the panel
+function renderGraph(panel, eopts, rraChange) {
+    
+    //The group can be had from the panels title or just the panel var 
+    //if this is a graph update and not the initial load.
+    var group = panel.title || panel;
+    
+    //retreive the data for this group from the 'global' space (yuck)
+	var settings = GH['graphdata'][group]['settings'];
+	var data = GH['graphdata'][group]['data'];
+	
+	//Each key is the time of the first metric val in the series
+    var rraKeys = new Array();
+    for ( key in data ) {
+		rraKeys.push(key);
+	}
+	
+	//Sort decending so the most recent time is on top.
+	rraKeys.sort(function(a,b){ return b-a });
+
+    //On the initial load (ie not a time series change) build the list
+    //of options to go into the time series dropdown.
+    if ( !rraChange ){
+		for (key in rraKeys) {
+			//create an option object
+			var opt   = document.createElement("option");
+			opt.text  = new Date(rraKeys[key]*1000).toString();
+			opt.value = key;
+	
+			//add the option to the select
+			var select = document.getElementById( group+'-sel' );
+			select.add(opt);
+	    }
+	}
+
+    //Determine the placeholder divs for the main and preveiw graph.
+    var bigGraphPh = group;
+    var smlGraphPh = group + '-ov';
+    
+    //Calculate the data
+    var initialData = getData();
+    
+    //work out some display opts
+    var fill;
+    var stack;
+    if (settings['fill']) {
+		fill = true;
+	}
+	if (settings['stack']) {
+		stack = true;
+	}
+    
+    //Graph display options
+    var graphOpts = {
+		legend: {
+			show: true,
+			noColumns: 4,
+			position: 'nw'
+		},
+		xaxis: {
+			mode: 'time',
+			timeformat: "%d/%m/%y %h:%M",
+			ticks: 5,
+		},
+		selection: { mode: "xy" },
+		series: {
+			lines: {
+				show:  true,
+				fill:  fill,
+			},
+			stack: stack,
+		}
+	}
+	
+	//Plot the main graph
+	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts );
+	
+	//Preview graph display options
+	var overviewOpts = {
+		legend: { show: false },
+		series: {
+            lines: { show: true, lineWidth: 1 },
+            shadowSize: 0
+        },
+        xaxis: { 
+			ticks: 4, 
+            mode: 'time',
+            timeformat: "%d/%m/%y %h:%M",
+        },
+        yaxis: { ticks: 3, },
+        grid: { color: "#999" },
+        selection: { mode: "xy" },
+		series: {
+			lines: {
+				show:  true,
+				fill:  fill,
+			},
+			stack: stack,
+		}
+	}
+	
+	//Plot the preview graph
+	var overView = $.plot( '#'+smlGraphPh, initialData, overviewOpts);
+	
+	//Connect the 2 graphs
+	$('#'+bigGraphPh).bind("plotselected", function (event, ranges) {
+        // clamp the zooming to prevent eternal zoom
+        if (ranges.xaxis.to - ranges.xaxis.from < 0.00001)
+            ranges.xaxis.to = ranges.xaxis.from + 0.00001;
+        if (ranges.yaxis.to - ranges.yaxis.from < 0.00001)
+            ranges.yaxis.to = ranges.yaxis.from + 0.00001;
+        
+        // do the zooming
+        plot = $.plot($('#'+bigGraphPh), getData(ranges.xaxis.from, ranges.xaxis.to),
+                      $.extend(true, {}, graphOpts, {
+                          xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to },
+                          yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to }
+                      }));
+        
+        // don't fire event on the overview to prevent eternal loop
+        overView.setSelection(ranges, true);
+    });
+    $('#'+smlGraphPh).bind("plotselected", function (event, ranges) {
+        plot.setSelection(ranges);
+    });
+    
+	function getData(start, end) {
+	    //function to build the data set    
+	
+	    var plotData  = [];
+	    var rraKeyIdx = 0;
+	    
+	    if (rraChange) {
+			//This was prompted by a res change. Select the new rra key
+			var select = document.getElementById( group+'-sel' );
+			rraKeyIdx = select.selectedIndex;
+		}
+	
+		for (j in data[rraKeys[rraKeyIdx]] ) {
+			var label = data[rraKeys[rraKeyIdx]][j]['label'];
+			var plots = data[rraKeys[rraKeyIdx]][j]['plots'];
+			
+			if ( start && end ) {
+				var filteredPlots = [];
+				
+				for ( i in plots ) {
+					var timestamp = plots[i][0];
+					if ( timestamp >= start && timestamp <= end ) {
+						filteredPlots.push(plots[i]);
+					}
+				
+					if (timestamp > end) {
+						break;
+					}
+				}
+				plots = filteredPlots;
+			}
+			
+			//var first = data[rraKeys[0]][j]['plots'][0][0];
+			plotData.push( { label: label, data: plots } );
+	    }
+	
+		return plotData;
+	}
+}
+
+function addTargetGui(event, toolEl, owner, tool){
+	var tree = this.getTreeref();
+	var treeRoot = tree.getRootNode();
+	
+	var groups = new Array();
+
+	treeRoot.cascadeBy(function(scope){
+		if ( !scope.isLeaf() ) {
+			var groupPath = scope.getPath('text', ' > ');
+			var groupName = scope.data.text;
+			groupPath = groupPath.replace(/^\s>\s/,'');
+		    groups.push( {'name': groupName, 'path': groupPath} );
+		}
+	}, this);
+	
+    var addPanel = Ext.create('GH.view.addTarget');
+    addPanel.down('#parentgroup').getStore().add(groups);
+}
+
+function editHostGui(event, toolEl, owner, tool){
+    var target = GH.currentTarget;
+
+  	//Get the current settings of the target
+	Ext.Ajax.request({
+		url    : '/rest/targetconfig?target='+target,
+		scope  : this,
+		success: function(response) {
+			var config = Ext.JSON.decode(response.responseText)['data'];
+		    console.log( config );
+		}, 
+    });
+}
+
+function submitAddGroup(button) {
+    var form = button.up('#addGroupForm').getForm();
+	var tree = this.getTreeref();
+
+	if (form.isValid()) {
+		form.submit({
+			success: function(form, action) {
+				Ext.Msg.alert('Success', action.result.msg);
+				form.reset();
+				
+				//retresh the tree to show the group
+				tree.getStore().load()
+			   
+			},
+			failure: function(form, action) {
+				Ext.Msg.alert('Failed', action.result.msg);
+			}
+		});
+	}	
+	
+}
+
 function loadGraphs(node, record, item, index, event) {
-	var target      = GH.currentTarget;
+    var target      = GH.currentTarget;
 	var category    = GH.currentCat;
 	var device      = record.data.title;
 	
@@ -393,182 +626,3 @@ function loadGraphs(node, record, item, index, event) {
 		graphsPanel.add( panels );
 	}
 }
-
-//call back fired after a graph pannel loads.  Is responcible for 
-//rendering a graph inside the panel
-function renderGraph(panel, eopts, rraChange) {
-    
-    //The group can be had from the panels title or just the panel var 
-    //if this is a graph update and not the initial load.
-    var group = panel.title || panel;
-    
-    //retreive the data for this group from the 'global' space (yuck)
-	var settings = GH['graphdata'][group]['settings'];
-	var data = GH['graphdata'][group]['data'];
-	
-	//Each key is the time of the first metric val in the series
-    var rraKeys = new Array();
-    for ( key in data ) {
-		rraKeys.push(key);
-	}
-	
-	//Sort decending so the most recent time is on top.
-	rraKeys.sort(function(a,b){ return b-a });
-
-    //On the initial load (ie not a time series change) build the list
-    //of options to go into the time series dropdown.
-    if ( !rraChange ){
-		for (key in rraKeys) {
-			//create an option object
-			var opt   = document.createElement("option");
-			opt.text  = new Date(rraKeys[key]*1000).toString();
-			opt.value = key;
-	
-			//add the option to the select
-			var select = document.getElementById( group+'-sel' );
-			select.add(opt);
-	    }
-	}
-
-    //Determine the placeholder divs for the main and preveiw graph.
-    var bigGraphPh = group;
-    var smlGraphPh = group + '-ov';
-    
-    //Calculate the data
-    var initialData = getData();
-    
-    //work out some display opts
-    var fill;
-    var stack;
-    if (settings['fill']) {
-		fill = true;
-	}
-	if (settings['stack']) {
-		stack = true;
-	}
-    
-    //Graph display options
-    var graphOpts = {
-		legend: {
-			show: true,
-			noColumns: 4,
-			position: 'nw'
-		},
-		xaxis: {
-			mode: 'time',
-			timeformat: "%d/%m/%y %h:%M",
-			ticks: 5,
-		},
-		selection: { mode: "xy" },
-		series: {
-			lines: {
-				show:  true,
-				fill:  fill,
-			},
-			stack: stack,
-		}
-	}
-	
-	//Plot the main graph
-	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts );
-	
-	//Preview graph display options
-	var overviewOpts = {
-		legend: { show: false },
-		series: {
-            lines: { show: true, lineWidth: 1 },
-            shadowSize: 0
-        },
-        xaxis: { 
-			ticks: 4, 
-            mode: 'time',
-            timeformat: "%d/%m/%y %h:%M",
-        },
-        yaxis: { ticks: 3, },
-        grid: { color: "#999" },
-        selection: { mode: "xy" },
-		series: {
-			lines: {
-				show:  true,
-				fill:  fill,
-			},
-			stack: stack,
-		}
-	}
-	
-	//Plot the preview graph
-	var overView = $.plot( '#'+smlGraphPh, initialData, overviewOpts);
-	
-	//Connect the 2 graphs
-	$('#'+bigGraphPh).bind("plotselected", function (event, ranges) {
-        // clamp the zooming to prevent eternal zoom
-        if (ranges.xaxis.to - ranges.xaxis.from < 0.00001)
-            ranges.xaxis.to = ranges.xaxis.from + 0.00001;
-        if (ranges.yaxis.to - ranges.yaxis.from < 0.00001)
-            ranges.yaxis.to = ranges.yaxis.from + 0.00001;
-        
-        // do the zooming
-        plot = $.plot($('#'+bigGraphPh), getData(ranges.xaxis.from, ranges.xaxis.to),
-                      $.extend(true, {}, graphOpts, {
-                          xaxis: { min: ranges.xaxis.from, max: ranges.xaxis.to },
-                          yaxis: { min: ranges.yaxis.from, max: ranges.yaxis.to }
-                      }));
-        
-        // don't fire event on the overview to prevent eternal loop
-        overView.setSelection(ranges, true);
-    });
-    $('#'+smlGraphPh).bind("plotselected", function (event, ranges) {
-        plot.setSelection(ranges);
-    });
-    
-	function getData(start, end) {
-	    //function to build the data set    
-	
-	    var plotData  = [];
-	    var rraKeyIdx = 0;
-	    
-	    if (rraChange) {
-			//This was prompted by a res change. Select the new rra key
-			var select = document.getElementById( group+'-sel' );
-			rraKeyIdx = select.selectedIndex;
-		}
-	
-		for (j in data[rraKeys[rraKeyIdx]] ) {
-			var label = data[rraKeys[rraKeyIdx]][j]['label'];
-			var plots = data[rraKeys[rraKeyIdx]][j]['plots'];
-			
-			if ( start && end ) {
-				var filteredPlots = [];
-				
-				for ( i in plots ) {
-					var timestamp = plots[i][0];
-					if ( timestamp >= start && timestamp <= end ) {
-						filteredPlots.push(plots[i]);
-					}
-				
-					if (timestamp > end) {
-						break;
-					}
-				}
-				plots = filteredPlots;
-			}
-			
-			//var first = data[rraKeys[0]][j]['plots'][0][0];
-			plotData.push( { label: label, data: plots } );
-	    }
-	
-		return plotData;
-	}
-}
-
-function addTargetGui(event, toolEl, owner, tool){
-	
-    console.log('add button clicked 2');
-    var addPanel = Ext.create('GH.view.addTarget');
-    console.log(addPanel);
-    
-    addPanel.show();
-        
-}
-
-
