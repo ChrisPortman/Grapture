@@ -12,6 +12,7 @@ Ext.define('GH.view.catTabs', {
 			type: 'gear',
 			itemId: 'editHostTool',
 			tooltip: 'Edit Host Configuration',
+			hidden: true,
 		}
     ]
 });

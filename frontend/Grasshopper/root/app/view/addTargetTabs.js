@@ -210,20 +210,6 @@ Ext.define('GH.view.addTargetTabs', {
 							itemId: 'addGroupSubmit',
 							formBind: true, //only enabled once the form is valid
 							disabled: true,
-							//~ handler: function() {
-								//~ var form = this.up('#addGroupForm').getForm();
-								//~ if (form.isValid()) {
-									//~ form.submit({
-										//~ success: function(form, action) {
-										   //~ Ext.Msg.alert('Success', action.result.msg);
-										   //~ form.reset();
-										//~ },
-										//~ failure: function(form, action) {
-											//~ Ext.Msg.alert('Failed', action.result.msg);
-										//~ }
-									//~ });
-								//~ }
-							//~ },
 						},
 					],
 				},

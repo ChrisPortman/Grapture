@@ -5,6 +5,7 @@ Ext.define('GH.controller.Browser', {
     views: [
         'addTarget',
         'addTargetTabs',
+        'editHostGui',
         'targetTree',
         'targetSearch',
         'searchResults',
@@ -71,6 +72,10 @@ Ext.define('GH.controller.Browser', {
 			'#editHostTool': {
 				click: { fn: editHostGui },
 			},
+			'#editHostSubmit': {
+				click: { fn: submitEditHost },
+			},
+
 		});
 		
 		console.log('Browser controller initialised');
@@ -170,6 +175,7 @@ function loadTarget(node, record, item, index, event) {
 			}
 			
 			catTabs.setTitle(target);
+			catTabs.down('#editHostTool').show();
 			catTabs.setActiveTab(0);		
 	    });
 		
@@ -392,19 +398,7 @@ function renderGraph(panel, eopts, rraChange) {
 }
 
 function addTargetGui(event, toolEl, owner, tool){
-	var tree = this.getTreeref();
-	var treeRoot = tree.getRootNode();
-	
-	var groups = new Array();
-
-	treeRoot.cascadeBy(function(scope){
-		if ( !scope.isLeaf() ) {
-			var groupPath = scope.getPath('text', ' > ');
-			var groupName = scope.data.text;
-			groupPath = groupPath.replace(/^\s>\s/,'');
-		    groups.push( {'name': groupName, 'path': groupPath} );
-		}
-	}, this);
+	var groups = getGroups();
 	
     var addPanel = Ext.create('GH.view.addTarget');
     addPanel.down('#parentgroup').getStore().add(groups);
@@ -412,20 +406,33 @@ function addTargetGui(event, toolEl, owner, tool){
 
 function editHostGui(event, toolEl, owner, tool){
     var target = GH.currentTarget;
+    var editHost = Ext.create('GH.view.editHostGui');
+	var groups = getGroups();
 
-  	//Get the current settings of the target
-	Ext.Ajax.request({
-		url    : '/rest/targetconfig?target='+target,
-		scope  : this,
-		success: function(response) {
-			var config = Ext.JSON.decode(response.responseText)['data'];
-		    console.log( config );
-		}, 
-    });
+    if (target) {
+	  	//Get the current settings of the target
+		Ext.Ajax.request({
+			url    : '/rest/targetconfig?target='+target,
+			scope  : this,
+			success: function(response) {
+				var config = Ext.JSON.decode(response.responseText)['data'];
+				if (config) {
+					editHost.setTitle('Edit Host - ' + target);
+				    editHost.down('#edit_snmpversion').setValue(config['version']);
+				    editHost.down('#edit_snmpcommunity').setValue(config['community']);
+				    editHost.down('#edit_group').getStore().add(groups);
+				    editHost.down('#edit_group').setValue(config['group']);
+				    editHost.down('#edit_hostname').setValue(config['name']);
+				    editHost.show();
+				}
+			}, 
+	    });
+	}
 }
 
 function submitAddGroup(button) {
     var form = button.up('#addGroupForm').getForm();
+    console.log(form);
 	var tree = this.getTreeref();
 
 	if (form.isValid()) {
@@ -444,6 +451,41 @@ function submitAddGroup(button) {
 		});
 	}	
 	
+}
+
+function submitEditHost(button) {
+    var form = button.up('#editHostForm').getForm();
+    console.log(form);
+
+	if (form.isValid()) {
+		form.submit({
+			success: function(form, action) {
+				Ext.Msg.alert('Success', action.result.msg);
+			   
+			},
+			failure: function(form, action) {
+				Ext.Msg.alert('Failed', action.result.msg);
+			}
+		});
+	}	
+}
+
+function getGroups() {
+    var tree = Ext.ComponentQuery.query('#targetTree')[0];
+    var treeRoot = tree.getRootNode();
+	
+	var groups = new Array();
+
+	treeRoot.cascadeBy(function(scope){
+		if ( !scope.isLeaf() ) {
+			var groupPath = scope.getPath('text', ' > ');
+			var groupName = scope.data.text;
+			groupPath = groupPath.replace(/^\s>\s/,'');
+		    groups.push( {'name': groupName, 'path': groupPath} );
+		}
+	}, this);
+
+	return groups;
 }
 
 function loadGraphs(node, record, item, index, event) {

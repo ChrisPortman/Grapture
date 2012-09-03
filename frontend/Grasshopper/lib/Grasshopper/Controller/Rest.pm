@@ -30,6 +30,7 @@ sub graphs        : Local : ActionClass('REST') {}
 sub graphdetails  : Local : ActionClass('REST') {}
 sub graphdata     : Local : ActionClass('REST') {}
 sub addhost       : Local : ActionClass('REST') {}
+sub edithost      : Local : ActionClass('REST') {}
 sub addgroup      : Local : ActionClass('REST') {}
 sub targetconfig  : Local : ActionClass('REST') {}
 
@@ -147,6 +148,23 @@ sub addhost_POST {
 	my ($self, $c) = @_;
 	
 	my ($success, $message) = $c->model('Postgres')->addHosts($c);
+
+    $message ||= 'An unknown error occured';	
+	
+	$self->status_created(
+		$c,
+		location => $c->req->uri,
+		entity => {
+			'success' => $success,
+			'msg'     => $message,
+		}
+	);
+}
+
+sub edithost_POST {
+	my ($self, $c) = @_;
+	
+	my ($success, $message) = $c->model('Postgres')->editHost($c);
 
     $message ||= 'An unknown error occured';	
 	

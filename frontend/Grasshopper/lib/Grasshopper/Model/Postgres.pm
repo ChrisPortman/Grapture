@@ -448,6 +448,65 @@ sub addHosts {
 	return ($resultBool, $message);
 }
 
+sub editHost {
+	my ($self, $c) = @_;
+	my $dbh = $self->dbh;
+
+    #set up some db queries
+    my $checkGroupQuery = q/select groupname from groupings
+                            where groupname = ? --/;
+    my $checkGroupSth   = $dbh->prepare( $checkGroupQuery );
+    
+    my $checkHostQuery  = q/select target from targets
+                            where target = ? --/;
+    my $checkHostSth = $dbh->prepare( $checkHostQuery );
+    
+    my $editHostQuery    = q/update targets set 
+                            snmpversion = ?,
+                            snmpcommunity = ?,
+                            groupname = ? 
+                            where target = ? --/;
+    my $editHostSth = $dbh->prepare( $editHostQuery );
+
+    my $editDiscoverHostQuery = q/update targets set 
+                                  snmpversion = ?,
+                                  snmpcommunity = ?,
+                                  groupname = ?,
+                                  lastdiscovered = null
+                                  where target = ? --/;
+    my $editDiscoverHostSth = $dbh->prepare( $editDiscoverHostQuery );
+                              
+	
+	#process the request
+	my $hostname     = $c->request->params->{'hostname'} || return;
+	my $version      = $c->request->params->{'snmpversion'} || return;
+	my $community    = $c->request->params->{'snmpcommunity'} || return;
+	my $group        = $c->request->params->{'group'} || return;
+	my $rediscover   = $c->request->params->{'rediscover'} || undef;
+
+    my $message;
+	my $resultBool;	
+    	
+	#check that the group exists
+	my $groupResult = $checkGroupSth->execute($group);
+	unless ( scalar @{$checkGroupSth->fetchall_arrayref( {} ) } ) {
+	    $message = "The group $group does not exist";
+	    return (undef, $message);
+	}
+
+	#add the new host
+	if ($rediscover) {
+		print "Enabling $hostname for rediscover\n";
+		$editDiscoverHostSth->execute($version, $community, $group, $hostname );
+	}
+	else {
+		print "NOT enabling $hostname for rediscover\n";	
+		$editHostSth->execute($version, $community, $group, $hostname );
+	}
+	$message = "Successfully updated $hostname";			                     
+	return (1, $message);
+}
+
 sub addGroup {
 	my ($self, $c) = @_;
 	my $dbh = $self->dbh;
