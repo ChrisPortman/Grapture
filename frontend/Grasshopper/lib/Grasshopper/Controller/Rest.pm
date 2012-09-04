@@ -131,7 +131,7 @@ sub graphdata_GET {
 		return 1;
 	}
 	
-	my %objsByGroups = $c->model('RRDTool')->readRrdDir($c, $target, $cat, $dev);
+	my %objsByGroups = $c->model('RRDTool')->getRrdData($c, $target, $cat, $dev);
 		
 	unless ( %objsByGroups ) {
 		$self->status_no_content($c);

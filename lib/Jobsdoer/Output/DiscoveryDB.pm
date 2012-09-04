@@ -60,9 +60,9 @@ sub run {
 	                       ( target,  device,      metric,  valbase,
 	                         mapbase, counterbits, max,     category,
 	                         module,  output,      valtype, graphgroup,
-	                         graphorder, enabled
+	                         graphorder, aggregate, enabled
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
 	                       
 	my $updMetricsQuery = 'update targetmetrics set
 	                       valbase = ?,     mapbase = ?, 
@@ -70,7 +70,7 @@ sub run {
 	                       category = ?,    module = ?,  
 	                       output = ?,      valtype = ?,
 	                       graphgroup = ?,  graphorder = ?,
-	                       enabled = ?
+	                       aggregate = ?,   enabled = ?
 	                       where  
 	                       target = ? and device = ? and metric = ? --';
 
@@ -103,7 +103,7 @@ sub run {
 		    $result->{'category'},    'FetchSnmp',
 		    'RRDTool',                $result->{'valtype'},
 		    $result->{'graphgroup'},  $result->{'graphorder'},
-		    $result->{'enabled'}
+		    $result->{'aggregate'},   $result->{'enabled'}
 		)
 		or
 		$sthupdmet->execute(         $result->{'valbase'},
@@ -111,9 +111,9 @@ sub run {
 	        $result->{'max'},        $result->{'category'},
 	        'FetchSnmp',             'RRDTool',           
 	        $result->{'valtype'},    $result->{'graphgroup'},
-	        $result->{'graphorder'}, $result->{'enabled'}, 
-	        $result->{'target'},     $result->{'device'},
-	        $result->{'metric'},
+	        $result->{'graphorder'}, $result->{'aggregate'},
+	        $result->{'enabled'},    $result->{'target'},
+	        $result->{'device'},     $result->{'metric'},
 	    );
 	}
 

@@ -76,6 +76,12 @@ Ext.define('GH.view.editHostGui', {
 					itemId    : 'edit_hostname',
 					name      : 'hostname',
 				},
+     			{
+					xtype     : 'hidden',
+					itemId    : 'edit_origGroup',
+					name      : 'origGroup',
+				},
+
 				{
 					xtype: 'button',
 					text: 'Reset',				
