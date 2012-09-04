@@ -72,7 +72,7 @@
 
 =cut
 
-package Jobsdoer;
+package GH::Jobsdoer;
 
 use strict;
 use warnings;
@@ -88,12 +88,12 @@ use Log::Any qw ( $log );
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
   search_path => ['Jobsdoer::Doer'],
-  except      => qr/^Jobsdoer::Doer::.+::/, #limit to 1 level.
+  except      => qr/^Jobsdoer::Doer::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
 use Module::Pluggable
   search_path => ['Jobsdoer::Output'],
-  except      => qr/^Jobsdoer::Output::.+::/, #limit to 1 level.
+  except      => qr/^Jobsdoer::Output::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'outputs';
 
@@ -196,14 +196,14 @@ sub loadModules {
         $mod =~ s/^Jobsdoer::Output:://;
         $mod => $_
     } $self->outputs();
-    
+
     for my $module ( keys %doers ) {
-		$log->info("Loaded doer module $module");
-	}
-	
+        $log->info("Loaded doer module $module");
+    }
+
     for my $module ( keys %outputs ) {
-		$log->info("Loaded output module $module");
-	}
+        $log->info("Loaded output module $module");
+    }
 
     $self->{'doers'}   = \%doers;
     $self->{'outputs'} = \%outputs;
@@ -229,7 +229,7 @@ sub beanstalkDisconnect {
     my $bsclientObj = $self->{'bsclient'};
 
     $bsclientObj->quit()
-        if $bsclientObj->socket();
+      if $bsclientObj->socket();
 
     return 1;
 }
@@ -251,7 +251,7 @@ sub runJob {
     my $job  = shift;
 
     return unless $job;
-    
+
     $log->debug('Processing job');
 
     my $bsclientObj = $self->{'bsclient'};
@@ -262,7 +262,7 @@ sub runJob {
           . " for $jobData->{'processOptions'}->{'target'}" );
 
     $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
-    
+
     #Stash some useful details regarding the job
     $self->{'currentJobData'} = {
         'jobId'          => $job->{'id'},
@@ -270,7 +270,7 @@ sub runJob {
         'process'        => $jobData->{'process'},
         'output'         => $jobData->{'output'},
         'processOptions' => $jobData->{'processOptions'},
-        'outputOptions'  => $jobData->{'outputOptions'} || {}, #optional
+        'outputOptions'  => $jobData->{'outputOptions'} || {},    #optional
         'logsTube'       => $jobData->{'logsTube'},
     };
 
@@ -333,7 +333,7 @@ sub runDoerModule {
             $error = $work->error();
 
             if ($error) {
-				$log->error($error);
+                $log->error($error);
                 $self->log($error);
             }
         }
@@ -342,7 +342,7 @@ sub runDoerModule {
     };
 
     if ($@) {
-		$log->error("Doer module $module returned error $@");
+        $log->error("Doer module $module returned error $@");
         $self->log($@);
         return;
     }
@@ -357,8 +357,8 @@ sub runOutputModule {
     my $result     = shift;
     my $module     = $self->{'currentJobData'}->{'output'};
     my $moduleOpts = $self->{'currentJobData'}->{'outputOptions'};
- 
-    return 1 unless $module; #no output module is valid.
+
+    return 1 unless $module;    #no output module is valid.
 
     unless ( $self->{'outputs'}->{$module} ) {
         $self->log("Output module specified ($module) is not valid");
@@ -369,7 +369,8 @@ sub runOutputModule {
     my $resultData = $result->{'result'};
 
     eval {
-        my $work = $self->{'outputs'}->{$module}->new($resultData, $moduleOpts);
+        my $work =
+          $self->{'outputs'}->{$module}->new( $resultData, $moduleOpts );
 
         if ($work) {
 
