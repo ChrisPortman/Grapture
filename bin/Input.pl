@@ -22,15 +22,12 @@ my $reload = 1;
 my $run    = 1;
 my $ident  = 'PollerInput';
 
-
 # Process command line options
 my $optsOk = GetOptions(
     'cfgfile|c=s'  => \$cfgfile,
     'interval|i=i' => \$interval,
     'daemon|d'     => \$daemon,
-) 
-  or die "Invalid options.\n";
-
+) or die "Invalid options.\n";
 
 unless ( $cfgfile and -f $cfgfile ) {
     die "Config file not specified or does not exist\n";
@@ -47,12 +44,12 @@ $SIG{TERM}    = sub { $run = 0 };
 $SIG{INT}     = sub { $run = 0 };
 
 if ($daemon) {
-	daemonize();
+    daemonize();
 }
 
 # Check if this process is already running, Don't run twice!
 my ($thisFile) = $0 =~ m|([^/]+)$|;
-my $pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
+my $pidfile = File::Pid->new( { 'file' => "/var/tmp/$thisFile.pid" } );
 die "Process is already running\n" if $pidfile->running;
 $pidfile->write or die "Could not create pidfile: $!\n";
 
@@ -112,14 +109,15 @@ while ($run) {
                     'community' => $job->{'snmpcommunity'},
                     'metrics'   => [],
                 },
-                'outputOptions'  => {
-					'rrdfileloc' => $rrdbasedir,
-					'rrdcached'  => $rrdcached,
-				},
+                'outputOptions' => {
+                    'rrdfileloc' => $rrdbasedir,
+                    'rrdcached'  => $rrdcached,
+                },
             };
         }
 
-        push @{ $jobs{$target}->{'processOptions'}->{'metrics'} }, $metricDetails;
+        push @{ $jobs{$target}->{'processOptions'}->{'metrics'} },
+          $metricDetails;
     }
 
     my @jobList;
@@ -163,12 +161,10 @@ sub loadConfig {
     $fifo       = $config->{'MASTER_FIFO'};
     $rrdbasedir = $config->{'DIR_RRD'};
     $rrdcached  = $config->{'RRD_BIND_ADDR'};
-    my $DBHOST  = $config->{'DB_HOSTNAME'};
-    my $DBNAME  = $config->{'DB_DBNAME'};
-    my $DBUSER  = $config->{'DB_USERNAME'};
-    my $DBPASS  = $config->{'DB_PASSWORD'};
-    
-    
+    my $DBHOST = $config->{'DB_HOSTNAME'};
+    my $DBNAME = $config->{'DB_DBNAME'};
+    my $DBUSER = $config->{'DB_USERNAME'};
+    my $DBPASS = $config->{'DB_PASSWORD'};
 
     $dbh->disconnect if $dbh;    # disconnect if connected
     $dbh = DBI->connect(
@@ -181,28 +177,30 @@ sub loadConfig {
 
     $sth = $dbh->prepare($getSchedQuery);
 
-    return 1
+    return 1;
 }
 
 sub daemonize {
-	POSIX::setsid or die "setsid: $!";
-	my $pid = fork ();
-	
-	if ($pid < 0) {
-		die "fork: $!";
-	} elsif ($pid) {
-		#Parent process exits leaving the daemonized process to run.
-		exit 0;
-	}
-	
-	chdir "/";
-	umask 0;
-	
-	open (STDIN,  "</dev/null");
-	open (STDOUT, ">/dev/null");
-	open (STDERR, ">&STDOUT"  );
-	
-	1;
+    POSIX::setsid or die "setsid: $!";
+    my $pid = fork();
+
+    if ( $pid < 0 ) {
+        die "fork: $!";
+    }
+    elsif ($pid) {
+
+        #Parent process exits leaving the daemonized process to run.
+        exit 0;
+    }
+
+    chdir '/';
+    umask 0;
+
+    open( STDIN,  '<', '/dev/null' );
+    open( STDOUT, '>', '/dev/null' );
+    open( STDERR, '>&STDOUT' );
+
+    1;
 }
 
 $pidfile->remove;

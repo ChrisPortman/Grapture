@@ -1,10 +1,12 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: CiscoProcessMib.pm,v 1.1 2012/06/18 02:57:41 cportman Exp $
 
-package Jobsdoer::Doer::Discovery::CiscoProcessMib;
+package GH::Discovery::CiscoProcessMib;
 
 use strict;
 use warnings;
+
+our $VERSION = (qw$Revision: 1.1 $)[1];
 
 sub discover {
     [

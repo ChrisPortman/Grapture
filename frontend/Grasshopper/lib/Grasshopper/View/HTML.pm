@@ -1,4 +1,4 @@
-package Grasshopper::View::html;
+package Grasshopper::View::HTML;
 use Moose;
 use namespace::autoclean;
 
@@ -12,7 +12,7 @@ __PACKAGE__->config(
 
 =head1 NAME
 
-Grasshopper::View::html - TT View for Grasshopper
+Grasshopper::View::HTML - TT View for Grasshopper
 
 =head1 DESCRIPTION
 

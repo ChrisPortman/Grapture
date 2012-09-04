@@ -1,22 +1,25 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: Ifmib.pm,v 1.7 2012/06/18 02:57:42 cportman Exp $
 
-package Jobsdoer::Doer::Discovery::NETAPP_MIB;
+package GH::Discovery::NETAPP_MIB;
 
 use strict;
 use warnings;
+
+our $VERSION = (qw$Revision: 1.7 $)[1];
 
 sub discover {
 
     [
         ########## INTERFACES #############
-        
+
         #64 bit counters IfDesc
         {    #Interface Octets (~Bytes) in
-            'metric'      => 'OctetsIn',
-            'mapbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.2',
-            'valbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.25',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsIn',
+            'mapbase' => '1.3.6.1.4.1.789.1.22.1.2.1.2',
+            'valbase' => '1.3.6.1.4.1.789.1.22.1.2.1.25',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -26,10 +29,11 @@ sub discover {
             'authoritive' => 1,
         },
         {    #Interface Octets (~Bytes) out
-            'metric'      => 'OctetsOut',
-            'mapbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.2',
-            'valbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.31',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsOut',
+            'mapbase' => '1.3.6.1.4.1.789.1.22.1.2.1.2',
+            'valbase' => '1.3.6.1.4.1.789.1.22.1.2.1.31',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -63,7 +67,7 @@ sub discover {
             'filterSub'   => \&onlyUpWithPosInCounter,
             'authoritive' => 1,
         },
-        
+
         ############ STORAGE ##############
         {    #Used space KB on volumes
             'metric'      => 'SpaceUsedPercent',
@@ -77,7 +81,7 @@ sub discover {
             'filterSub'   => \&noSnapShots,
             'authoritive' => 1,
         },
-        
+
         ############ SYSTEM ##############
         {    #CPU Busy time percentage
             'metric'      => 'CPU_Busy-Percent',
@@ -121,11 +125,8 @@ sub onlyUpWithPosInCounter {
     my $device  = shift;
     my $options = shift;
     my $session = shift;
-    
-    my @excludeRegexs = ( '^lo$', '^unrouted', '^Loopback', '^Null' );
-    for (@excludeRegexs) {
-		return if $device =~ $_;
-	}
+
+    return if $device =~ m/^(lo$|unrouted|Loopback|Null)/;
 
     #get the opper status
     my $operStatus = $session->get_request(
@@ -148,12 +149,10 @@ sub noSnapShots {
     my $device  = shift;
     my $options = shift;
     my $session = shift;
-    
-    if ( $device =~ /\.snapshot$/ ) {
-		return;
-	}
-	
-	return 1;	
-}	
+
+    return if $device =~ m/\.snapshot$/;
+
+    return 1;
+}
 
 1;

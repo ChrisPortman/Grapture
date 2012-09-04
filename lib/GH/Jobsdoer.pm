@@ -3,7 +3,7 @@
 =head1 TITLE
 
   JobsDoer
-  
+
 =head1 DESCRIPTION
 
   JobsDoer is a Object Orientated interface to a Beanstalkd server. It
@@ -17,19 +17,19 @@
 
   The JobsDoer was designed to run threaded so that a single host can
   simultaneously take and run multiple jobs.
-  
-  Once the object has been created with the new() constructor, the 
+
+  Once the object has been created with the new() constructor, the
   startThread() method will start a thread and return the thread ID. The
   thread will then go off and handle the process flow within its self.
-  
+
   In theory, the object could be used by manually calling the individual
   methods, but this has not been proven.
-  
+
   As a precaution against unpredicted thread failure/behavior a thread
   has a finite life time.  This can be set at the time of construction
   and defaults to 1 hour, at expiry, the thread will finish the current
   job and then exit.
-  
+
   The constructor also accepts a maxThreads value which limits the number
   of concurrently running threads.  It is set to 4 be default. Any
   invokations of the startThread() method will first see if there are
@@ -37,42 +37,42 @@
   considered in error.  Typical usage would be to start an infinite loop
   that attempts to start threads, then they will be spawned by JobsDoer
   as required.
-  
+
 =head1 MODULES
 
   JobsDoer dynamically includes modules on start up and if a HUP is
   received.
-  
+
 =head2 Doer Modules
 
-  Doer modules fall under the Jobsdoer::Doer namespace and represent the
+  Doer modules fall under the GH::Jobsdoer::Doer namespace and represent the
   actual feet on the ground so to speak.  They contain the actual logic
   that gets something done/does the job.
-  
+
 =head2 Output Modules
 
-  Output modules fall under Jobsdoer::Output namespace and are tasked
-  with getting the result of the Doer module to some place useful and 
+  Output modules fall under GH::Jobsdoer::Output namespace and are tasked
+  with getting the result of the Doer module to some place useful and
   in a useful fassion.  They may include manipulating the result in a
   way thats specific and appropriate for the output destination.
-  
+
   An output modules may include one that puts a result in a database or
   graphs the result.
-  
+
   There can only be one output per job at the moment.  May change this
   later.  Also, generally output modules dont have to be compatible with
   more than one Doer.  Its really up to the author of the Output module
   what Doers it will work with.
-  
+
 =head2 TODO
 
   - Fix up some inconsistancies in terminologies in the code variables
-    e.g. Doer modules being refered to as methods and modules 
+    e.g. Doer modules being refered to as methods and modules
     interchangably.
 
 =cut
 
-package Jobsdoer;
+package GH::Jobsdoer;
 
 use strict;
 use warnings;
@@ -87,13 +87,14 @@ use Log::Any qw ( $log );
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
-  search_path => ['Jobsdoer::Doer'],
-  except      => qr/^Jobsdoer::Doer::.+::/, #limit to 1 level.
+  search_path => ['GH::Jobsdoer::Doer'],
+  except      => qr/^GH::Jobsdoer::Doer::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
+
 use Module::Pluggable
-  search_path => ['Jobsdoer::Output'],
-  except      => qr/^Jobsdoer::Output::.+::/, #limit to 1 level.
+  search_path => ['GH::Jobsdoer::Output'],
+  except      => qr/^GH::Jobsdoer::Output::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'outputs';
 
@@ -187,23 +188,23 @@ sub loadModules {
     #Stash the available pluggins in %modules, then to the object.
     my %doers = map {
         my $mod = $_;
-        $mod =~ s/^Jobsdoer::Doer:://;
+        $mod =~ s/^GH::Jobsdoer::Doer:://;
         $mod => $_
     } $self->doers();
 
     my %outputs = map {
         my $mod = $_;
-        $mod =~ s/^Jobsdoer::Output:://;
+        $mod =~ s/^GH::Jobsdoer::Output:://;
         $mod => $_
     } $self->outputs();
-    
+
     for my $module ( keys %doers ) {
-		$log->info("Loaded doer module $module");
-	}
-	
+        $log->info("Loaded doer module $module");
+    }
+
     for my $module ( keys %outputs ) {
-		$log->info("Loaded output module $module");
-	}
+        $log->info("Loaded output module $module");
+    }
 
     $self->{'doers'}   = \%doers;
     $self->{'outputs'} = \%outputs;
@@ -229,7 +230,7 @@ sub beanstalkDisconnect {
     my $bsclientObj = $self->{'bsclient'};
 
     $bsclientObj->quit()
-        if $bsclientObj->socket();
+      if $bsclientObj->socket();
 
     return 1;
 }
@@ -251,7 +252,7 @@ sub runJob {
     my $job  = shift;
 
     return unless $job;
-    
+
     $log->debug('Processing job');
 
     my $bsclientObj = $self->{'bsclient'};
@@ -262,7 +263,7 @@ sub runJob {
           . " for $jobData->{'processOptions'}->{'target'}" );
 
     $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
-    
+
     #Stash some useful details regarding the job
     $self->{'currentJobData'} = {
         'jobId'          => $job->{'id'},
@@ -270,7 +271,7 @@ sub runJob {
         'process'        => $jobData->{'process'},
         'output'         => $jobData->{'output'},
         'processOptions' => $jobData->{'processOptions'},
-        'outputOptions'  => $jobData->{'outputOptions'} || {}, #optional
+        'outputOptions'  => $jobData->{'outputOptions'} || {},    #optional
         'logsTube'       => $jobData->{'logsTube'},
     };
 
@@ -333,7 +334,7 @@ sub runDoerModule {
             $error = $work->error();
 
             if ($error) {
-				$log->error($error);
+                $log->error($error);
                 $self->log($error);
             }
         }
@@ -342,7 +343,7 @@ sub runDoerModule {
     };
 
     if ($@) {
-		$log->error("Doer module $module returned error $@");
+        $log->error("Doer module $module returned error $@");
         $self->log($@);
         return;
     }
@@ -357,8 +358,8 @@ sub runOutputModule {
     my $result     = shift;
     my $module     = $self->{'currentJobData'}->{'output'};
     my $moduleOpts = $self->{'currentJobData'}->{'outputOptions'};
- 
-    return 1 unless $module; #no output module is valid.
+
+    return 1 unless $module;    #no output module is valid.
 
     unless ( $self->{'outputs'}->{$module} ) {
         $self->log("Output module specified ($module) is not valid");
@@ -369,7 +370,8 @@ sub runOutputModule {
     my $resultData = $result->{'result'};
 
     eval {
-        my $work = $self->{'outputs'}->{$module}->new($resultData, $moduleOpts);
+        my $work =
+          $self->{'outputs'}->{$module}->new( $resultData, $moduleOpts );
 
         if ($work) {
 

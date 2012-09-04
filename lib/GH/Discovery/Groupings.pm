@@ -1,7 +1,10 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: HostResoursesMib.pm,v 1.4 2012/06/18 02:57:42 cportman Exp $
 
-package Jobsdoer::Doer::Discovery::Groupings;
+# FIXME: this should probably implement something from a config file or from the database?
+# FIXME: and should probably just be GH::Groupings
+
+package GH::Discovery::Groupings;
 
 use strict;
 use warnings;
