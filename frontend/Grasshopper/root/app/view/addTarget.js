@@ -1,6 +1,7 @@
 Ext.define('GH.view.addTarget', {
     extend: 'Ext.panel.Panel',
     alias : 'widget.addTarget',
+    itemId: 'addTargetGui',
 
 	title         : 'Add Target',
 	layout        : 'fit',

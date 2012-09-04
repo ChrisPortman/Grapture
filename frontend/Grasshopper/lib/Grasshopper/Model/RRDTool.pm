@@ -41,7 +41,7 @@ my @COLOURS = qw( a8d0d8 eabcbf bddcb3
                   a4ce9e f3e3bf d7c3cf);
 
 
-sub readRrdDir {
+sub getRrdData {
 	#suck in all the RRDS in $dir and extract all the metric data.
     my $self   = shift;
     my $c      = shift;
@@ -57,8 +57,7 @@ sub readRrdDir {
     my $dir = $RRDFILELOC . $target .'/'.$cat.'/'.$fsdev;
     unless ( -d $dir ) {
 		print "no directory $dir\n";
-		$self->status_no_content($c);
-		return 1;
+		return;
 	}
 	
     my $devMetrics = $c->model('Postgres')->getDeviceMetrics($target, $dev);

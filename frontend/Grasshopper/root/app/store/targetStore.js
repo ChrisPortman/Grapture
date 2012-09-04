@@ -2,6 +2,8 @@ Ext.define('GH.store.targetStore', {
 	extend: 'Ext.data.TreeStore',
 	alias: 'widget.targetStore',
 	
+    folderSort: true,
+
 	root: {
 		text: 'Targets',
 		expanded: true,

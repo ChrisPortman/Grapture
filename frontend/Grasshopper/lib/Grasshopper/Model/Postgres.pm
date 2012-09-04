@@ -25,16 +25,32 @@ sub getTargetTree {
                               order by target -- );
     my $groupHierachyQuery = q( select * from groupings
                                 order by groupname -- );
+    my $targetsWithAggsQuery = q( select target from targetmetrics 
+                                  where aggregate = true
+                                  and enabled = true
+                                  group by target -- );
     
-    my $targetGroupSth = $dbh->prepare($targetGroupQuery);
-    my $groupHierachySth = $dbh->prepare($groupHierachyQuery);
+    my $targetGroupSth     = $dbh->prepare($targetGroupQuery);
+    my $groupHierachySth   = $dbh->prepare($groupHierachyQuery);
+    my $targetsWithAggsSth = $dbh->prepare($targetsWithAggsQuery);
     
-    my $targetGroupRes   = $targetGroupSth->execute();
-    my $groupHierachyRes = $groupHierachySth->execute();
+    my $targetGroupRes     = $targetGroupSth->execute();
+    my $groupHierachyRes   = $groupHierachySth->execute();
+    my $targetsWithAggsRes = $targetsWithAggsSth->execute();
     
     my %hierachy;
     my %memberships;
     my @tree;
+    my %targetsWithAggs; #targets with aggregated metrics
+    my %groupsWithAggs;  #groups that have the aggregation leaf
+    
+    #Build the list of targets that have metrics that need to be displayed
+    #aggregated with the same metrics of other hosts.  Eg. for a web cluster
+    #serving a webpage, it is useful to see the total page serves for the
+    #whole cluster holistically
+    for my $row ( @{$targetsWithAggsSth->fetchall_arrayref( {} ) } ) {
+		$targetsWithAggs{ $row->{'target'} } = 1;
+	}
     
     # associate targets with their branch name
     for my $row ( @{$targetGroupSth->fetchall_arrayref( {} ) } ) {
@@ -46,6 +62,15 @@ sub getTargetTree {
 	    }
 	    
 	    push @{ $memberships{$group} }, { 'text' => $target, 'leaf' => 'true' };
+	    
+	    #Add an Aggregation leaf if appropriate
+	    if ( $targetsWithAggs{ $target } ) {
+			unless ( $groupsWithAggs{$group} ) {
+				unshift @{ $memberships{$group} }, 
+				  { 'text' => $group.'_Aggregates', 'leaf' => 'true' };
+				$groupsWithAggs{$group} = 1;
+			}
+		}
 	}
 
     my @rows = @{$groupHierachySth->fetchall_arrayref( {} ) };
@@ -102,6 +127,8 @@ sub getTargetCats {
 	$target or return;
 	
     my $dbh  = $self->dbh;
+    my $sth;
+    my $res;
     
 	my $catsQuery = q(select category from targetmetrics 
 					  where target = ? and category is not NULL
@@ -109,8 +136,23 @@ sub getTargetCats {
 					  order by category --
                      );
                      
-    my $sth = $dbh->prepare($catsQuery);
-    my $res = $sth->execute($target);
+    my $aggCatsQuery = q( select a.category from targetmetrics a
+  						  join targets b on a.target = b.target
+						  where b.groupname = ?
+						  and aggregate = true
+						  and enabled = true
+						  group by a.category
+						  order by a.category -- );
+						  
+    if ( $target =~ /^(.+)_Aggregates/ ) {
+		my $group = $1;
+	    $sth = $dbh->prepare($aggCatsQuery);
+	    $res = $sth->execute($group);
+	}						  
+    else {                     
+	    $sth = $dbh->prepare($catsQuery);
+	    $res = $sth->execute($target);
+	}
     
     my @categories;
     
@@ -157,17 +199,32 @@ sub getTargetDevs {
 	($target and $category) or return;
 	
     my $dbh  = $self->dbh;
+    my $sth;
+    my $res;
     
-	my $devsQuery = q(select a.device from targetmetrics a
-						join targets b on a.target = b.target 
-						where a.target = ? and category = ?
+	my $devsQuery = q(select device from targetmetrics
+						where target = ? and category = ?
 						and enabled = true
-						group by a.device  
-						order by a.device --
+						group by device --
                      );
                      
-    my $sth = $dbh->prepare($devsQuery);
-    my $res = $sth->execute($target, $category);
+    my $aggDevsQuery = q(select a.device from targetmetrics a
+						 join targets b on a.target = b.target
+						 where b.groupname = ?
+						 and a.category = ?
+						 and a.aggregate = true
+						 and a.enabled = true
+						 group by a.device -- );                     
+
+    if ( $target =~ /^(.+)_Aggregates/ ) {
+		my $group = $1;
+	    $sth = $dbh->prepare($aggDevsQuery);
+	    $res = $sth->execute($group, $category);
+	}
+	else {
+        $sth = $dbh->prepare($devsQuery);
+	    $res = $sth->execute($target, $category);
+	}
     
     my @devices;
         

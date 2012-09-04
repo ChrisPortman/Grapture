@@ -119,7 +119,12 @@ sub runDiscParams {
     for my $metricDef ( @{$params} ) {
         next METRIC unless ref($metricDef) and ref($metricDef) eq 'HASH';
 
-        my $metric  = $metricDef->{'metric'};
+        my $metric = $metricDef->{'metric'};
+        unless ( $metric =~ /^[a-zA-Z0-9_\-]{1,19}$/ ) {
+            $log->error("Metric name $metric is invalid. Skipping");
+            next METRIC;
+        }
+
         my $valbase = $metricDef->{'valbase'};
         my $filterInclude;
         my $max;
@@ -170,8 +175,6 @@ sub runDiscParams {
         next METRIC
           unless ( $metricDef->{'metric'}
             and $metricDef->{'valbase'} );
-
-        $log->info("Checking $metric for $target");
 
         if ( $metricDef->{'mapbase'} ) {
             my $map;
@@ -297,6 +300,8 @@ sub runDiscParams {
                   and $deviceHash{'valtype'} = $metricDef->{'valtype'};
                 $metricDef->{'graphgroup'}
                   and $deviceHash{'graphgroup'} = $metricDef->{'graphgroup'};
+                $metricDef->{'aggregate'}
+                  and $deviceHash{'aggregate'} = $metricDef->{'aggregate'};
                 $deviceHash{'graphorder'} = $metricDef->{'graphorder'} || 10;
 
                 push @return, \%deviceHash;
@@ -383,6 +388,8 @@ sub runDiscParams {
               and $deviceHash{'valtype'} = $metricDef->{'valtype'};
             $metricDef->{'graphgroup'}
               and $deviceHash{'graphgroup'} = $metricDef->{'graphgroup'};
+            $metricDef->{'aggregate'}
+              and $deviceHash{'aggregate'} = $metricDef->{'aggregate'};
             $deviceHash{'graphorder'} = $metricDef->{'graphorder'} || 10;
 
             push @return, \%deviceHash;
@@ -393,6 +400,8 @@ sub runDiscParams {
         if ( $metricDef->{'authoritive'} ) {
             $authoritives{$metric} = 1;
         }
+        $log->info("$metric found on $target");
+
     }
 
     return wantarray ? @return : \@return;

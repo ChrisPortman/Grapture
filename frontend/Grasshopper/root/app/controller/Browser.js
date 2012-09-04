@@ -420,9 +420,17 @@ function editHostGui(event, toolEl, owner, tool){
 					editHost.setTitle('Edit Host - ' + target);
 				    editHost.down('#edit_snmpversion').setValue(config['version']);
 				    editHost.down('#edit_snmpcommunity').setValue(config['community']);
+
+                    //Populate the group drop down
+				    editHost.down('#edit_group').getStore().removeAll();
 				    editHost.down('#edit_group').getStore().add(groups);
 				    editHost.down('#edit_group').setValue(config['group']);
+				    
+				    //Set the values of the hidden fields
 				    editHost.down('#edit_hostname').setValue(config['name']);
+   				    editHost.down('#edit_origGroup').setValue(config['group']);
+
+                    //Show the form
 				    editHost.show();
 				}
 			}, 
@@ -432,7 +440,6 @@ function editHostGui(event, toolEl, owner, tool){
 
 function submitAddGroup(button) {
     var form = button.up('#addGroupForm').getForm();
-    console.log(form);
 	var tree = this.getTreeref();
 
 	if (form.isValid()) {
@@ -443,7 +450,7 @@ function submitAddGroup(button) {
 				
 				//retresh the tree to show the group
 				tree.getStore().load()
-			   
+			    button.up('#addTargetGui').close();
 			},
 			failure: function(form, action) {
 				Ext.Msg.alert('Failed', action.result.msg);
@@ -454,14 +461,24 @@ function submitAddGroup(button) {
 }
 
 function submitEditHost(button) {
-    var form = button.up('#editHostForm').getForm();
-    console.log(form);
-
+    var panel = button.up('#editHostForm');
+    var form = panel.getForm();
+   	var tree = this.getTreeref();
+   	
+   	var newGroup = panel.down('#edit_group').getValue();
+   	var origGroup = panel.down('#edit_origGroup').getValue();
+   	
 	if (form.isValid()) {
 		form.submit({
 			success: function(form, action) {
 				Ext.Msg.alert('Success', action.result.msg);
-			   
+				
+				if (newGroup != origGroup) {
+					//retresh the tree to show the group
+    				tree.getStore().load();
+				}
+
+			    button.up('#editHostGui').close();
 			},
 			failure: function(form, action) {
 				Ext.Msg.alert('Failed', action.result.msg);
@@ -489,16 +506,18 @@ function getGroups() {
 }
 
 function loadGraphs(node, record, item, index, event) {
-    var target      = GH.currentTarget;
-	var category    = GH.currentCat;
-	var device      = record.data.title;
+    var target         = GH.currentTarget;
+	var category       = GH.currentCat;
+	var device         = record.data.title;
+	var graphContainer = this.getGraphsRef()
 	
 	//Blast any old graph data
 	$['cache'] = {};
 	GH['graphdata'] = {};
 
     //clear any graphs previously on display.
-	this.getGraphsRef().removeAll();
+	graphContainer.removeAll();
+	graphContainer.setLoading(true);
 	
 	//remove unfrendly chars from the device
 	device = device.replace(/\//g,'_SLSH_');
@@ -666,5 +685,6 @@ function loadGraphs(node, record, item, index, event) {
 		}
 		graphsPanel.setTitle( device + ' Performance Graphs');
 		graphsPanel.add( panels );
+		graphContainer.setLoading(false);
 	}
 }

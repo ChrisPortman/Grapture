@@ -64,9 +64,9 @@ sub run {
 	                       ( target,  device,      metric,  valbase,
 	                         mapbase, counterbits, max,     category,
 	                         module,  output,      valtype, graphgroup,
-	                         graphorder, enabled
+	                         graphorder, aggregate, enabled
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) --';
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) --';
 
     my $updMetricsQuery = 'UPDATE targetmetrics SET
 	                       valbase = ?,     mapbase = ?,
@@ -74,7 +74,7 @@ sub run {
 	                       category = ?,    module = ?,
 	                       output = ?,      valtype = ?,
 	                       graphgroup = ?,  graphorder = ?,
-	                       enabled = ?
+	                       aggregate = ?,   enabled = ?
 	                       WHERE
 	                       target = ? AND device = ? AND metric = ? --';
 
