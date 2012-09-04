@@ -45,13 +45,13 @@
 
 =head2 Doer Modules
 
-  Doer modules fall under the Jobsdoer::Doer namespace and represent the
+  Doer modules fall under the GH::Jobsdoer::Doer namespace and represent the
   actual feet on the ground so to speak.  They contain the actual logic
   that gets something done/does the job.
 
 =head2 Output Modules
 
-  Output modules fall under Jobsdoer::Output namespace and are tasked
+  Output modules fall under GH::Jobsdoer::Output namespace and are tasked
   with getting the result of the Doer module to some place useful and
   in a useful fassion.  They may include manipulating the result in a
   way thats specific and appropriate for the output destination.
@@ -87,13 +87,13 @@ use Log::Any qw ( $log );
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
-  search_path => ['Jobsdoer::Doer'],
-  except      => qr/^Jobsdoer::Doer::.+::/,    #limit to 1 level.
+  search_path => ['GH::Jobsdoer::Doer'],
+  except      => qr/^GH::Jobsdoer::Doer::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
 use Module::Pluggable
-  search_path => ['Jobsdoer::Output'],
-  except      => qr/^Jobsdoer::Output::.+::/,    #limit to 1 level.
+  search_path => ['GH::Jobsdoer::Output'],
+  except      => qr/^GH::Jobsdoer::Output::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'outputs';
 
@@ -187,13 +187,13 @@ sub loadModules {
     #Stash the available pluggins in %modules, then to the object.
     my %doers = map {
         my $mod = $_;
-        $mod =~ s/^Jobsdoer::Doer:://;
+        $mod =~ s/^GH::Jobsdoer::Doer:://;
         $mod => $_
     } $self->doers();
 
     my %outputs = map {
         my $mod = $_;
-        $mod =~ s/^Jobsdoer::Output:://;
+        $mod =~ s/^GH::Jobsdoer::Output:://;
         $mod => $_
     } $self->outputs();
 
