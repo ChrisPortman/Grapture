@@ -1,6 +1,6 @@
-#!/usr/bin/env perl
+#!/bin/false
 
-package Jobsdoer::Output;
+package GH::Jobsdoer::Output;
 
 our $VERSION = 0.1;
 

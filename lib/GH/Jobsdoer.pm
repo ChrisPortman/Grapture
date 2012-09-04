@@ -91,6 +91,7 @@ use Module::Pluggable
   except      => qr/^GH::Jobsdoer::Doer::.+::/,    #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
+
 use Module::Pluggable
   search_path => ['GH::Jobsdoer::Output'],
   except      => qr/^GH::Jobsdoer::Output::.+::/,    #limit to 1 level.
