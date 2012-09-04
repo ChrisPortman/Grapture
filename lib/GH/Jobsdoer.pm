@@ -3,7 +3,7 @@
 =head1 TITLE
 
   JobsDoer
-  
+
 =head1 DESCRIPTION
 
   JobsDoer is a Object Orientated interface to a Beanstalkd server. It
@@ -17,19 +17,19 @@
 
   The JobsDoer was designed to run threaded so that a single host can
   simultaneously take and run multiple jobs.
-  
-  Once the object has been created with the new() constructor, the 
+
+  Once the object has been created with the new() constructor, the
   startThread() method will start a thread and return the thread ID. The
   thread will then go off and handle the process flow within its self.
-  
+
   In theory, the object could be used by manually calling the individual
   methods, but this has not been proven.
-  
+
   As a precaution against unpredicted thread failure/behavior a thread
   has a finite life time.  This can be set at the time of construction
   and defaults to 1 hour, at expiry, the thread will finish the current
   job and then exit.
-  
+
   The constructor also accepts a maxThreads value which limits the number
   of concurrently running threads.  It is set to 4 be default. Any
   invokations of the startThread() method will first see if there are
@@ -37,37 +37,37 @@
   considered in error.  Typical usage would be to start an infinite loop
   that attempts to start threads, then they will be spawned by JobsDoer
   as required.
-  
+
 =head1 MODULES
 
   JobsDoer dynamically includes modules on start up and if a HUP is
   received.
-  
+
 =head2 Doer Modules
 
   Doer modules fall under the Jobsdoer::Doer namespace and represent the
   actual feet on the ground so to speak.  They contain the actual logic
   that gets something done/does the job.
-  
+
 =head2 Output Modules
 
   Output modules fall under Jobsdoer::Output namespace and are tasked
-  with getting the result of the Doer module to some place useful and 
+  with getting the result of the Doer module to some place useful and
   in a useful fassion.  They may include manipulating the result in a
   way thats specific and appropriate for the output destination.
-  
+
   An output modules may include one that puts a result in a database or
   graphs the result.
-  
+
   There can only be one output per job at the moment.  May change this
   later.  Also, generally output modules dont have to be compatible with
   more than one Doer.  Its really up to the author of the Output module
   what Doers it will work with.
-  
+
 =head2 TODO
 
   - Fix up some inconsistancies in terminologies in the code variables
-    e.g. Doer modules being refered to as methods and modules 
+    e.g. Doer modules being refered to as methods and modules
     interchangably.
 
 =cut
