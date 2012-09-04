@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package GH::Jobsdoer::Output::DiscoveryDB;
+package GH::Storage::DiscoveryDB;
 
 use strict;
 use warnings;

@@ -1,6 +1,6 @@
 #!/bin/false
 
-package GH::Jobsdoer::Output;
+package GH::Storage;
 
 our $VERSION = 0.1;
 

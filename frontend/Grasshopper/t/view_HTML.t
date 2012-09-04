@@ -3,6 +3,6 @@ use warnings;
 use Test::More;
 
 
-BEGIN { use_ok 'Grasshopper::Model::Postgredb' }
+BEGIN { use_ok 'Grasshopper::View::HTML' }
 
 done_testing();

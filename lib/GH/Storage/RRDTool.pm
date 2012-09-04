@@ -1,7 +1,7 @@
 #!/usr/bin/env perl
 # $Id:$
 
-package GH::Jobsdoer::Output::RRDTool;
+package GH::Storage::RRDTool;
 
 use strict;
 use warnings;
