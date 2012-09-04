@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: UCDDISKIOMIB.pm,v 1.2 2012/06/18 02:57:42 cportman Exp $
 
 package GH::Discovery::UCDDISKIOMIB;
