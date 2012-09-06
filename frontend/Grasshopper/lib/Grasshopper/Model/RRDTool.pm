@@ -45,10 +45,11 @@ sub getRrdData {
 	#suck in all the RRDS in $dir and extract all the metric data.
     my $self   = shift;
     my $c      = shift;
-    my $target = shift;
-    my $cat    = shift;
-    my $fsdev  = shift;
-    
+
+    my $target = $c->request->params->{'target'}   || return;
+	my $fsdev  = $c->request->params->{'device'}   || return;
+	my $cat    = $c->request->params->{'category'} || return;
+
     my %metricGroups;
     my %objsByGroups;
     my $dev = $fsdev;
@@ -90,13 +91,7 @@ sub getRrdData {
 			my $file = $dir.'/'.$metName.'.rrd';
 			
 			#if using daemon use a relative path flush the files first
-			if ($RRDCACHED_ADDR) {
-				my $relativeFile = $file;
-				$relativeFile =~ s/^$RRDFILELOC//;
-				RRDs::flushcached($relativeFile, '--daemon', $RRDCACHED_ADDR);
-				my $error = RRDs::error;
-			    print "RRD ERROR: $error\n" if $error;
-			}
+			$self->flushCacheToRrd($file);
 			
 			my $info = RRDs::info($file);
 			my $step = $info->{'step'};
@@ -111,10 +106,6 @@ sub getRrdData {
 				my $earliestData = $time - ($step * $pdpPerRow * $rows);
 	            my $periodName = 'Since '.gmtime($earliestData);
 	            
-	            unless ( $objsByGroups{$group}->{$earliestData} ) {
-		            $objsByGroups{$group}->{$earliestData} = [];
-				}
-				
 				my @plots;
 
                 my ($start,$step,$names,$data)
@@ -190,9 +181,94 @@ sub getRrdData {
     return wantarray ? %objsByGroups : \%objsByGroups;
 }
 
+sub getAggRrdData {
+	my $self = shift;
+	my $c = shift;
+	my $group = shift || return;
+	
+	my $fsdev = $c->request->params->{'device'} || return;
+	my $cat = $c->request->params->{'category'} || return;
+	
+	#get the metrics by target
+	my $targetMetrics = $c->model('Postgres')->getAggMetrics($group,$fsdev);
+
+	my $time = time();
+	my $timeZoneOffset = $time - timelocal_nocheck(gmtime($time));
+	
+	my %targetsByMetric;
+	for my $targetMetric ( @{$targetMetrics} ) {
+		my $target = $targetMetric->{'target'};
+		my $metric = $targetMetric->{'metric'};
+		
+		unless ($targetsByMetric{$metric}) {
+			$targetsByMetric{$metric} = {};
+		}
+		
+		my $file = $RRDFILELOC . $target .'/'.$cat.'/'.$fsdev.'/'.$metric.'.rrd';
+		$self->flushCacheToRrd($file);
+		
+		#Read in the contents of the RRD
+		my $info = RRDs::info($file);
+		my $step = $info->{'step'};
+		
+		#process each RRA (archive) in the object.
+		my $rraNo = 0;
+		NEWRRA:
+		while ( $info->{'rra['.$rraNo.'].rows'} ) {
+			my $rows   = $info->{'rra['.$rraNo.'].rows'};
+			my $pdpPerRow = $info->{'rra['.$rraNo.'].pdp_per_row'};
+			
+			my $earliestData = $time - ($step * $pdpPerRow * $rows);
+            my $periodName = 'Since '.gmtime($earliestData);
+            
+            unless ( $targetsByMetric{$metric}->{$earliestData} ) {
+	            $targetsByMetric{$metric}->{$earliestData} = [];
+			}
+			
+			my @plots;
+
+			my ($start,$step,$names,$data)
+				= RRDs::fetch($file, 'AVERAGE', '--start', $earliestData);
+		    my $error = RRDs::error;
+		    print "$error\n" if $error;
+
+			$start += $timeZoneOffset;
+			
+			#if theres a max val involved for a metric, I dont want
+			#go to the DB if max isnt relevant (not in the settings)
+			#but I also only want to go there once. so declare the 
+			#var outside the loop.
+			my $max;
+				
+			for my $metricData ( @{$data} ) {
+				#$metricData is an Array of arrays. Each inner Array
+				#is the vals for each metric on a specific time slot
+				
+				for my $value ( @{$metricData} ) {
+					push @plots, [ $start * 1000, $value ];
+				}
+				
+				$start += $step;
+			}
+
+			push @{$targetsByMetric{$metric}->{$earliestData}},
+			  { 'label' => $target, 'plots' => \@plots };
+			  
+			$rraNo ++;
+		}
+		
+		$targetsByMetric{$metric}->{'settings'} = {};
+		$targetsByMetric{$metric}->{'settings'}->{'fill'}  = 1;
+		$targetsByMetric{$metric}->{'settings'}->{'stack'} = 1;
+	}
+	
+    return wantarray ? %targetsByMetric : \%targetsByMetric;
+}	
+	
+
 sub createRrdImage {
-	my $self   = shift;
-	my $c      = shift;	
+	my $self        = shift;
+	my $c           = shift;
 
     #Get the GET request variables.
     my $target     = $c->request->params->{'target'};
@@ -253,13 +329,7 @@ sub createRrdImage {
 		}
 		
 		#if using daemon use a relative path flush the files first
-		if ($RRDCACHED_ADDR) {
-			my $relativeRrd = $rrdFile;
-			$relativeRrd =~ s/^$RRDFILELOC//;
-			RRDs::flushcached($relativeRrd, '--daemon', $RRDCACHED_ADDR);
-			my $error = RRDs::error;
-		    print "RRD ERROR: $error\n" if $error;
-		}
+		$self->flushCacheToRrd($rrdFile);
     	
     	#work out the DEFs, CDEFs and DRAWs
     	my $def  = "DEF:$met=$rrdFile:$met:AVERAGE";
@@ -308,8 +378,112 @@ sub createRrdImage {
 		return;
 	}
 
-    #~ ($imagefile) = $imagefile =~ m|/([^/]+)$|;
     return $imagefile;
 }
+
+sub createAggRrdImage {
+	my $self        = shift;
+	my $c           = shift;
+	my $targetGroup = shift;
+
+
+    #Get the GET request variables.
+    my $target     = $c->request->params->{'target'};
+    my $category   = $c->request->params->{'category'};
+    my $device     = $c->request->params->{'device'};
+    my $metric     = $c->request->params->{'group'};
+    my $start      = $c->request->params->{'start'}  || (48 * 3600);
+    my $height     = $c->request->params->{'height'} || 280;
+    my $width      = $c->request->params->{'width'}  || 730;
+    
+    #Calculate the start time for the graph.
+    $start = time - $start;
+    
+	my $imagefile = $STATIC_GRAPH_BASE_DIR;
+	my @DEFS;
+	my @DRAWS;
+	
+	#create the image file and path
+    unless ( -d $imagefile ) {
+		$c->response->body('Image base dir does not exist');
+		return;
+	}
+	
+    for my $path ( $target, $device ) {
+		$imagefile .= $path.'/';
+		unless (-d $imagefile) {
+			mkdir $imagefile 
+			  or $c->response->body('Could not create $imagedir')
+			     and return;
+	    }
+	}
+	$imagefile .= $metric.'.png';
+
+
+	#get Targets that have this metric and device
+	my $targetsWithMetric = 
+	  $c->model('Postgres')->getTargetsWithMetric($targetGroup, $device, $metric);
+	
+	my $count = 0;
+	TARGET:
+	for my $target ( @{$targetsWithMetric} ) {
+		my $rrdFile = $RRDFILELOC.$target.'/'.$category.'/'.$device.'/'.$metric.'.rrd';
+
+		unless ( -f $rrdFile ) {
+			next TARGET;
+		}
+
+		#if using daemon use a relative path flush the files first
+		$self->flushCacheToRrd($rrdFile);
+        
+       	#work out the DEFs, CDEFs and DRAWs
+    	my $def   = "DEF:$count=$rrdFile:$metric:AVERAGE";
+		my $draw  = "AREA:$count#$COLOURS[$count]:$target:STACK";
+		
+		#Add them to the graph definition datas
+		push @DEFS, $def;
+		push @DRAWS, $draw;
+
+		$count ++;
+	}
+
+    #Generate the graph.
+    RRDs::graph(
+        $imagefile,
+        '--start'  => $start,
+        '--title'  => $metric,
+        '--width'  => $width,
+        '--height' => $height,
+        @DEFS,
+        @DRAWS,
+    );
+    
+    my $error = RRDs::error();
+    if ($error) {
+		print "$error\n";
+		$c->response->body('Failed to create RRD graph: '.$error);
+		return;
+	}
+
+    return $imagefile;
+}
+	
+#INTERNAL SUBS
+
+sub flushCacheToRrd {
+	my $self;
+	my $file || return;
+	
+	if ($RRDCACHED_ADDR) {
+		my $relativeFile = $file;
+		$relativeFile =~ s/^$RRDFILELOC//;
+		RRDs::flushcached($relativeFile, '--daemon', $RRDCACHED_ADDR);
+		my $error = RRDs::error;
+	    print "RRD ERROR: $error\n" if $error;
+	}
+
+    return 1;
+}
+
 
 1;

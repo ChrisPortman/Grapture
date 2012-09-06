@@ -270,14 +270,14 @@ function renderGraph(panel, eopts, rraChange) {
     var bigGraphPh = group;
     var smlGraphPh = group + '-ov';
     
-    //Calculate the data
-    var initialData = getData();
-    
     //work out some display opts
     var fill;
     var stack;
+    var lineWidth = 1;
+    
     if (settings['fill']) {
 		fill = true;
+		lineWidth = 1;
 	}
 	if (settings['stack']) {
 		stack = true;
@@ -299,11 +299,15 @@ function renderGraph(panel, eopts, rraChange) {
 		series: {
 			lines: {
 				show:  true,
+				lineWidth: lineWidth,
 				fill:  fill,
 			},
 			stack: stack,
 		}
 	}
+	
+    //Calculate the data
+    var initialData = getData();
 	
 	//Plot the main graph
 	var plot = $.plot( '#'+bigGraphPh, initialData, graphOpts );
@@ -326,6 +330,7 @@ function renderGraph(panel, eopts, rraChange) {
 		series: {
 			lines: {
 				show:  true,
+				lineWidth: lineWidth,
 				fill:  fill,
 			},
 			stack: stack,
@@ -387,6 +392,14 @@ function renderGraph(panel, eopts, rraChange) {
 					}
 				}
 				plots = filteredPlots;
+			}
+			
+			if ( stack ) {
+				for ( i in plots ) {
+					if ( !plots[i][1] ) {
+						plots[i][1] = 0;
+					}
+				}
 			}
 			
 			//var first = data[rraKeys[0]][j]['plots'][0][0];
@@ -524,7 +537,7 @@ function loadGraphs(node, record, item, index, event) {
 	
 	//Get the graphdata from the server.
 	Ext.Ajax.request({
-		url    : '/rest/graphdata/'+target+'/'+category+'/'+device,
+		url    : '/rest/graphdata?target='+target+'&category='+category+'&device='+device,
 		scope  : this,
 		success: buildGraphs, 
     });

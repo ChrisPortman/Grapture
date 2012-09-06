@@ -25,8 +25,15 @@ Catalyst Controller.
 
 sub rrd :Local :Args() {
 	my ( $self, $c ) = @_;
+    my $rrdfile;
     
-	my $rrdfile = $c->model('RRDTool')->createRrdImage($c);
+    if ( $c->request->params->{'target'} =~ /^(.+)_Aggregates/ ){
+		my $targetGroup = $1;
+		$rrdfile = $c->model('RRDTool')->createAggRrdImage($c, $targetGroup);
+	}
+	else {
+        $rrdfile = $c->model('RRDTool')->createRrdImage($c);
+	}
 	
 	if ($rrdfile) {
 		if (open my $image, '<', $rrdfile) {

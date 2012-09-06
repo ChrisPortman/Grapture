@@ -124,14 +124,16 @@ sub graphdetails_GET {
 }
 
 sub graphdata_GET {
-	my ($self, $c, $target, $cat, $dev) = @_;
-	
-		unless ( $target and $cat and $dev ) {
-		$self->status_no_content($c);
-		return 1;
+	my ($self, $c) = @_;
+    my %objsByGroups;
+
+    if ( $c->request->params->{'target'} =~ /^(.+)_Aggregates/ ){
+		my $group = $1;
+		%objsByGroups = $c->model('RRDTool')->getAggRrdData($c, $group);
 	}
-	
-	my %objsByGroups = $c->model('RRDTool')->getRrdData($c, $target, $cat, $dev);
+	else {
+	    %objsByGroups = $c->model('RRDTool')->getRrdData($c);
+	}
 		
 	unless ( %objsByGroups ) {
 		$self->status_no_content($c);

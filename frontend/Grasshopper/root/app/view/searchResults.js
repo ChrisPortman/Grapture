@@ -4,6 +4,7 @@ Ext.define('GH.view.searchResults', {
     
     hidden: true,
     autoScroll: true,
+    maxHeight: 300,
     store: 'searchResultsStore',
     columns: [{ header: 'Results', dataIndex: 'results', flex: 1 }],
 });

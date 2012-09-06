@@ -75,8 +75,7 @@ sub run {
 	                       target = ? and device = ? and metric = ? --';
 
     my $updTargetQuery  = 'update targets 
-                           set lastdiscovered = LOCALTIMESTAMP,
-                           groupname = ?
+                           set lastdiscovered = LOCALTIMESTAMP
                            where target = ? --';
                            
 	my $sthaddmet = $dbh->prepare($addMetricsQuery);
@@ -88,9 +87,9 @@ sub run {
 	
 	for my $result ( @{$self->{'resultset'}} ) {
 		
-		if ( $result->{'group'} and $result->{'target'}) {
+		if ( $result->{'target'} ) {
 		    unless ($seenTargets{ $result->{'target'} }) {
-				$sthupdtgt->execute( $result->{'group'}, $result->{'target'} );
+				$sthupdtgt->execute( $result->{'target'} );
 				$seenTargets{ $result->{'target'} } = 1;
 			}
 			next;

@@ -321,6 +321,34 @@ sub getDeviceMetrics {
 	return wantarray ? @metrics : \@metrics;
 }
 
+sub getAggMetrics {
+	my $self   = shift;
+	my $group  = shift;
+	my $dev = shift;
+	my $dbh = $self->dbh;
+
+	$dev =~ s|_SLSH_|/|g;
+	
+	my $aggMetricsQuery = q(select a.target, a.metric from targetmetrics a
+							join targets b on a.target = b.target
+							where a.device = ?
+							and b.groupname = ?
+							and enabled = true
+							and aggregate = true
+							order by graphorder -- 
+						   );
+                      
+    my $sth = $dbh->prepare($aggMetricsQuery);
+    my $res = $sth->execute($dev, $group);
+	
+	my @metrics;
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		push @metrics, $row;
+	}
+	
+	return wantarray ? @metrics : \@metrics;
+}
+
 sub getGroupMetrics {
 	my $self   = shift || return;
 	my $target = shift || return;
@@ -345,6 +373,34 @@ sub getGroupMetrics {
 	}
 	
     return wantarray ? @metrics : \@metrics;
+}
+
+sub getTargetsWithMetric {
+	my $self        = shift;
+	my $targetGroup = shift;
+	my $device      = shift;
+	my $metric      = shift;
+	
+	my $dbh = $self->dbh;
+
+    my $query = q( select a.target from targetmetrics a
+                   join targets b on a.target = b.target
+                   where b.groupname = ?
+                   and a.device = ?
+                   and a.metric = ?
+                   and a.enabled = true
+                   and a.aggregate = true -- );	
+	
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute($targetGroup, $device, $metric);
+    
+    my @targets;
+    
+    for my $row ( @{$sth->fetchall_arrayref( {} ) } ) {
+		push @targets, $row->{'target'};
+	}
+	
+    return wantarray ? @targets : \@targets;
 }
 
 sub getGraphGroupSettings {
