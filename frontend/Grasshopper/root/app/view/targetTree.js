@@ -6,6 +6,19 @@ Ext.define('GH.view.targetTree', {
     overflowY: 'auto',
     
     store: 'targetStore',
+
+
+    dockedItems: [{
+	    xtype: 'toolbar',
+	    dock: 'bottom',
+	    items: [
+	        { 
+				xtype: 'button', 
+				itemId: 'showLoginButton',
+	            text: 'Login',
+	        }
+	    ]
+	}]
          
 });
     

@@ -13,6 +13,7 @@ Ext.define('GH.controller.Browser', {
         'catTabs',
         'deviceList',
         'graphs',
+        'login',
     ],
     
     stores: [
@@ -75,10 +76,21 @@ Ext.define('GH.controller.Browser', {
 			'#editHostSubmit': {
 				click: { fn: submitEditHost },
 			},
+			'#loginSubmit': {
+				click: { fn: submitLogin },
+			},
+			'#showLoginButton': {
+				click: { fn: showLoginGui },
+			}
 
 		});
 		
+		GH.loggedIn = false;
 		console.log('Browser controller initialised');
+	},
+	
+	onLaunch  : function() {
+		secureTools();
 	},
 });
 
@@ -175,8 +187,12 @@ function loadTarget(node, record, item, index, event) {
 			}
 			
 			catTabs.setTitle(target);
-			catTabs.down('#editHostTool').show();
 			catTabs.setActiveTab(0);		
+
+			if (GH.loggedIn) {
+				catTabs.down('#editHostTool').show();
+			}
+
 	    });
 		
 	}
@@ -458,7 +474,7 @@ function submitAddGroup(button) {
 	if (form.isValid()) {
 		form.submit({
 			success: function(form, action) {
-				Ext.Msg.alert('Success', action.result.msg);
+				Ext.Msg.alert('Success', action.result.data);
 				form.reset();
 				
 				//retresh the tree to show the group
@@ -466,7 +482,7 @@ function submitAddGroup(button) {
 			    button.up('#addTargetGui').close();
 			},
 			failure: function(form, action) {
-				Ext.Msg.alert('Failed', action.result.msg);
+				Ext.Msg.alert('Failed', action.result.data);
 			}
 		});
 	}	
@@ -484,7 +500,7 @@ function submitEditHost(button) {
 	if (form.isValid()) {
 		form.submit({
 			success: function(form, action) {
-				Ext.Msg.alert('Success', action.result.msg);
+				Ext.Msg.alert('Success', action.result.data);
 				
 				if (newGroup != origGroup) {
 					//retresh the tree to show the group
@@ -494,10 +510,64 @@ function submitEditHost(button) {
 			    button.up('#editHostGui').close();
 			},
 			failure: function(form, action) {
-				Ext.Msg.alert('Failed', action.result.msg);
+				Ext.Msg.alert('Failed', action.result.data);
 			}
 		});
 	}	
+}
+
+function showLoginGui(button) {
+    if ( GH.loggedIn ) {
+		GH.loggedIn = false;
+		secureTools();
+		console.log(Ext.util.Cookies.get('graphing01.lab'));
+		Ext.util.Cookies.clear('grasshopper_session');
+		button.setText('Login');
+		Ext.Msg.alert('Logout', 'You have been logged out.');
+	}
+	else  {
+		var gui = Ext.create('GH.view.login');
+		gui.show();
+		gui.down('#login_username').focus(true, 10);
+	}
+}
+
+function submitLogin(button) {
+    var form = button.up('#loginForm').getForm();
+	
+	if (form.isValid()) {
+		form.submit({
+			success: function(form, action) {
+				Ext.Msg.alert('Success', action.result.data);
+			    button.up('#loginPanel').close();
+			    GH.loggedIn = true;
+			    secureTools();
+			    Ext.ComponentQuery.query('#showLoginButton')[0].setText('Logout');
+			},
+			failure: function(form, action) {
+				Ext.Msg.alert('Failed', action.result.data);
+			}
+		});
+	}	
+}
+
+function secureTools() {
+    // Some/most tools are shown when ever we are logged in. This 
+    // function manages the display of those tools.  Others even though
+    // they should only be displayed when logged in, have other conditions
+    // to them displaying.  When SHOWING those tools should be managed 
+    // where those extra conditions are relevant and check GH.loggedIn 
+    // in that process. However all secured tools should be hidden here
+    // as is required in a logout.
+    
+	if ( GH.loggedIn ) {
+		Ext.ComponentQuery.query('#addHostTool')[0].show();
+	}
+	else {
+		Ext.ComponentQuery.query('#addHostTool')[0].hide();
+		Ext.ComponentQuery.query('#editHostTool')[0].hide();
+	}
+	
 }
 
 function getGroups() {

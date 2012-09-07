@@ -1,5 +1,8 @@
 Ext.application({
-    requires : ['Ext.container.Viewport'],
+    requires : [
+        'Ext.container.Viewport',
+        'Ext.util.Cookies',
+    ],
     name     : 'GH',
     
     appFolder: '/app',

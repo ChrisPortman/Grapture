@@ -185,11 +185,9 @@ sub graphedit :Local :Args(1) {
 }
 
 sub begin :Private {
-	#get the nav tree
-	
-    my ( $self, $c) = @_;
-    my $tree;
+    my ( $self, $c ) = @_;
 
+    $c->session->{'startTime'} = time;
 }
 
 =head2 default

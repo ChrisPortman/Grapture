@@ -528,13 +528,13 @@ sub addHosts {
 			}
 			else {
 			    push @failedHosts, { host => $hostname, 
-			                         msg  => "The group $group does not exist",
+			                         data  => "The group $group does not exist",
 			                       };
 			}
 		}
 		else {
 		    push @failedHosts, { host => $hostname, 
-		                         msg  => "Hostname already in system",
+		                         data  => "Hostname already in system",
 		                       };
 		}
 		
@@ -546,7 +546,7 @@ sub addHosts {
 		$message  = "Successfully added $successCount hosts.<br /><br />";
 		$message .= "The following hosts failed:<br />";
 		for my $failed (@failedHosts) {
-			$message .= $failed->{'host'}.' - '.$failed->{'msg'}."<br />";
+			$message .= $failed->{'host'}.' - '.$failed->{'data'}."<br />";
 		}
 	}
 	elsif ( $successCount > 1 ) {
@@ -660,6 +660,27 @@ sub addGroup {
 	return ($resultBool, $message);
 }
 
+sub checkUserLogin {
+	my $self     = shift;
+    my $username = shift || return;
+    my $password = shift || return;
+
+	my $dbh = $self->dbh;
+	
+	my $query = q( select username from users
+	               where username = ?
+	               and password = md5(?)
+	               limit 1 -- );
+	my $sth = $dbh->prepare($query);
+	$sth->execute($username, $password);
+	
+	if ( scalar @{$sth->fetchall_arrayref( {} ) } ) {
+		return 1;
+	}
+	
+	return;
+}
+
 sub sortNatural {
 	my $a = shift;
 	my $b = shift;
@@ -707,7 +728,6 @@ sub sortNatural {
 	}
 	die "Couldnt compare\n";
 }
-
 
 =head1 NAME
 

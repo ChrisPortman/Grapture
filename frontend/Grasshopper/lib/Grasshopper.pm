@@ -20,11 +20,10 @@ use Catalyst qw/
     -Debug
     ConfigLoader
     Static::Simple
-    
+    Session
+    Session::Store::FastMmap
+    Session::State::Cookie
 /;
-    #~ Session
-    #~ Session::Store::FastMmap
-    #~ Session::State::Cookie
 
 
 extends 'Catalyst';

@@ -158,7 +158,7 @@ sub addhost_POST {
 		location => $c->req->uri,
 		entity => {
 			'success' => $success,
-			'msg'     => $message,
+			'data'     => $message,
 		}
 	);
 }
@@ -175,7 +175,7 @@ sub edithost_POST {
 		location => $c->req->uri,
 		entity => {
 			'success' => $success,
-			'msg'     => $message,
+			'data'     => $message,
 		}
 	);
 }
@@ -192,7 +192,7 @@ sub addgroup_POST {
 		location => $c->req->uri,
 		entity => {
 			'success' => $success,
-			'msg'     => $message,
+			'data'     => $message,
 		}
 	);
 }
@@ -209,6 +209,25 @@ sub targetconfig_GET {
 	    entity => { 'success' => $status, 'data' => $config },
     );
 }
+
+
+sub auto :Private {
+    my ( $self, $c ) = @_;
+    
+    #any APIs that except new data can only be used by authenticated clients.
+    if ($c->request->method eq 'POST') {
+	    unless ( $c->session->{'loggedIn'} ) {
+			$self->status_ok(
+			    $c,
+			    entity => { 'success' => undef, 'data' => 'Not logged in' },
+		    );
+		    return;
+		}
+	}
+	
+	return 1;
+}
+
 
 =head1 AUTHOR
 
