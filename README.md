@@ -1,4 +1,4 @@
-Grasshopper
+Grapture
 ===========
 
 A horizontally scalable performance monitoring system
@@ -46,12 +46,12 @@ that idea will join us in reallity the near to mid term future.
  
  2. Initialise the database by running the sql script in 
     PostgreSQL.schema which will by default:
-     - Create a user 'grasshopper' with password 'hoppergrass'.
+     - Create a user 'grapture' with password 'hoppergrass'.
      - Create the tables in the public schema and have them owned by
-       grasshopper.
+       grapture.
        
- 3. Edit <git repository>/etc/grasshopper.tmpl adding the appropriate
-    details and save as <git repository>/etc/grasshopper.cfg
+ 3. Edit <git repository>/etc/grapture.tmpl adding the appropriate
+    details and save as <git repository>/etc/grapture.cfg
     
  4. Edit <git repository>/etc/job-distribution.templ adding the
     appropriate details and save as 
@@ -96,8 +96,8 @@ that idea will join us in reallity the near to mid term future.
 
  11. Start the front end development server
 ```
-    cd <git repository>/frontend/Grasshopper
-    script/grasshopper_server.pl
+    cd <git repository>/frontend/Grapture
+    script/grapture_server.pl
 ```
     
  12. Load the web interface:
