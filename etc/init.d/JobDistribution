@@ -1,25 +1,25 @@
 ### BEGIN INIT INFO
-# Provides:          PollerInput
+# Provides:          JobDistribution
 # Required-Start:    networking
 # Required-Stop:     networking
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Gets poller job details submits them to the system.
-# Description:       Gets details of devices and metrics to be polled
-#                    for performance data and submits them as jobs to
-#                    the polling system.
+# Short-Description: Gets poller job details and puts them on the queue
+# Description:       Gets jobs via a FIFO and submits them to the job
+#                    queue.  Monitors the life of the job until it 
+#                    receives a result code.
 ### END INIT INFO
 
 # Using the lsb functions to perform the operations.
 . /lib/lsb/init-functions
 # Process name ( For display )
-NAME=PollerInput
+NAME=JobDistribution
 # Daemon name, where is the actual executable
-DAEMON=/home/chris/git/Grapture/bin/Input.pl
+DAEMON=/home/chris/git/Grapture/bin/JobDistribution.pl
 #Daemon Options
-DAEMON_OPTS="-c /home/chris/git/Grapture/etc/grasshopper.cfg -i 45 -d"
+DAEMON_OPTS="-c /home/chris/git/Grapture/etc/grasshopper.cfg -d"
 # pid file for the daemon
-PIDFILE=/var/tmp/Input.pl.pid
+PIDFILE=/var/tmp/JobDistribution.pl.pid
 
 # If the daemon is not there, then exit.
 test -x $DAEMON || exit 5
