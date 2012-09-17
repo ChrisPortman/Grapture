@@ -38,9 +38,9 @@ Setup
 =====
 
 The following steps should get you to a point where you will have the 
-system working in a way that will be good for development.  The idea of
-running it in production yet is one of pure fantasy however hopefully
-that idea will join us in reallity the near to mid term future.
+system working in a way that will be suitable for development.  The idea of
+running it in production yet is one of pure fantasy, however 
+that idea will become a reality in the near future (sooner with your help!).
 
  1. Install the required packages and perl modules.
  
@@ -50,7 +50,7 @@ that idea will join us in reallity the near to mid term future.
      - Create the tables in the public schema and have them owned by
        grapture.
        
- 3. Edit <git repository>/etc/grapture.tmpl adding the appropriate
+ 3. Edit &gt;git repository>/etc/grapture.tmpl adding the appropriate
     details and save as <git repository>/etc/grapture.cfg
     
  4. Start RRDCached as so:
