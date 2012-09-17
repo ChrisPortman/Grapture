@@ -1,17 +1,18 @@
 #!/usr/bin/env perl
 # $Id: Discovery.pm,v 1.2 2012/08/20 23:47:07 cportman Exp $
 
-package Grapture::JobsProcessor::Doer::Discovery;
+package Grapture::Discovery;
 
 use strict;
 use warnings;
+
 use Net::SNMP;
 use Log::Any qw ( $log );
 use Data::Dumper;
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
-  search_path => ['Grapture::JobsProcessor::Doer::Discovery'],
+  search_path => ['Grapture::Discovery'],
   require     => 1,
   sub_name    => 'discoverers',
   inner       => 0;
@@ -96,42 +97,43 @@ sub runDiscParams {
     return unless ( $target and $session );
 
     my @return;
-    my %devStateCache;  #Cache the results of filterInclude for each Dev
-    my %authoritives;   #store a record of authoritive metric defs so that
-                        #they are not over written.  
-    
-    #Get the sysdesc first.  It will be needed later.  Its also going to
-    #a common requirenment of any device.  We also can use getting the 
-    #sysdesc as an availabiltiy test for the device
-	$sysDesc = $session->get_request(
-		'-varbindlist' => ['.1.3.6.1.2.1.1.1.0'] );
+    my %devStateCache;    #Cache the results of filterInclude for each Dev
+    my %authoritives;     #store a record of authoritive metric defs so that
+                          #they are not over written.
 
-	if ( $sysDesc->{'.1.3.6.1.2.1.1.1.0'} ) {
-		$sysDesc = $sysDesc->{'.1.3.6.1.2.1.1.1.0'};
-	}
-	else {
-		$self->error( "$target did not respond" );
-		return;
-	}
+    #Get the sysdesc first.  It will be needed later.  Its also going to
+    #a common requirenment of any device.  We also can use getting the
+    #sysdesc as an availabiltiy test for the device
+    $sysDesc =
+      $session->get_request( '-varbindlist' => ['.1.3.6.1.2.1.1.1.0'] );
+
+    if ( $sysDesc->{'.1.3.6.1.2.1.1.1.0'} ) {
+        $sysDesc = $sysDesc->{'.1.3.6.1.2.1.1.1.0'};
+    }
+    else {
+        $self->error("$target did not respond");
+        return;
+    }
 
   METRIC:
     for my $metricDef ( @{$params} ) {
         next METRIC unless ref($metricDef) and ref($metricDef) eq 'HASH';
 
-        my $metric  = $metricDef->{'metric'};
-        unless ($metric =~ /^[a-zA-Z0-9_\-]{1,19}$/) {
-			$log->error("Metric name $metric is invalid. Skipping");
-			next METRIC;
-		}
-        
+        my $metric = $metricDef->{'metric'};
+        unless ( $metric =~ /^[a-zA-Z0-9_\-]{1,19}$/ ) {
+            $log->error("Metric name $metric is invalid. Skipping");
+            next METRIC;
+        }
+
         my $valbase = $metricDef->{'valbase'};
         my $filterInclude;
         my $max;
-        
+
         if ( $authoritives{$metric} ) {
-			#We already have a metric def that is authoritive. Skip
-			next METRIC;
-		}
+
+            #We already have a metric def that is authoritive. Skip
+            next METRIC;
+        }
 
         if ( $metricDef->{'group'} ) {
 
@@ -163,7 +165,7 @@ sub runDiscParams {
 
         #look for a filter code ref
         if ( ref $metricDef->{'filterSub'} eq 'CODE' ) {
-            $filterInclude = delete $metricDef->{'filterSub'};  
+            $filterInclude = delete $metricDef->{'filterSub'};
         }
         else {
             $filterInclude = '';
@@ -236,8 +238,7 @@ sub runDiscParams {
                 $deviceHash{'enabled'} = 1;
 
                 #If theres a filter sub run it now.
-                if ( $filterInclude )
-                {   
+                if ($filterInclude) {
                     $log->debug(
                         "Checking to see if $device should be monitored");
 
@@ -250,7 +251,7 @@ sub runDiscParams {
                                 $filterInclude->(
                                     $devId, $device, $metricDef, $session
                                 )
-                              )    
+                              )
                             {
                                 $deviceHash{'enabled'} = 0;
                             }
@@ -271,7 +272,7 @@ sub runDiscParams {
                         }
                         else {
                             $log->debug(
-                              "Determined that $device SHOULD NOT be monitored"
+"Determined that $device SHOULD NOT be monitored"
                             );
                         }
                     }
@@ -302,7 +303,6 @@ sub runDiscParams {
                 $metricDef->{'aggregate'}
                   and $deviceHash{'aggregate'} = $metricDef->{'aggregate'};
                 $deviceHash{'graphorder'} = $metricDef->{'graphorder'} || 10;
-                  
 
                 push @return, \%deviceHash;
             }
@@ -321,8 +321,7 @@ sub runDiscParams {
                 $log->debug("Checking to see if $device should be monitored");
 
                 eval {
-                    unless (
-                        $filterInclude->( undef, $metricDef, $session ) )
+                    unless ( $filterInclude->( undef, $metricDef, $session ) )
                     {
                         $deviceHash{'enabled'} = 0;
                     }
@@ -350,7 +349,8 @@ sub runDiscParams {
               or next METRIC;
 
             unless ( defined( $val->{ $metricDef->{'valbase'} } )
-                and $val->{ $metricDef->{'valbase'} } !~ /noSuch(?:Object|Instance)/ )
+                and $val->{ $metricDef->{'valbase'} } !~
+                /noSuch(?:Object|Instance)/ )
             {
                 next METRIC;
             }
@@ -395,12 +395,12 @@ sub runDiscParams {
 
             push @return, \%deviceHash;
         }
-        
+
         #If we get this far then the metric is valid for this device.
         #check if its supposed to be authoritive
         if ( $metricDef->{'authoritive'} ) {
-			$authoritives{$metric} = 1;
-		}
+            $authoritives{$metric} = 1;
+        }
         $log->info("$metric found on $target");
 
     }
@@ -412,13 +412,13 @@ sub runDiscParams {
 sub error {
     my $self  = shift;
     my $error = shift;
-    
+
     if ($error) {
-		$self->{'error'} = $error;
-	}
-	
-	$self->{'error'} and return $self->{'error'};
-    
+        $self->{'error'} = $error;
+    }
+
+    $self->{'error'} and return $self->{'error'};
+
     return;
 }
 
