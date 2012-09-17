@@ -3,7 +3,7 @@
 
 # Graph the DNS stats as yielded via the 'capture-dns-stats' script
 
-package GH::Discovery::EXTEND_DNS;
+package Grapture::Discovery::EXTEND_DNS;
 
 use strict;
 use warnings;
@@ -213,3 +213,5 @@ sub discover {
         },
     ];
 }
+
+1;
