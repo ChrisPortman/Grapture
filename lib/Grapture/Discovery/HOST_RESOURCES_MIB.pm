@@ -1,7 +1,7 @@
 #!/bin/false
 # $Id: HostResoursesMib.pm,v 1.4 2012/06/18 02:57:42 cportman Exp $
 
-package GH::Discovery::HOST_RESOURCES_MIB;
+package Grapture::Discovery::HOST_RESOURCES_MIB;
 
 use strict;
 use warnings;
@@ -31,9 +31,7 @@ sub includeFilter {
     my $options = shift;
     my $session = shift;
 
-    if ( $device =~ m|^/| ) {
-        return 1;
-    }
+    return if ( $device =~ m|^/| );
 
     return;
 }
