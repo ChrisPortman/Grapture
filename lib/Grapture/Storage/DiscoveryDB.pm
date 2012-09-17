@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/bin/false
 
 package Grapture::Storage::DiscoveryDB;
 

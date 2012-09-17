@@ -1,4 +1,4 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: UCDmib.pm,v 1.3 2012/06/18 02:57:42 cportman Exp $
 
 package Grapture::Discovery::UCDmib;
