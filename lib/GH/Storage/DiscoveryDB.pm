@@ -79,8 +79,7 @@ sub run {
 	                       target = ? AND device = ? AND metric = ? --';
 
     my $updTargetQuery = 'UPDATE targets
-                           SET lastdiscovered = LOCALTIMESTAMP,
-                           groupname = ?
+                           SET lastdiscovered = LOCALTIMESTAMP
                            WHERE target = ? --';
 
     my $sthaddmet = $dbh->prepare($addMetricsQuery);
@@ -88,6 +87,8 @@ sub run {
     my $sthupdtgt = $dbh->prepare($updTargetQuery);
 
     my %seenTargets;
+
+
 
     for my $result ( @{ $self->{'resultset'} } ) {
 
@@ -108,7 +109,8 @@ sub run {
             $result->{'valtype'},    $result->{'graphgroup'},
             $result->{'graphorder'}, $result->{'enabled'}
           )
-          or $sthupdmet->execute(
+          or 
+		$sthupdmet->execute(
             $result->{'valbase'},     $result->{'mapbase'},
             $result->{'counterbits'}, $result->{'max'},
             $result->{'category'},    'FetchSnmp',
@@ -123,7 +125,6 @@ sub run {
 }
 
 sub error {
-
     #dummy error sub for now
     return 1;
 }

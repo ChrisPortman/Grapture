@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 
-package Grapture::JobsProcessor::Output::DiscoveryDB;
+package Grapture::Storage::DiscoveryDB;
 
 use strict;
 use warnings;
@@ -12,84 +12,88 @@ sub new {
     my $class   = shift;
     my $result  = shift;
     my $options = shift;
-    
+
     $class = ref $class || $class;
-        
+
     unless ( ref($result) and ref($result) eq 'ARRAY' ) {
-		$log->error('Output module requires results in the form of a ARRAY ref.');
-		return;
-	}
-	
-	unless ($options and ref $options eq 'HASH') {
-		unless (    $options->{'dbhost'} and $options->{'dbname'}
-			    and $options->{'dbuser'} and $options->{'dbpass'} ) {
-			$log->error('DiscoverDB needs options containing DB details');
-			return;
-		}
-	}
-    
+        $log->error(
+            'Output module requires results in the form of a ARRAY ref.');
+        return;
+    }
+
+    unless ( $options and ref $options eq 'HASH' ) {
+        unless ($options->{'dbhost'}
+            and $options->{'dbname'}
+            and $options->{'dbuser'}
+            and $options->{'dbpass'} )
+        {
+            $log->error('DiscoverDB needs options containing DB details');
+            return;
+        }
+    }
+
     my %selfHash;
     $selfHash{'resultset'} = $result;
     $selfHash{'dboptions'} = $options;
-    
-    my $self = bless(\%selfHash, $class);
-    
+
+    my $self = bless( \%selfHash, $class );
+
     return $self;
 }
 
 sub run {
-	my $self = shift;
+    my $self = shift;
 
-	my $DBHOST = $self->{'dboptions'}->{'dbhost'};
-	my $DBNAME = $self->{'dboptions'}->{'dbname'};
-	my $DBUSER = $self->{'dboptions'}->{'dbuser'};
-	my $DBPASS = $self->{'dboptions'}->{'dbpass'};
-	
-    my $dbh = DBI->connect("DBI:Pg:dbname=$DBNAME;host=$DBHOST",
-	                       $DBUSER,
-	                       $DBPASS,
-	                       {
-							  #'RaiseError' => 1,
-							   'PrintError' => 0,
-						   },
-	                      );
-	
-	if ( not $dbh ) { return; };
-	
-	my $addMetricsQuery = 'insert into targetmetrics 
+    my $DBHOST = $self->{'dboptions'}->{'dbhost'};
+    my $DBNAME = $self->{'dboptions'}->{'dbname'};
+    my $DBUSER = $self->{'dboptions'}->{'dbuser'};
+    my $DBPASS = $self->{'dboptions'}->{'dbpass'};
+
+    my $dbh = DBI->connect(
+        "DBI:Pg:dbname=$DBNAME;host=$DBHOST",
+        $DBUSER, $DBPASS,
+        {
+            #'RaiseError' => 1,
+            'PrintError' => 0,
+        },
+    );
+
+    if ( not $dbh ) { return; }
+
+    my $addMetricsQuery = 'INSERT INTO targetmetrics
 	                       ( target,  device,      metric,  valbase,
 	                         mapbase, counterbits, max,     category,
 	                         module,  output,      valtype, graphgroup,
 	                         graphorder, aggregate, enabled
 	                       )
-	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )--';
-	                       
-	my $updMetricsQuery = 'update targetmetrics set
-	                       valbase = ?,     mapbase = ?, 
+	                       VALUES ( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ) --';
+
+    my $updMetricsQuery = 'UPDATE targetmetrics SET
+	                       valbase = ?,     mapbase = ?,
 	                       counterbits = ?, max = ?,
-	                       category = ?,    module = ?,  
+	                       category = ?,    module = ?,
 	                       output = ?,      valtype = ?,
 	                       graphgroup = ?,  graphorder = ?,
 	                       aggregate = ?,   enabled = ?
-	                       where  
-	                       target = ? and device = ? and metric = ? --';
+	                       WHERE
+	                       target = ? AND device = ? AND metric = ? --';
 
-    my $updTargetQuery  = 'update targets 
-                           set lastdiscovered = LOCALTIMESTAMP
-                           where target = ? --';
-                           
-	my $sthaddmet = $dbh->prepare($addMetricsQuery);
-	my $sthupdmet = $dbh->prepare($updMetricsQuery);
-	my $sthupdtgt = $dbh->prepare($updTargetQuery);
-	
-	my %seenTargets;
+    my $updTargetQuery = 'UPDATE targets
+                           SET lastdiscovered = LOCALTIMESTAMP
+                           WHERE target = ? --';
 
-$log->info( Dumper($self->{'resultset'}) );
-	
-	for my $result ( @{$self->{'resultset'}} ) {
-		
+    my $sthaddmet = $dbh->prepare($addMetricsQuery);
+    my $sthupdmet = $dbh->prepare($updMetricsQuery);
+    my $sthupdtgt = $dbh->prepare($updTargetQuery);
+
+    my %seenTargets;
+
+    $log->info( Dumper($self->{'resultset'}) );
+
+    for my $result ( @{$self->{'resultset'}} ) {
+
 		if ( $result->{'target'} ) {
-		    unless ($seenTargets{ $result->{'target'} }) {
+		    unless ( $seenTargets{ $result->{'target'} }) {
 				$sthupdtgt->execute( $result->{'target'} );
 				$seenTargets{ $result->{'target'} } = 1;
 			}
@@ -116,13 +120,12 @@ $log->info( Dumper($self->{'resultset'}) );
 	    );
 	}
 
-	return 1;
+    return 1;
 }
 
 sub error {
-	#dummy error sub for now
-	return 1;
+    #dummy error sub for now
+    return 1;
 }
-
 
 1;
