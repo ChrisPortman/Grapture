@@ -31,11 +31,7 @@ use Config::Auto;
 use Log::Dispatch::Config;
 use Log::Any::Adapter;
 use JSON::XS;
-<<<<<<< HEAD:bin/PollerWorker.pl
-use GH::Jobsdoer;
-=======
 use Grapture::JobsProcessor;
->>>>>>> upstream/master:bin/JobProcessor.pl
 
 #Setup
 my $bsserver;
@@ -85,11 +81,7 @@ loadConfig($cfgfile)
 
 #create a jobsdoer object with the Beanstalk details
 $bsserver .= ':' . $bsport if $bsport;
-<<<<<<< HEAD:bin/PollerWorker.pl
-my $jobsDoer = GH::Jobsdoer->new(
-=======
 my $jobsDoer = Grapture::JobsProcessor->new(
->>>>>>> upstream/master:bin/JobProcessor.pl
     {
         'bsserver' => $bsserver,
         'bstubes'  => [$bstube],
@@ -140,7 +132,6 @@ sub loadConfig {
 }
 
 sub daemonize {
-<<<<<<< HEAD:bin/PollerWorker.pl
     POSIX::setsid or die "setsid: $!";
     my $pid = fork();
 
@@ -162,37 +153,11 @@ sub daemonize {
 
     # Check if this process is already running, Don't run twice!
     my ($thisFile) = $0 =~ m|([^/]+)$|;
-    $pidfile = File::Pid->new( { 'file' => "/var/tmp/$thisFile.pid" } );
+    $pidfile = File::Pid->new( { 'file' => "/var/tmp/$thisFile.pid" } ); # FIXME, this should be in the config file or cli driven
     die "Process is already running\n" if $pidfile->running;
     $pidfile->write or die "Could not create pidfile: $!\n";
 
     1;
-=======
-	POSIX::setsid or die "setsid: $!";
-	my $pid = fork ();
-	
-	if ($pid < 0) {
-		die "fork: $!";
-	} elsif ($pid) {
-		#Parent process exits leaving the daemonized process to run.
-		exit 0;
-	}
-	
-	#chdir "/";
-	umask 0;
-	
-	open (STDIN,  "</dev/null");
-	open (STDOUT, ">/dev/null");
-	open (STDERR, ">&STDOUT"  );
-	
-	# Check if this process is already running, Don't run twice!
-	my ($thisFile) = $0 =~ m|([^/]+)$|;
-	$pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
-	die "Process is already running\n" if $pidfile->running;
-	$pidfile->write or die "Could not create pidfile: $!\n";
-
-	1;
->>>>>>> upstream/master:bin/JobProcessor.pl
 }
 
 # Set up sig handlers

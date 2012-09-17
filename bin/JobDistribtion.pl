@@ -322,12 +322,6 @@ sub jobFetchProc {
 
 	    $input = <$fifoFh>;
 	    close $fifoFh;
-<<<<<<< HEAD:bin/PollerMaster2.pl
-
-		$input = decode_json($input);
-
-	    unless ( ref($input) and ref($input) eq 'ARRAY'){
-=======
 		
         eval {
             $input = decode_json($input);
@@ -335,7 +329,6 @@ sub jobFetchProc {
         };
 	    
 	    unless ( ref($input) and ref($input) eq 'ARRAY'){ 
->>>>>>> upstream/master:bin/JobDistribtion.pl
 			$logger->error('JobFetch - Recieved malformed data as job input');
             if ($@) {
                 $logger->error($@);
