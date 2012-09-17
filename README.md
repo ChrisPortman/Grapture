@@ -8,6 +8,7 @@ Required Packages (Debian)
 ==========================
 
  - libcatalyst-perl
+ - libcatalyst-modules-perl
  - libcatalyst-action-rest-perl
  - libcatalyst-view-tt-perl
  - libsnmp-perl

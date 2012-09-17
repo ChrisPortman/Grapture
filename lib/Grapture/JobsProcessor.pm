@@ -185,6 +185,33 @@ sub startThread {
 sub loadModules {
     my $self = shift;
     
+    # First clear any pluggable modules from %INC so they are reloaded.
+    $log->info('Looking for modules that need clearing to be reloaded');
+    if ( $self->{'doers'} ) {
+        $log->info('Clearing doer modules...');
+        for my $module ( keys %{ $self->{'doers'} } ) {
+            my $incmod = $self->{'doers'}->{$module}.'.pm';
+            $incmod =~ s|::|/|g;
+            $log->info('Clearing ' . $self->{'doers'}->{$module});
+            if ( $INC{ $incmod } ) {
+                $log->info('Clearing module ' . $incmod . ' from %INC');
+                delete $INC{ $incmod }
+            }
+        }
+    }
+    if ( $self->{'outputs'} ) {
+        $log->info('Clearing output modules...');
+        for my $module ( keys %{ $self->{'outputs'} } ) {
+            my $incmod = $self->{'outputs'}->{$module}.'.pm';
+            $incmod =~ s|::|/|g;
+            $log->info('Clearing ' . $self->{'outputs'}->{$module});
+            if ( $INC{ $incmod } ) {
+                $log->info('Clearing module ' . $incmod . ' from %INC');
+                delete $INC{ $incmod     }
+            }
+        }
+    }
+
     #Stash the available pluggins in %modules, then to the object.
     my %doers = map {
         my $mod = $_;

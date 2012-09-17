@@ -84,8 +84,6 @@ sub run {
 	
 	my %seenTargets;
 
-$log->info( Dumper($self->{'resultset'}) );
-	
 	for my $result ( @{$self->{'resultset'}} ) {
 		
 		if ( $result->{'target'} ) {

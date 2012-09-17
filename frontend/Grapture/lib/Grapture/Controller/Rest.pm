@@ -33,6 +33,7 @@ sub addhost       : Local : ActionClass('REST') {}
 sub edithost      : Local : ActionClass('REST') {}
 sub addgroup      : Local : ActionClass('REST') {}
 sub targetconfig  : Local : ActionClass('REST') {}
+sub logout        : Local : ActionClass('REST') {}
 
 sub targets_GET {
 	my ($self, $c) = @_;
@@ -207,6 +208,24 @@ sub targetconfig_GET {
 	$self->status_ok(
 	    $c,
 	    entity => { 'success' => $status, 'data' => $config },
+    );
+}
+
+sub logout_GET {
+	my ($self, $c) = @_;
+    my $message;
+        
+    if ( $c->session->{'loggedIn'} ) {
+        $c->session->{'loggedIn'} = undef;
+        $message = 'Logged out';
+    }
+    else {
+        $message = "You weren't logged in.";
+    }
+
+    $self->status_ok(
+        $c,
+        entity => { 'success' => 1, 'data' => $message },
     );
 }
 

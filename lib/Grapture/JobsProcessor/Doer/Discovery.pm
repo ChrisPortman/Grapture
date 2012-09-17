@@ -57,7 +57,7 @@ sub new {
 
 sub run {
     my $self = shift;
-
+    
     my @discoveryMods = $self->discoverers();
 
     for my $discoverer (@discoveryMods) {

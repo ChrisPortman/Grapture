@@ -1,7 +1,7 @@
 Ext.application({
     requires : [
         'Ext.container.Viewport',
-        'Ext.util.Cookies',
+        'Ext.window.MessageBox',
     ],
     name     : 'Grapture',
     

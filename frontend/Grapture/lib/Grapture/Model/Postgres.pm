@@ -160,8 +160,6 @@ sub getTargetCats {
         push @categories, { 'title' => $row->{'category'} };
 	}
 	
-	print Dumper(\@categories);
-	
 	return wantarray ? @categories : \@categories;
 	
 }

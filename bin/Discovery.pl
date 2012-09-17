@@ -84,7 +84,6 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
 }
 
 unless (@jobList) {
-    print "No targets for discovery\n";
     exit 1;
 }
 
@@ -93,8 +92,6 @@ my $encodedJobs = encode_json( \@jobList );
 unless ($encodedJobs) {
     exit 1;
 }
-
-print "$encodedJobs\n";
 
 if ( -p $fifo ) {
     open( my $fifoFH, '>', $fifo )

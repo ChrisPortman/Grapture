@@ -50,9 +50,18 @@ Ext.define('Grapture.view.addTargetTabs', {
 							fieldLabel: 'SNMP Community',
 						},
 						{
-							itemId    : 'group',
-							name      : 'group',
-							fieldLabel: 'Group',
+							xtype       : 'combobox',
+							itemId      : 'targetgroup',
+							name        : 'targetgroup',
+							fieldLabel  : 'Group',
+							store       : Ext.create('Ext.data.Store', {
+	                                          fields: ['name', 'path'],
+	                                          data  : [],
+										  }),
+							queryMode   : 'local',
+							valueField  : 'name',
+							displayField: 'path',
+							forceSelection: true,
 						},
 				    ],
 					buttons: [

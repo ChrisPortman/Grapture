@@ -30,6 +30,13 @@ The root page (/)
 
 sub index :Path :Args() {
     my ( $self, $c, @args) = @_;
+    
+    if ( $c->session->{'loggedIn'} ) {
+        $c->stash( 'loggedIn' => 1 );
+    }
+    else {
+        $c->stash( 'loggedIn' => 0 );
+    }
 }
 
 sub target :Local :Args(1) {

@@ -90,6 +90,10 @@ Ext.define('Grapture.controller.Browser', {
 	},
 	
 	onLaunch  : function() {
+        if ( document.loggedIn ) {
+            Grapture.loggedIn = true;
+            Ext.ComponentQuery.query('#showLoginButton')[0].setText('Logout');
+        }
 		secureTools();
 	},
 });
@@ -431,6 +435,8 @@ function addTargetGui(event, toolEl, owner, tool){
 	
     var addPanel = Ext.create('Grapture.view.addTarget');
     addPanel.down('#parentgroup').getStore().add(groups);
+    addPanel.down('#targetgroup').getStore().add(groups);
+
 }
 
 function editHostGui(event, toolEl, owner, tool){
@@ -518,12 +524,17 @@ function submitEditHost(button) {
 
 function showLoginGui(button) {
     if ( Grapture.loggedIn ) {
-		Grapture.loggedIn = false;
-		secureTools();
-		console.log(Ext.util.Cookies.get('graphing01.lab'));
-		Ext.util.Cookies.clear('grasshopper_session');
-		button.setText('Login');
-		Ext.Msg.alert('Logout', 'You have been logged out.');
+        Ext.Ajax.request({
+			url    : '/rest/logout',
+			scope  : this,
+			success: function(response) {
+                var msg = Ext.JSON.decode(response.responseText)['data'];
+                Ext.Msg.alert('Logout', msg);
+            }
+        });
+        Grapture.loggedIn = false;
+        secureTools();
+        button.setText('Login');
 	}
 	else  {
 		var gui = Ext.create('Grapture.view.login');
