@@ -1,7 +1,7 @@
 #!/bin/false
 # $Id: UCDmib.pm,v 1.3 2012/06/18 02:57:42 cportman Exp $
 
-package GH::Discovery::UCDmib;
+package Grapture::Discovery::UCDmib;
 
 use strict;
 use warnings;
