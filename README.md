@@ -45,73 +45,80 @@ that idea will join us in reallity the near to mid term future.
  1. Install the required packages and perl modules.
  
  2. Initialise the database by running the sql script in 
-    PostgreSQL.schema which will by default:
-     - Create a user 'grapture' with password 'hoppergrass'.
+    sql/grapture.sql which will by default:
+     - Create a user 'grapture' with password 'password'.
      - Create the tables in the public schema and have them owned by
        grapture.
        
  3. Edit <git repository>/etc/grapture.tmpl adding the appropriate
     details and save as <git repository>/etc/grapture.cfg
     
- 4. Edit <git repository>/etc/job-distribution.templ adding the
-    appropriate details and save as 
-    <git repository>/etc/job-distribution.cfg
-
- 5. Add devices to be monitored using the following SQL:
+ 4. Start RRDCached as so:
 ```
-    INSERT INTO targets (target, snmpcommunity, snmpversion)
-    VALUES
-    ('<hostname>', '<snmpcommunity', <snmpversion>)
+    rrdcached -b /path/to/RRDFiles -F -w 600 -z 300 -l 127.0.0.1 -l $HOSTNAME
 ```
-
- 6. Start beanstalkd with a larger than default max msg size.
+    
+ 5. Start beanstalkd with a larger than default max msg size.
 ```
     beanstalkd -z 5000000 [&]
+```
+
+ 6. Start the Poller Master:
+```
+    cd <git repository>/bin
+    perl JobDistribtion.pl -c <git_repo>/etc/job-distribution.cfg -d
 ```
 
  7. Start a worker:
 ```
     cd <git repository>/bin
-    perl PollerWorker.pl -c ../etc/job-distribution.cfg -d
+    perl JobProcessor.pl -c <git_repo>/etc/job-distribution.cfg -d
 ```
 
- 8. Start the Poller Master:
-```
-    cd <git repository>/bin
-    perl PollerMaster.pl -s localhost -p 11300 -i fifo -v
-```
-
- 9. Run a discovery job through the system:
-```
-    cd <git repository>/bin
-    perl Discovery.pl
-```
-
- 10. Start the polling scheduler that will load the poller master with
+ 8. Start the polling scheduler that will load the Job Distributor with
     jobs every 45secs
 ```
     cd <git repository>/bin
-    perl Input.pl
+    perl Input.pl -c <git_repo>/etc/job-distribution.cfg -d -i 45
 ```
 
- 11. Start the front end development server
+ 9. Start the front end development server
 ```
     cd <git repository>/frontend/Grapture
     script/grapture_server.pl
 ```
     
- 12. Load the web interface:
-    http://localhost:3000/js
+10. Load the web interface:
+    http://localhost:3000/
+
+11. Log in (Login button bottom left) using admin:password.
+ 
+12. Add hosts to be monitored using the + button on the 'Targets' title bar.  In the dialogue that appears you can
+     add single hosts, many hosts as well as groups to the tree.
+     
+13. Run a discovery job through the system:
+```
+    cd <git repository>/bin
+    perl Discovery.pl
+```
+
     
 UPDATES
 =======
 
+17/9/12:
+The Web interface now includes dialogues to do much of what had to be
+done manually in the database with SQL statements and whatnot.  This
+includes adding targets and groups as well as editing existing targets.
+More to come.
+
+PREVIOUS:
 Processes can now be daemonized on the cli:
 perl Input.pl -c <full path to cfg> -i 45 -d
 perl PollerMaster2.pl -c <full path to cfg> -d
 perl PollerWorker.pl -c <full path to cfg> -d
 
-RRD Cached can now also be used do reduce the IO writes:
+RRD Cached is now also be used do reduce the IO writes:
 Set at least the RRD_BIND_ADDR option in the config file and start
 rrdcached with: 
 sudo rrdcached -b DIR_RRD -F -w 600 -z 300 -l 127.0.0.1
@@ -122,18 +129,18 @@ will have to update the paths for the DAEMON and DAEMON_OPTS variables.
 
 TODO
 ====
-
+ - Separate some of the process logic such as discovery and SNMP
+   fetching out into some sort of shared processes module.  This will
+   potentially allow other components to use it.  Then in the actual 
+   pluggins, use small wrappers to 'use' the shared processes as modules.
+ - Need to develop more distribution agnostic init scripts.
+ - More GUI dialogues to manipulate the way graphs are represented,
+   editing metrics and any other tasks that send me back to the database.
+ - Implement PostgreSQL stored procedures for adding new targets and
+   metrics and eliminate the use of update|insert statements. 
  - Index the graph groups so that the order in which they appear can be
    specified.  It appears JS will sort therefore, InterfaceErrors
    appears above InterfaceTraffic which is what everyone wants to see.
- - Some operational tasks such as adding new hosts for monitoring and
-   re-discovering hosts require manual and direct manipulation of the
-   database.  While it is expected that these tasks should be automated,
-   the GUI should include the ability to add new hosts and tigger a 
-   re-discovery in addition, automated processes should be facilitated 
-   by an API rather than having external processes send directly to the
-   DB.
-
 
  - (FIXED)Add more flexible device filtering so that for example, 
    interfaces that are down wont be polled. 

@@ -164,7 +164,7 @@ Unknown	\N
 --
 
 COPY users (username, password) FROM stdin;
-cportman	145e1840bfc8383ffee13650f6d70f6c
+admin	5f4dcc3b5aa765d61d8327deb882cf99
 \.
 
 
