@@ -66,20 +66,20 @@ that idea will join us in reallity the near to mid term future.
  6. Start the Poller Master:
 ```
     cd <git repository>/bin
-    perl JobDistribtion.pl -c <git_repo>/etc/job-distribution.cfg -d
+    perl JobDistribtion.pl -c <git_repo>/etc/grapture.cfg -d
 ```
 
  7. Start a worker:
 ```
     cd <git repository>/bin
-    perl JobProcessor.pl -c <git_repo>/etc/job-distribution.cfg -d
+    perl JobProcessor.pl -c <git_repo>/etc/grapture.cfg -d
 ```
 
  8. Start the polling scheduler that will load the Job Distributor with
     jobs every 45secs
 ```
     cd <git repository>/bin
-    perl Input.pl -c <git_repo>/etc/job-distribution.cfg -d -i 45
+    perl Input.pl -c <git_repo>/etc/grapture.cfg -d -i 45
 ```
 
  9. Start the front end development server
