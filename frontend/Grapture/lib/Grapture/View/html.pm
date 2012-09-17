@@ -1,4 +1,4 @@
-package Grapture::View::html;
+package Grapture::View::HTML;
 use Moose;
 use namespace::autoclean;
 
@@ -12,7 +12,7 @@ __PACKAGE__->config(
 
 =head1 NAME
 
-Grapture::View::html - TT View for Grapture
+Grapture::View::HTML - TT View for Grapture
 
 =head1 DESCRIPTION
 

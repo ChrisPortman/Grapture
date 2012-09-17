@@ -3,22 +3,22 @@
 =head1 NAME
 
   PollerMaster.pl
-  
+
 =head1 USAGE
 
   PollerMaster.pl -c <config file> [-d]
-  
+
       -c|--cfgfile : Full path to configuration file
       -d|--daemon  : Daemonize the process.
-  
+
 =head1 DESCRIPTION
 
   Poller Master listens on a FIFO for JSON formatted job specifications
   and submits them to Beanstalkd for processing by a worker.  It also
-  sets up a return 'tube' on Beanstalkd on which it expects to receive 
+  sets up a return 'tube' on Beanstalkd on which it expects to receive
   any log messages as well as a result code for jobs as they are
   completed.
-  
+
   Submitted jobs are tracked until completion.  Jobs are regarded as
   completeted when either a result code for the job is received or the
   job has been on the queue for longer than the timeout at which point
@@ -26,9 +26,9 @@
   a situation where the Master is receiving and queuing them when no
   workers are active and servicing the queue.  Without cancelling the
   jobs, they will stay in the queue indefinately and when a worker comes
-  online, it will run through all the jobs as fast as possible even 
+  online, it will run through all the jobs as fast as possible even
   though many of the jobs would no longer be relevant.
-  
+
   The timeout, if required, should be specified using the 'waitTime' key
   on the job data.
 
@@ -36,7 +36,7 @@
 
   Jobs can be submitted in batches and should be submitted to the master
   as a JSON string via the FIFO. Its structure is as follows:
-  
+
   $job = [
       {
 		  'process'  => <processor module>,
@@ -47,14 +47,14 @@
 		  },
 		  'outputOptions' => {
 			  <hash of options required by the output module>
-		  } 
+		  }
       },
       ...
   ];
-  
+
   The 'process' key is really the only mandatory key.  Without this key,
   no logic can be employed to actually do any work.
-  
+
   The 'output' key can be used to specify a module that will actually
   'do' something with the results of the process. This isn't mandatory
   because, potentially the process may not produce any data or
@@ -63,12 +63,12 @@
   different output modules so that you can direct output in a way that
   is appropriate for various environments without having to mess with
   the process logic.
-  
+
   The 'processOptions' and 'outputOptions' keys should contain hashes of
   options pertaining to the 'process' and 'output' modules respectively.
   Please see the documentation of the modules you are using for an idea
   of what is appropriate here.
-  
+
 =cut
 
 use strict;
@@ -100,7 +100,7 @@ Log::Dispatch::Config->configure($cfgfile);
 my $logger = Log::Dispatch::Config->instance;
 $logger->{'outputs'}->{'syslog'}->{'ident'} = 'JobDispatch';
 
-#Set up signal handlers for the children processes (overwrite for the 
+#Set up signal handlers for the children processes (overwrite for the
 #main once all the children are spawned where needed
 $SIG{'TERM'}    = \&childSigTermHandler;
 $SIG{'INT'}     = \&childSigIntHandler;
@@ -116,7 +116,7 @@ $logger->notice('POLLER MASTER STARTING UP');
 
 unless ($optsOk and $cfgfile and -f $cfgfile) {
     $logger->critical('Invalid options. Must supply -c <config file> with valid file');
-    exit;	
+    exit;
 }
 
 #Load config
@@ -165,7 +165,7 @@ my $lfPid;
 my $twPid;
 
 #Create a beanstalk client object that all the children can use
-#Don't connect though the child processes will have to do that for 
+#Don't connect though the child processes will have to do that for
 #themselves.
 $bsclient = Beanstalk::Client->new(
     {
@@ -179,7 +179,7 @@ $bsclient = Beanstalk::Client->new(
 				return $json;
             }
             else {
-                $logger->info( 
+                $logger->info(
 	'Job data must be a HASH ref when putting on the queue');
 	            return;
             }
@@ -193,51 +193,51 @@ if ($jfPid = open($jobFetchProcFh, "-|") ) {
 	#Parent process
 	$childPids{$jfPid} =1;
 	$children ++;
-	
+
 	$logger->notice('INIT - Starting LogFetch');
 	if ($lfPid = open($logFetchProcFh, "-|") ) {
 		#Still the parent
 		$childPids{$lfPid} =1;
 		$children ++;
-		
+
 		#For the timeout watcher, we need bi-directional comms. We need
 		#to send new job Ids down and read timed out IDs back
 		pipe( $mainProc_RDR, $timeWatchProcFh_WTR );
 		pipe( $timeWatchProcFh_RDR, $mainProc_WTR );
-		
+
 		$logger->notice('INIT - Starting TimeOut Monitor');
 		if ( $twPid = fork ) {
 			#Still the parent
 			$childPids{$twPid} =1;
 			$children ++;
-			
+
 			close $mainProc_RDR;
 			close $mainProc_WTR;
-			
+
 			#Set up the sig handlers for the parent out of view of the
 			#children.
 			$SIG{'CHLD'} = \&sigChldHandler;
 			$SIG{'TERM'} = \&mainSigTermHandler;
 			$SIG{'INT'}  = \&mainSigIntHandler;
-			
+
 			$timeWatchProcFh_WTR->autoflush(1);
 			STDOUT->autoflush(1);
 			STDERR->autoflush(1);
-			
+
 			mainLineProc();
-			
+
 			$pidfile->remove if $daemon;
 			exit;
 		}
 		else {
 			#Job timeout monitor process
 			die "Could not fork Timeout Monitor process: $!\n" unless defined $twPid;
-			
+
 			close $timeWatchProcFh_RDR;
 			close $timeWatchProcFh_WTR;
-			
+
 			$mainProc_WTR->autoflush(1);
-			
+
 			timeWatchProc();
 			exit;
 		}
@@ -261,44 +261,44 @@ else {
 sub mainLineProc {
 	#Create an IO::Select obj and add the child handlers to it.
 	my $select = IO::Select->new(
-								 $jobFetchProcFh, 
+								 $jobFetchProcFh,
 		                         $logFetchProcFh,
 		                         $timeWatchProcFh_RDR,
 			                    );
-	
+
 	#Build a handle process dispatcher
 	my %processDispatcher = (
 	    $jobFetchProcFh      => \&processJobRet,
 	    $logFetchProcFh      => \&processLogRet,
 	    $timeWatchProcFh_RDR => \&processTimeRet,
     );
-    
+
 	#start an endless loop
 	while ( $run ) {
 		#Find childs with something for us
-	    my @readyHandles = $select->can_read;	
-		
+	    my @readyHandles = $select->can_read;
+
 		#Dispatch them.
 		for my $handle (@readyHandles) {
 			$processDispatcher{$handle}->($handle);
 		}
-		
+
 		my @currentActive = sort {$a <=> $b} keys %activeJobs;
 		$logger->debug("Mainline - Current active job IDs: @currentActive");
 	}
-	
+
 	$logger->notice( 'Run has been terminated - Exiting');
-    
-    1;	
+
+    1;
 }
 
 sub jobFetchProc {
 	#run an endless loop
     while ($run) {
-		
-	    my $fifoFh;	
+
+	    my $fifoFh;
 	    my $input;
-	    
+
 		unless ( -p $fifo ) {
 			if ( -e $fifo ) {
 			    $logger->emerg("$fifo exists as a NON fifo.  Can't continue");
@@ -311,15 +311,15 @@ sub jobFetchProc {
 				}
 			}
 		}
-		
+
 		$logger->debug('JobFetch - Waiting for Jobs');
    		unless ( open($fifoFh, '<', $fifo) ) {
 			#check run here, we may have unblocked due to exiting
 			last unless $run;
-			
+
 			$logger->info('Could not open FIFO, cannot continue.');
 	    }
-	      
+
 	    $input = <$fifoFh>;
 	    close $fifoFh;
 		
@@ -335,7 +335,7 @@ sub jobFetchProc {
             }
 			next;
 	    };
-	    
+
 	    $logger->debug('JobFetch - Job batch recieved');
 
 		JOB:
@@ -347,47 +347,47 @@ sub jobFetchProc {
 
             #Add the log tube to each one.
 			$job->{'logsTube'} = $logTube;
-			
+
 			#See if the job has a timeout
 			my $timeout = 0;
 			if ( $job->{'waitTime'} ) {
 				$timeout = $job->{'waitTime'} + time;
 			}
-			
+
 			#See if the job has a priority
 			my $priority = 10;
 			if ( $job->{'priority'} ) {
 				$priority = $job->{'priority'};
 			}
-		
+
     		#Check for a BS connection and connect if not connected.
 			unless ($bsclient and $bsclient->socket()) {
 				beanstalkConnect($bsclient, {'use' => $jobTube} );
 				$logger->info('Job Fetch connected to Beanstalk');
 			}
-		
+
 			#Put the job on beanstalk
-			my $jobObj = $bsclient->put( 
-			    { 
-				  'ttr'      => 120, 
-			      'priority' => $priority,  
-			    }, 
-			    $job 
+			my $jobObj = $bsclient->put(
+			    {
+				  'ttr'      => 120,
+			      'priority' => $priority,
+			    },
+			    $job
 		    );
 
 			unless ($jobObj) {
 				$logger->critical('Could not put job on Beanstalk queue');
 				next JOB;
 			}
-			
+
 			$logger->info('JobFetch - Put job ID '.$jobObj->id().' to Beanstalk');
 			#print to STDOUT which goes to the parent
 			print $jobObj->id().":$timeout\n";
 		}
-		
+
 		print "EOF\n";
 	}
-	
+
 	$logger->notice( 'JobFetch - Run has been terminated - Exiting');
 	1;
 }
@@ -400,10 +400,10 @@ sub logFetchProc {
 			beanstalkConnect($bsclient, {'watch_only' => $logTube} );
 			$logger->info('LogFetch connected to Beanstalk');
 		}
-		
+
 		#get a log off the queue
 		$logger->debug('LogFetch - Waiting for a log');
-  
+
         my $log;
         eval {
 			#Need to have specific sig handlers for the reserve so we can
@@ -414,7 +414,7 @@ sub logFetchProc {
 	    };
         last unless $run;
         next unless $log;
-        
+
         $logger->debug('LogFetch - Received a log');
 
         $bsclient->delete( $log->id() );
@@ -424,7 +424,7 @@ sub logFetchProc {
         my $jobId   = $logEntry->{'jobId'};
         my $message = $logEntry->{'message'};
         my $code    = $logEntry->{'code'};
-        
+
         #print to STDOUT which goes to the parent
         if ( $code ) {
 			print "Job $jobId: $code: $worker - $message\n";
@@ -434,7 +434,7 @@ sub logFetchProc {
 			print "Job $jobId: $worker - $message\n";
 			$logger->debug("LogFetch - Recieved log message for $jobId");
 		}
-		
+
 		print "EOF\n";
 	}
 
@@ -446,7 +446,7 @@ sub timeWatchProc {
     #this process will be told about any jobs that have a timeout
 	my %activeJobs;
     my $select = IO::Select->new($mainProc_RDR);
-    
+
 	#run an endless loop
     while ($run) {
 		#Check for a BS connection and connect if not connected.
@@ -454,19 +454,19 @@ sub timeWatchProc {
 			beanstalkConnect($bsclient, {'watch_only' => $jobTube} );
 			$logger->info('Timeout Monitor connected to Beanstalk');
 		}
-		
+
 		$logger->debug('Timeout Monitor - Checking for new jobs');
 		for my $handle ( $select->can_read(1) ) {
 			eval {
 				local $SIG{'ALRM'}  = sub { die; };
 				alarm 2;
-				
+
 		  		while ( <$handle> ) {
 					chomp;
 					next if $_ eq 'EOF';
-	
+
 					my ($cmd, $id, $timeout) = split(/:/, $_);
-					
+
 					if ( $cmd eq 'ADD' ) {
 						$logger->debug("Timeout Monitor - Adding Job $id, times out at $timeout");
 					    $activeJobs{$id} = $timeout;
@@ -475,15 +475,15 @@ sub timeWatchProc {
 						$logger->debug("Timeout Monitor - Deleting Job $id from tracking");
 						delete $activeJobs{$id};
 					}
-		    
+
 				    alarm 1;
 				}
 			}
 		}
-		
+
 		my $stuffSentToParent;
 		for my $jobId ( keys( %activeJobs ) ) {
-		    
+
 		    #See if the job has expired.
 			if ( time > $activeJobs{$jobId} ) {
 				#Expired, delete it
@@ -497,7 +497,7 @@ sub timeWatchProc {
 				}
 				else {
 					#Delete failed.  If because the job no longer exists
-					#delete it from our records, if its because its 
+					#delete it from our records, if its because its
 					#reserved or similar, we'll deal with it next time
 					#round.  Test if it exists by trying to get stats
 
@@ -514,15 +514,15 @@ sub timeWatchProc {
 				$logger->debug("Timeout Monitor - Job $jobId NOT expired.");
 			}
 		}
-		
+
 		print "EOF\n" if $stuffSentToParent;
-		
+
 		my @currentTracked = sort {$a <=> $b} keys %activeJobs;
 		$logger->debug("Timeout Monitor - Currently tracking these jobs for timeouts: @currentTracked");
-		
+
 		sleep 300;
 	}
-	
+
 	$logger->notice( 'Timeout Monitor - Run has been terminated - Exiting');
 	1;
 }
@@ -533,11 +533,11 @@ sub processJobRet {
 	while ( <$handle> ) {
 		chomp;
 		last if $_ eq 'EOF';
-		
+
 		if ( /^(\d+):(\d+)$/ ) {
 			$logger->debug("Mainline - Got jobid $1");
     		$activeJobs{$1} = 1;
-    		
+
     		if ($2) {  #this job has a timeout
 	    		print $timeWatchProcFh_WTR "ADD:$1:$2\n";
 			}
@@ -546,7 +546,7 @@ sub processJobRet {
 			$logger->error("Got job ID $_ from the job submitter which doesn't look right");
 		}
 	}
-	
+
 	$logger->debug('Mainline - All new jobs processed');
 
 	1;
@@ -554,17 +554,17 @@ sub processJobRet {
 
 sub processLogRet {
 	my $handle = shift;
-	
+
 	while ( <$handle> ) {
 		chomp;
 		last if $_ eq 'EOF';
-		
+
 		if ( /^Job\s(\d+):\s(\d):\s(.+)$/ ) {
 			#this is a return code
 			my $jobId   = $1;
 			my $retCode = $2;
 			my $message = $3;
-			
+
 			if ($retCode > 1 ) {
 				$logger->error("Job $jobId finished with result: $returnCodes{$retCode}");
 			}
@@ -582,18 +582,18 @@ sub processLogRet {
 			$logger->warn($_);
 		}
 	}
-	
+
 	1;
 }
 
 sub processTimeRet {
 	my $handle = shift;
-	
+
 	while ( <$handle> ) {
 		chomp;
 		last if $_ eq 'EOF';
-		
-		if ( /^(\d+)$/ ) {
+
+		if ( m/^(\d+)$/ ) {
 			$logger->info("Job $1 timed out and has been removed from the queue");
 			delete $activeJobs{$1}
 			  or $logger->info("Finalising job $1 but it is not in the active jobs list");
@@ -609,19 +609,19 @@ sub processTimeRet {
 sub beanstalkConnect {
 	my $bsclient = shift;
 	my $options  = shift;
-	
+
 	unless ( $bsclient->socket() ) {
 		while ($run) {
 		    #connect to beanstalk
 			$bsclient->connect();
             last if $bsclient->socket();
-            
+
             $logger->warning('Could not connect to Beanstalk.  Will retry in 30 secs');
             #Keep trying every 30 secs till we get a connection
 		    sleep 30;
 		}
 	}
-	
+
 	for my $opt ( keys %{$options} ) {
 		if ($opt eq 'use') {
 			$bsclient->use($options->{$opt});
@@ -637,21 +637,21 @@ sub beanstalkConnect {
 		}
 	}
 
-    1;		
+    1;
 }
 
 sub sigChldHandler {
 	# Ditch dead children.
 	my $pid;
-	
+
 	$pid = waitpid(-1, &WNOHANG);
-	
+
 	while ( $pid > 0 ) {
 		delete $childPids{$pid};
 		$children --;
 		$pid = waitpid(-1, &WNOHANG);
-    }	
-	1;	
+    }
+	1;
 }
 
 sub mainSigTermHandler {
@@ -663,10 +663,10 @@ sub mainSigTermHandler {
 sub mainSigIntHandler {
 	# Wait while the children are being murdered
 	$logger->notice('SHUTTING DOWN!');
-    
+
     $run = 0;
     kill 'INT', keys %childPids;
-    
+
     while ( $children ) {
 		sleep;
 	}
@@ -694,28 +694,28 @@ sub dieHandle {
 sub daemonize {
 	POSIX::setsid or die "setsid: $!";
 	my $pid = fork ();
-	
+
 	if ($pid < 0) {
 		die "fork: $!";
 	} elsif ($pid) {
 		#Parent process exits leaving the daemonized process to run.
 		exit 0;
 	}
-	
-	chdir "/";
+
+	chdir '/';
 	umask 0;
-	
-	open (STDIN,  "</dev/null");
-	open (STDOUT, ">/dev/null");
-	open (STDERR, ">&STDOUT"  );
-	
+
+	open (STDIN,  '<','/dev/null');
+	open (STDOUT, '>','/dev/null');
+	open (STDERR, '>&STDOUT'  );
+
 	# Check if this process is already running, Don't run twice!
 	my ($thisFile) = $0 =~ m|([^/]+)$|;
 	$pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
 	die "Process is already running\n" if $pidfile->running;
 	$pidfile->write or die "Could not create pidfile: $!\n";
 
-	
+
 	1;
 }
 

@@ -73,13 +73,13 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
             'community' => $community,
         },
         'outputOptions' => {
-			'dbhost' => $DBHOST,
-			'dbname' => $DBNAME,
-			'dbuser' => $DBUSER,
-			'dbpass' => $DBPASS,
-		},
+            'dbhost' => $DBHOST,
+            'dbname' => $DBNAME,
+            'dbuser' => $DBUSER,
+            'dbpass' => $DBPASS,
+        },
       };
-      
+
     $logger->info("Queued discovery for $target");
 }
 
