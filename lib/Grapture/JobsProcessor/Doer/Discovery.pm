@@ -350,7 +350,7 @@ sub runDiscParams {
               or next METRIC;
 
             unless ( defined( $val->{ $metricDef->{'valbase'} } )
-                and $val->{ $metricDef->{'valbase'} } ne 'noSuchObject' )
+                and $val->{ $metricDef->{'valbase'} } !~ /noSuch(?:Object|Instance)/ )
             {
                 next METRIC;
             }

@@ -60,6 +60,8 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
     my $version   = $targetRef->{'snmpversion'};
     my $community = $targetRef->{'snmpcommunity'};
 
+    print "Adding job for $target\n";
+
     push @jobList,
       {
         'process'        => $module,
@@ -81,7 +83,18 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
     $logger->info("Queued discovery for $target");
 }
 
+unless (@jobList) {
+    print "No targets for discovery\n";
+    exit 1;
+}
+
 my $encodedJobs = encode_json( \@jobList );
+
+unless ($encodedJobs) {
+    exit 1;
+}
+
+print "$encodedJobs\n";
 
 if ( -p $fifo ) {
     open( my $fifoFH, '>', $fifo )

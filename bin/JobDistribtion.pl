@@ -323,10 +323,16 @@ sub jobFetchProc {
 	    $input = <$fifoFh>;
 	    close $fifoFh;
 		
-		$input = decode_json($input);
+        eval {
+            $input = decode_json($input);
+            1;
+        };
 	    
 	    unless ( ref($input) and ref($input) eq 'ARRAY'){ 
 			$logger->error('JobFetch - Recieved malformed data as job input');
+            if ($@) {
+                $logger->error($@);
+            }
 			next;
 	    };
 	    

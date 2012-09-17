@@ -141,7 +141,7 @@ sub daemonize {
 		exit 0;
 	}
 	
-	chdir "/";
+	#chdir "/";
 	umask 0;
 	
 	open (STDIN,  "</dev/null");

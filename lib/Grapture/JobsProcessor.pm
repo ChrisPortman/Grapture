@@ -84,16 +84,17 @@ use Beanstalk::Client;
 use JSON::XS;
 use Data::Dumper;
 use Log::Any qw ( $log );
+use Cwd;
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
   search_path => ['Grapture::JobsProcessor::Doer'],
-  except      => qr/^Grapture::JobsProcessor::.+::/, #limit to 1 level.
+  except      => qr/^Grapture::JobsProcessor::Doer::.+::/, #limit to 1 level.
   require     => 1,
   sub_name    => 'doers';
 use Module::Pluggable
   search_path => ['Grapture::JobsProcessor::Output'],
-  except      => qr/^Grapture::JobsProcessor::.+::/, #limit to 1 level.
+  except      => qr/^Grapture::JobsProcessor::Output::.+::/, #limit to 1 level.
   require     => 1,
   sub_name    => 'outputs';
 
@@ -183,19 +184,21 @@ sub startThread {
 
 sub loadModules {
     my $self = shift;
-
+    
     #Stash the available pluggins in %modules, then to the object.
     my %doers = map {
         my $mod = $_;
-        $mod =~ s/^Grapture::JobsProcessor:://;
+        $mod =~ s/^Grapture::JobsProcessor::Doer:://;
         $mod => $_
     } $self->doers();
 
     my %outputs = map {
         my $mod = $_;
-        $mod =~ s/^Grapture::JobsProcessor:://;
+        $mod =~ s/^Grapture::JobsProcessor::Output:://;
         $mod => $_
     } $self->outputs();
+    
+    $log->info("Loading modules...");
     
     for my $module ( keys %doers ) {
 		$log->info("Loaded doer module $module");

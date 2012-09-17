@@ -83,7 +83,8 @@ sub run {
 	my $sthupdtgt = $dbh->prepare($updTargetQuery);
 	
 	my %seenTargets;
-	
+
+$log->info( Dumper($self->{'resultset'}) );
 	
 	for my $result ( @{$self->{'resultset'}} ) {
 		
@@ -92,7 +93,6 @@ sub run {
 				$sthupdtgt->execute( $result->{'target'} );
 				$seenTargets{ $result->{'target'} } = 1;
 			}
-			next;
 		}
 
 		$sthaddmet->execute(          $result->{'target'},
