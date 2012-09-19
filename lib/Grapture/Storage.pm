@@ -1,6 +1,6 @@
 #!/bin/false
 
-package Grapture::JobsProcessor::Doer;
+package Grapture::Storage;
 
 our $VERSION = 0.1;
 

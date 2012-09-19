@@ -46,20 +46,19 @@ $|++;
 
 # Setup handlers inc. a HUP handler to refresh available job modules.
 # kill -HUP <pid>
-$SIG{HUP}       = \&HUPHANDLE; 
-$SIG{CHLD}      = \&REAPER;
-$SIG{INT}       = \&HUNTSMAN;
-$SIG{TERM}      = \&HUNTSMAN;
-$SIG{ __DIE__ } = \&dieHandle;
+$SIG{HUP}     = \&HUPHANDLE;
+$SIG{CHLD}    = \&REAPER;
+$SIG{INT}     = \&HUNTSMAN;
+$SIG{TERM}    = \&HUNTSMAN;
+$SIG{__DIE__} = \&dieHandle;
 
 my $optsOk = GetOptions(
-    'cfgfile|c=s'   => \$cfgfile,
-    'daemon|d'      => \$daemon,
-)
-  or die "Invalid options\n";
+    'cfgfile|c=s' => \$cfgfile,
+    'daemon|d'    => \$daemon,
+) or die "Invalid options\n";
 
 unless ( $cfgfile and -f $cfgfile ) {
-	die "Require an existing configuration file (-c)\n";
+    die "Require an existing configuration file (-c)\n";
 }
 
 #Setup logging
@@ -71,21 +70,21 @@ Log::Any::Adapter->set( 'Dispatch', dispatcher => $logger );
 #daemonize here if appropriate.
 my $pidfile;
 if ($daemon) {
-    daemonize();	
+    daemonize();
 }
 
 $logger->notice('POLLER WORKER STARTING UP');
 
 #Load the config file
 loadConfig($cfgfile)
-  or ($logger->critical('Config file invalid') and exit);
+  or ( $logger->critical('Config file invalid') and exit );
 
 #create a jobsdoer object with the Beanstalk details
 $bsserver .= ':' . $bsport if $bsport;
 my $jobsDoer = Grapture::JobsProcessor->new(
     {
         'bsserver' => $bsserver,
-        'bstubes'  => [ $bstube ],
+        'bstubes'  => [$bstube],
     }
 );
 
@@ -99,7 +98,9 @@ while ($run) {    #loop almost indefinitely
     $logger->info('Looking to start thread...');
     my $thread = $jobsDoer->startThread();
 
-    $logger->info('Started $thread. '.$jobsDoer->{'childCount'}.' running') if $thread;
+    $logger->info(
+        'Started $thread. ' . $jobsDoer->{'childCount'} . ' running' )
+      if $thread;
     $logger->info('Slots are full.') unless $thread;
 
     #Keep going round as long as threads are created
@@ -115,81 +116,85 @@ exit 1;
 
 sub loadConfig {
     my $cfgfile = shift;
-    
+
     return unless ( $cfgfile and -f $cfgfile );
     my $config = Config::Auto::parse($cfgfile);
 
-	$bsserver = $config->{'BS_SERVER'};
-	$bsport   = $config->{'BS_PORT'};
-	$bstube   = $config->{'BS_JOBQ'};
+    $bsserver = $config->{'BS_SERVER'};
+    $bsport   = $config->{'BS_PORT'};
+    $bstube   = $config->{'BS_JOBQ'};
 
     if ( $bsserver and $bsport and $bstube ) {
-		return 1;
-	}
-	
-	return;
+        return 1;
+    }
+
+    return;
 }
 
 sub daemonize {
-	POSIX::setsid or die "setsid: $!";
-	my $pid = fork ();
-	
-	if ($pid < 0) {
-		die "fork: $!";
-	} elsif ($pid) {
-		#Parent process exits leaving the daemonized process to run.
-		exit 0;
-	}
-	
-	#chdir "/";
-	umask 0;
-	
-	open (STDIN,  "</dev/null");
-	open (STDOUT, ">/dev/null");
-	open (STDERR, ">&STDOUT"  );
-	
-	# Check if this process is already running, Don't run twice!
-	my ($thisFile) = $0 =~ m|([^/]+)$|;
-	$pidfile = File::Pid->new({ 'file' => "/var/tmp/$thisFile.pid" });
-	die "Process is already running\n" if $pidfile->running;
-	$pidfile->write or die "Could not create pidfile: $!\n";
+    POSIX::setsid or die "setsid: $!";
+    my $pid = fork();
 
-	1;
+    if ( $pid < 0 ) {
+        die "fork: $!";
+    }
+    elsif ($pid) {
+
+        #Parent process exits leaving the daemonized process to run.
+        exit 0;
+    }
+
+    chdir '/';
+    umask 0;
+
+    open( STDIN,  '<', '/dev/null' );
+    open( STDOUT, '>', '/dev/null' );
+    open( STDERR, '>&STDOUT' );
+
+    # Check if this process is already running, Don't run twice!
+    my ($thisFile) = $0 =~ m|([^/]+)$|;
+    $pidfile = File::Pid->new( { 'file' => "/var/tmp/$thisFile.pid" } ); # FIXME, this should be in the config file or cli driven
+    die "Process is already running\n" if $pidfile->running;
+    $pidfile->write or die "Could not create pidfile: $!\n";
+
+    1;
 }
 
 # Set up sig handlers
 sub REAPER {
-	# Ditch dead children.
-	my $pid;
-	
-	$pid = waitpid(-1, &WNOHANG);
-	
-	while ( $pid > 0 ) {
-		print "Child $pid is dead. Throw it away.\n";
-		$jobsDoer->{'childCount'} --;
-		delete $jobsDoer->{'childPids'}->{$pid};
-		
-		$pid = waitpid(-1, &WNOHANG);
-    }	
-	1;	
+
+    # Ditch dead children.
+    my $pid;
+
+    $pid = waitpid( -1, &WNOHANG );
+
+    while ( $pid > 0 ) {
+        print "Child $pid is dead. Throw it away.\n";
+        $jobsDoer->{'childCount'}--;
+        delete $jobsDoer->{'childPids'}->{$pid};
+
+        $pid = waitpid( -1, &WNOHANG );
+    }
+    1;
 }
 
 sub HUNTSMAN {
-	# Murder all the children.
-	$run = 0;
+
+    # Murder all the children.
+    $run = 0;
     $logger->notice('Shutting Down.  Waiting for worker processes');
-    
+
     kill 'INT', keys %{ $jobsDoer->{'childPids'} };
-    
+
     while ( $jobsDoer->{'childCount'} ) {
-		$logger->notice("$jobsDoer->{'childCount'} workers left.");
-		sleep 2;
-	}
+        $logger->notice("$jobsDoer->{'childCount'} workers left.");
+        sleep 2;
+    }
 
     $pidfile->remove if $daemon;
-	$logger->notice('All workers are gone.  Goodbye');
+    $logger->notice('All workers are gone.  Goodbye');
 
-	exit;	
+    exit;
 }
 
 sub HUPHANDLE {
@@ -197,16 +202,16 @@ sub HUPHANDLE {
 
     $jobsDoer->loadModules();
     kill 'INT', keys %{ $jobsDoer->{'childPids'} };
-};
+}
 
 sub dieHandle {
-	die @_ if $^S; #Dont do anything special in an eval
-	if ( $logger ) {
-		$logger->critical(@_);
-	}
-	else {
-		die @_;
-	}
-	return 1;
+    die @_ if $^S;    #Dont do anything special in an eval
+    if ($logger) {
+        $logger->critical(@_);
+    }
+    else {
+        die @_;
+    }
+    return 1;
 }
 

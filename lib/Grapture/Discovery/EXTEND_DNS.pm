@@ -1,9 +1,9 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id:$
 
 # Graph the DNS stats as yielded via the 'capture-dns-stats' script
 
-package Grapture::JobsProcessor::Doer::Discovery::EXTEND_DNS;
+package Grapture::Discovery::EXTEND_DNS;
 
 use strict;
 use warnings;

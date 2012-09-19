@@ -1,10 +1,12 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: UCDDISKIOMIB.pm,v 1.2 2012/06/18 02:57:42 cportman Exp $
 
-package Grapture::JobsProcessor::Doer::Discovery::UCDDISKIOMIB;
+package Grapture::Discovery::UCDDISKIOMIB;
 
 use strict;
 use warnings;
+
+our $VERSION = (qw$Revision: 1.2 $)[1];
 
 sub discover {
 	
@@ -88,11 +90,9 @@ sub filter {
     my $session = shift;
 
     #Dont monitor any loop devices
-    if ( $device =~ /^loop/ ) {
-		return;
-	}
-	
-	return 1;
+    return if ( $device =~ /^loop/ );
+
+    return 1;
 }
 
 1;

@@ -1,25 +1,28 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: Ifmib.pm,v 1.7 2012/06/18 02:57:42 cportman Exp $
 
-package Grapture::JobsProcessor::Doer::Discovery::IF_MIB;
+package Grapture::Discovery::IF_MIB;
 
 use strict;
 use warnings;
+
+our $VERSION = (qw$Revision: 1.7 $)[1];
 
 sub discover {
 
     #32 bit counters are added first, if 64 bit ones are available
     #they will overwrite the 32 bit ones and be used in preference.
-    
+
     #Try to map the interfaces on ifName as its usually nicer.  If no
     #if name use ifDesc
     [
         #32 bit counters IfDesc
         {    #Interface Octets (~Bytes) in
-            'metric'      => 'OctetsIn',
-            'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
-            'valbase'     => '1.3.6.1.2.1.2.2.1.10',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsIn',
+            'mapbase' => '1.3.6.1.2.1.2.2.1.2',
+            'valbase' => '1.3.6.1.2.1.2.2.1.10',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -28,10 +31,11 @@ sub discover {
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
-            'metric'      => 'OctetsOut',
-            'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
-            'valbase'     => '1.3.6.1.2.1.2.2.1.16',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsOut',
+            'mapbase' => '1.3.6.1.2.1.2.2.1.2',
+            'valbase' => '1.3.6.1.2.1.2.2.1.16',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -62,13 +66,14 @@ sub discover {
             'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
-    
+
         #32 bit counters IfName
         {    #Interface Octets (~Bytes) in
-            'metric'      => 'OctetsIn',
-            'mapbase'     => '1.3.6.1.2.1.31.1.1.1.1',
-            'valbase'     => '1.3.6.1.2.1.2.2.1.10',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsIn',
+            'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
+            'valbase' => '1.3.6.1.2.1.2.2.1.10',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -77,10 +82,11 @@ sub discover {
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
-            'metric'      => 'OctetsOut',
-            'mapbase'     => '1.3.6.1.2.1.31.1.1.1.1',
-            'valbase'     => '1.3.6.1.2.1.2.2.1.16',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsOut',
+            'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
+            'valbase' => '1.3.6.1.2.1.2.2.1.16',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -114,10 +120,11 @@ sub discover {
 
         #64 bit counters
         {    #Interface Octets (~Bytes) in ifDesc
-            'metric'      => 'OctetsIn',
-            'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
-            'valbase'     => '1.3.6.1.2.1.31.1.1.1.6',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsIn',
+            'mapbase' => '1.3.6.1.2.1.2.2.1.2',
+            'valbase' => '1.3.6.1.2.1.31.1.1.1.6',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -126,10 +133,11 @@ sub discover {
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
-            'metric'      => 'OctetsOut',
-            'mapbase'     => '1.3.6.1.2.1.2.2.1.2',
-            'valbase'     => '1.3.6.1.2.1.31.1.1.1.10',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsOut',
+            'mapbase' => '1.3.6.1.2.1.2.2.1.2',
+            'valbase' => '1.3.6.1.2.1.31.1.1.1.10',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -139,10 +147,11 @@ sub discover {
         },
 
         {    #Interface Octets (~Bytes) in ifName
-            'metric'      => 'OctetsIn',
-            'mapbase'     => '1.3.6.1.2.1.31.1.1.1.1',
-            'valbase'     => '1.3.6.1.2.1.31.1.1.1.6',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsIn',
+            'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
+            'valbase' => '1.3.6.1.2.1.31.1.1.1.6',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -151,10 +160,11 @@ sub discover {
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
         {    #Interface Octets (~Bytes) out
-            'metric'      => 'OctetsOut',
-            'mapbase'     => '1.3.6.1.2.1.31.1.1.1.1',
-            'valbase'     => '1.3.6.1.2.1.31.1.1.1.10',
-           #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'metric'  => 'OctetsOut',
+            'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
+            'valbase' => '1.3.6.1.2.1.31.1.1.1.10',
+
+            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
             'valtype'     => 'counter',
@@ -173,11 +183,8 @@ sub onlyUpWithPosInCounter {
     my $device  = shift;
     my $options = shift;
     my $session = shift;
-    
-    my @excludeRegexs = ( '^lo$', '^unrouted', '^Loopback', '^Null' );
-    for (@excludeRegexs) {
-		return if $device =~ $_;
-	}
+
+    return if $device =~ m/^(lo$|unrouted|Loopback|Null)/;
 
     #get the opper status
     my $operStatus = $session->get_request(

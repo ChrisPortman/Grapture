@@ -39,9 +39,9 @@ Setup
 =====
 
 The following steps should get you to a point where you will have the 
-system working in a way that will be good for development.  The idea of
-running it in production yet is one of pure fantasy however hopefully
-that idea will join us in reallity the near to mid term future.
+system working in a way that will be suitable for development.  The idea of
+running it in production yet is one of pure fantasy, however 
+that idea will become a reality in the near future (sooner with your help!).
 
  1. Install the required packages and perl modules.
  
@@ -51,8 +51,8 @@ that idea will join us in reallity the near to mid term future.
      - Create the tables in the public schema and have them owned by
        grapture.
        
- 3. Edit <git repository>/etc/grapture.tmpl adding the appropriate
-    details and save as <git repository>/etc/grapture.cfg
+ 3. Edit &lt;git repository&gt;/etc/grapture.tmpl adding the appropriate
+    details and save as &lt;git repository&gt;/etc/grapture.cfg
     
  4. Start RRDCached as so:
 ```
@@ -115,9 +115,11 @@ More to come.
 
 PREVIOUS:
 Processes can now be daemonized on the cli:
+```
 perl Input.pl -c <full path to cfg> -i 45 -d
 perl PollerMaster2.pl -c <full path to cfg> -d
 perl PollerWorker.pl -c <full path to cfg> -d
+```
 
 RRD Cached is now also be used do reduce the IO writes:
 Set at least the RRD_BIND_ADDR option in the config file and start

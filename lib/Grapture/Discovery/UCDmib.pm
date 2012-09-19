@@ -1,10 +1,12 @@
-#!/usr/bin/env perl
+#!/bin/false
 # $Id: UCDmib.pm,v 1.3 2012/06/18 02:57:42 cportman Exp $
 
-package Grapture::JobsProcessor::Doer::Discovery::UCDmib;
+package Grapture::Discovery::UCDmib;
 
 use strict;
 use warnings;
+
+our $VERSION = (qw$Revision: 1.3 $)[1];
 
 sub discover {
 
@@ -16,7 +18,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
-            'graphorder'  => 10,
+            'graphorder' => 10,
         },
         {
             'metric'     => 'Load-5',
@@ -25,7 +27,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
-            'graphorder'  => 20,
+            'graphorder' => 20,
         },
         {
             'metric'     => 'Load-15',
@@ -34,7 +36,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'CPU',
             'graphgroup' => 'CPULoad',
-            'graphorder'  => 30,
+            'graphorder' => 30,
         },
         {
             'metric'      => 'CpuUserTime',
@@ -97,7 +99,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
-            'graphorder'  => 30,
+            'graphorder' => 30,
         },
         {
             'metric'     => 'MemCachedKB',
@@ -107,7 +109,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
-            'graphorder'  => 20,
+            'graphorder' => 20,
         },
         {
             'metric'     => 'MemBufferedKB',
@@ -117,7 +119,7 @@ sub discover {
             'category'   => 'System',
             'device'     => 'Memory',
             'graphgroup' => 'MemoryUsage',
-            'graphorder'  => 10,
+            'graphorder' => 10,
         },
     ];
 
