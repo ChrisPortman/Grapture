@@ -144,7 +144,7 @@ sub daemonize {
         exit 0;
     }
 
-    chdir '/';
+    #chdir '/';
     umask 0;
 
     open( STDIN,  '<', '/dev/null' );
@@ -169,7 +169,6 @@ sub REAPER {
     $pid = waitpid( -1, &WNOHANG );
 
     while ( $pid > 0 ) {
-        print "Child $pid is dead. Throw it away.\n";
         $jobsDoer->{'childCount'}--;
         delete $jobsDoer->{'childPids'}->{$pid};
 

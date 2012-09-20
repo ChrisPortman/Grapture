@@ -1,11 +1,8 @@
 #!/usr/bin/env perl
-# $Id: Discovery.pm,v 1.2 2012/08/20 23:47:07 cportman Exp $
 
 package Grapture::Discovery;
 
 use strict;
-use warnings;
-
 use Net::SNMP;
 use Log::Any qw ( $log );
 use Data::Dumper;
@@ -52,6 +49,8 @@ sub new {
     );
 
     my $self = bless \%self, $class;
+
+$log->info('Version 3');
 
     return $self;
 }
@@ -359,7 +358,6 @@ sub runDiscParams {
 
             #See if there should be a max value for this metric
             if ( $metricDef->{'maxbase'} ) {
-                print "Getting the max value for $target/$metric...\n";
                 $max = $session->get_request(
                     '-varbindlist' => [ $metricDef->{'maxbase'} ] );
                 ( $max and $max->{ $metricDef->{'maxbase'} } ) or next METRIC;

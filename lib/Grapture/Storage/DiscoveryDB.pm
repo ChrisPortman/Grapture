@@ -3,7 +3,6 @@
 package Grapture::Storage::DiscoveryDB;
 
 use strict;
-use warnings;
 use Data::Dumper;
 use DBI;
 use Log::Any qw ( $log );
@@ -87,8 +86,6 @@ sub run {
     my $sthupdtgt = $dbh->prepare($updTargetQuery);
 
     my %seenTargets;
-
-    $log->info( Dumper($self->{'resultset'}) );
 
     for my $result ( @{$self->{'resultset'}} ) {
 

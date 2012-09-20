@@ -193,6 +193,7 @@ sub loadModules {
             my $incmod = $self->{'doers'}->{$module}.'.pm';
             $incmod =~ s|::|/|g;
             $log->info('Clearing ' . $self->{'doers'}->{$module});
+            
             if ( $INC{ $incmod } ) {
                 $log->info('Clearing module ' . $incmod . ' from %INC');
                 delete $INC{ $incmod }
@@ -205,6 +206,7 @@ sub loadModules {
             my $incmod = $self->{'outputs'}->{$module}.'.pm';
             $incmod =~ s|::|/|g;
             $log->info('Clearing ' . $self->{'outputs'}->{$module});
+
             if ( $INC{ $incmod } ) {
                 $log->info('Clearing module ' . $incmod . ' from %INC');
                 delete $INC{ $incmod     }
@@ -474,10 +476,6 @@ sub log {
             $bsclientObj->put( {}, \%logentry );
         }
     }
-    else {
-        print STDERR "$message\n";
-    }
-
     return 1;
 }
 
@@ -540,7 +538,6 @@ sub _jobDoerThread {
         }
 
         if ( $expireTime and time > $expireTime ) {
-            print "Thread has expired and is ending\n";
             $exit++;
         }
     }

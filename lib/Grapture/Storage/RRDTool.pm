@@ -3,7 +3,6 @@
 package Grapture::Storage::RRDTool;
 
 use strict;
-use warnings;
 
 use Data::Dumper;
 use RRDs;

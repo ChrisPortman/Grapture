@@ -183,7 +183,6 @@
 package Grapture::FetchSnmp;
 
 use strict;
-use warnings;
 use Net::SNMP;
 use Data::Dumper;
 use Log::Any qw ( $log );
