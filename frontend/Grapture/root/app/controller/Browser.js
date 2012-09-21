@@ -573,6 +573,9 @@ function secureTools() {
     
 	if ( Grapture.loggedIn ) {
 		Ext.ComponentQuery.query('#addHostTool')[0].show();
+        if (Grapture.currentTarget) {
+            Ext.ComponentQuery.query('#editHostTool')[0].show();
+        }
 	}
 	else {
 		Ext.ComponentQuery.query('#addHostTool')[0].hide();
