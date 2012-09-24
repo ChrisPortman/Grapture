@@ -8,7 +8,7 @@ use Config::Auto;
 use Log::Any qw ( $log );
 use parent qw( Grapture );
 
-# Use a package var so that as config is accessed by different packages
+# Use package vars so that as config is accessed by different packages
 # throughout the execution of the overall program it can be cached.
 # Generally the program executable which would accept a cmd line opt
 # would call new with the conf file, then any other Grapture packages

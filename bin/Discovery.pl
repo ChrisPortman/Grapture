@@ -1,5 +1,4 @@
 #!/usr/bin/env perl
-#$Id: testDiscovery.pl,v 1.4 2012/06/18 02:57:37 cportman Exp $
 
 use strict;
 use Getopt::Long;
