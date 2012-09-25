@@ -405,7 +405,7 @@ sub runOutputModule {
 
         if ($work) {
 
-            $result = $work->run();
+            $result = $work->run($resultData);
             $error  = $work->error();
 
         }
@@ -422,6 +422,8 @@ sub runOutputModule {
     if ($result) {
         return $result;
     }
+    
+    $log->error("The $module output module did not return a result");
 
     return;
 }

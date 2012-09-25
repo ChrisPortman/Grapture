@@ -1,13 +1,13 @@
 #!/bin/false
 
-package Grapture::Storage::DiscoveryDB;
+package Grapture::Storage::MetaDB;
 
 use strict;
 use Data::Dumper;
 use DBI;
 use Grapture::Common::Config;
 use parent qw( Grapture );
-use Log::Any qw ( $log );
+use Log::Any qw( $log );
 
 sub new {
     my $class   = shift;
@@ -61,7 +61,7 @@ Creates a group that is used in the display tree.
 
     @args = (
         <group_name>,    # Required, is the name of the new group.
-        <parent_group>,  # Optional, if NULL, new group will be a
+        <parent_group>,  # String. if NULL, new group will be a
                          # new branch off the trunk.
     );
 
@@ -117,9 +117,6 @@ sub runFunction {
     my $function = shift || return;
     my @args     = @_;
     
-    my $requiredArgs;
-    my $dbh;
-    
     #Add any DB stored functions to this hash as they are created.  This
     #hash will be used to validate the value of $function and NULL fill
     #any shortage in @args.
@@ -130,26 +127,57 @@ sub runFunction {
         'target_discovered'           => 1,
     );
     
-    unless ($functionRequiredArgs{$function}
-            and scalar @args == $functionRequiredArgs{$function} ) {
-        $self->error("$function is not a valid DB function or the number of args is wrong");
+    unless ($functionRequiredArgs{$function}) {
+        $log->error("$function is not a valid DB function or the number of args is wrong");
         return;
+    }
+    unless ( scalar @args == $functionRequiredArgs{$function} ) {
+        $log->error("Incorrect number of arguments for function $function.");
+        return;
+    }        
+    
+    for my $idx ( 0 .. $#args ) {
+        if ( not defined($args[$idx]) or $args[$idx] =~ /^NULL$/i ) {
+            $args[$idx] = 'NULL';
+        }
+        else {
+            $args[$idx] = "'$args[$idx]'";
+        }
     }
     
     my $dbh   = $self->{'dbh'};
     my $query = 'SELECT '.$function.'('.join(', ', @args).') --';
     
-    my $sth = $dbh->prepare($query)
+    my $sth = $dbh->prepare($query);
     
     $sth->execute() or return;
     
     return 1;
 }
 
+sub getTargetsForDiscovery {
+    my $self = shift;
+    my $dbh  = $self->{'dbh'};
+    my @targets;
+        
+    my $query = q/SELECT target, snmpversion, snmpcommunity
+                  FROM targets
+                  WHERE lastdiscovered is NULL --/;
+                  
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+
+    for my $target ( @{ $sth->fetchall_arrayref( {} ) } ) {
+        push @targets, $target; #push the row hash
+    }
+    
+    return wantarray ? @targets : \@targets;    
+}
+
 sub storeDiscovery {
     my $self    = shift;
     my $results = shift;
-    my $dbh     = $self->{'dbh'};
     
     unless ( ref($results) and ref($results) eq 'ARRAY' ) {
         $log->error(
@@ -159,7 +187,7 @@ sub storeDiscovery {
 
     my %seenTargets;
 
-    for my $result ( @{$results}} ) {
+    for my $result ( @{$results} ) {
 
 		if ( $result->{'target'} ) {
 		    unless ( $seenTargets{ $result->{'target'} }) {
@@ -186,3 +214,31 @@ sub storeDiscovery {
 
     return 1;
 }
+
+sub getMetricPolls {
+    my $self    = shift;
+    my $dbh   = $self->{'dbh'};
+    my @polls;
+    
+    my $query = q/SELECT 
+                  a.target,  a.device,      a.metric, a.valbase,
+	              a.mapbase, a.counterbits, a.max,    a.category,
+	              a.module, a.output, a.valtype, b.snmpcommunity,
+	              b.snmpversion
+                  FROM targetmetrics a
+                  JOIN targets b on a.target = b.target
+                  WHERE a.enabled = true
+                  ORDER by a.target, a.metric --/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+    for my $poll ( @{ $sth->fetchall_arrayref( {} ) } ) {
+        push @polls, $poll; #push the row hash
+    }
+    
+    return wantarray ? @polls : \@polls;    
+}
+
+
+1;        

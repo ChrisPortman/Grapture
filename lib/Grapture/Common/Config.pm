@@ -5,7 +5,7 @@ package Grapture::Common::Config;
 use strict;
 use Data::Dumper;
 use Config::Auto;
-use Log::Any qw ( $log );
+use Log::Any qw( $log );
 use parent qw( Grapture );
 
 # Use package vars so that as config is accessed by different packages
@@ -15,7 +15,7 @@ use parent qw( Grapture );
 # or modules can call new with out it and get access to cached config.
 
 my $CONF_FILE;
-my %CONFIG;
+my $CONFIG;
 
 sub new {
     my $class    = shift;
@@ -37,12 +37,12 @@ sub new {
         $self->readConfig() || return;
     }
     
-    unless ( $CONF_FILE and %CONFIG ) {
+    unless ( $CONF_FILE and $CONFIG ) {
         $log->error(
             'Could not load configuration, configuration file not yet supplied');
         return;
     }
-
+    
     return $self;
 }
 
@@ -51,7 +51,7 @@ sub readConfig {
     
     return unless ( $CONF_FILE and -f $CONF_FILE );
     
-    %CONFIG = Config::Auto::parse($CONF_FILE) || return;
+    $CONFIG = Config::Auto::parse($CONF_FILE) || return;
     
     return 1;
 }
@@ -59,8 +59,8 @@ sub readConfig {
 sub getAllConfig {
     my $self   = shift;
     
-    if (%CONFIG) {
-        return wantarray ? %CONFIG : \%CONFIG;
+    if ($CONFIG) {
+        return wantarray ? %{$CONFIG} : $CONFIG;
     }
     
     return;
@@ -70,9 +70,11 @@ sub getSetting {
     my $self    = shift;
     my $setting = shift || return;
     
-    if ( $CONFIG{$setting} ) {
-        return $CONFIG{$setting};
+    if ( $CONFIG->{$setting} ) {
+        return $CONFIG->{$setting};
     }
     
     return;
 }
+
+1;

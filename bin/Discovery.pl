@@ -1,12 +1,15 @@
 #!/usr/bin/env perl
 
 use strict;
+use lib '../lib';
 use Getopt::Long;
 use Config::Auto;
 use Log::Dispatch::Config;
 use JSON::XS;
 use Data::Dumper;
-use DBI;
+use Grapture::Common::JobsInterface;
+use Grapture::Common::Config;
+use Grapture::Storage::MetaDB;
 
 my $cfgfile;
 
@@ -23,38 +26,18 @@ Log::Dispatch::Config->configure($cfgfile);
 my $logger = Log::Dispatch::Config->instance;
 $logger->{'outputs'}->{'syslog'}->{'ident'} = 'Discovery';
 
-my $GHCONFIG = getConfig($cfgfile);
-my $fifo     = $GHCONFIG->{'MASTER_FIFO'};
-my $DBHOST   = $GHCONFIG->{'DB_HOSTNAME'};
-my $DBNAME   = $GHCONFIG->{'DB_DBNAME'};
-my $DBUSER   = $GHCONFIG->{'DB_USERNAME'};
-my $DBPASS   = $GHCONFIG->{'DB_PASSWORD'};
-
-my $dbh = DBI->connect(
-    "DBI:Pg:dbname=$DBNAME;host=$DBHOST",
-    $DBUSER,
-    $DBPASS,
-
-    #{'RaiseError' => 1},
-);
-
-if ( not $dbh ) {
-    $logger->emergency('Could not connect to databse');
-    exit;
-}
-
-my $getTargetsQuery = q/select target, snmpversion, snmpcommunity
-                       from targets
-                       where lastdiscovered is NULL --/;
-
-my $sth = $dbh->prepare($getTargetsQuery);
-my $res = $sth->execute();
+my $config       = Grapture::Common::Config->new($cfgfile);
+my $metaDB       = Grapture::Storage::MetaDB->new();
+my $jobInterface = Grapture::Common::JobsInterface->new();
 
 my $module = 'Discovery';
 my $output = 'DiscoveryDB';
+
+my $targets = $metaDB->getTargetsForDiscovery();
+
 my @jobList;
 
-for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
+for my $targetRef ( @{ $targets } ) {
     my $target    = $targetRef->{'target'};
     my $version   = $targetRef->{'snmpversion'};
     my $community = $targetRef->{'snmpcommunity'};
@@ -71,12 +54,7 @@ for my $targetRef ( @{ $sth->fetchall_arrayref( {} ) } ) {
             'version'   => $version,
             'community' => $community,
         },
-        'outputOptions' => {
-            'dbhost' => $DBHOST,
-            'dbname' => $DBNAME,
-            'dbuser' => $DBUSER,
-            'dbpass' => $DBPASS,
-        },
+        'outputOptions' => {},
       };
 
     $logger->info("Queued discovery for $target");
@@ -86,31 +64,6 @@ unless (@jobList) {
     exit 1;
 }
 
-my $encodedJobs = encode_json( \@jobList );
-
-unless ($encodedJobs) {
-    exit 1;
-}
-
-if ( -p $fifo ) {
-    open( my $fifoFH, '>', $fifo )
-      or ( $logger->emergency(q/Could not open FIFO, can't continue./)
-        and exit );
-
-    print $fifoFH "$encodedJobs\n";
-    $logger->info('Added discovery jobs');
-    close $fifoFH;
-}
-else {
-    $logger->emergency('FIFO not created, is the pollerMaster running?');
-}
-
-#SUBS
-sub getConfig {
-    my $file = shift;
-    return unless ( $file and -f $file );
-    my $config = Config::Auto::parse($file);
-    return $config;
-}
+$jobInterface->submitJobs(\@jobList);
 
 exit 1;

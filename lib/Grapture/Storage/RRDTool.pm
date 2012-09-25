@@ -4,32 +4,21 @@ package Grapture::Storage::RRDTool;
 
 use strict;
 
+use Grapture::Common::Config;
 use Data::Dumper;
 use RRDs;
 use Log::Any qw ( $log );
 
-sub new {
-    my $class = ref $_[0] || $_[0];
-    my $data  = $_[1];
-    my $opts  = $_[2];
+#Package config vars
+my $rrdFileLoc;
+my $rrdCached;
+my $newGraphStart;
 
-    unless ( ref($data) and ref($data) eq 'ARRAY' ) {
-        $log->error('Data not an array');
-        return;
-    }
+sub new {
+    #Dummy till new() is deprecated
+    my $class = ref $_[0] || $_[0];
 
     my %selfHash;
-    $selfHash{'resultset'}     = $data;
-    $selfHash{'rrdfileloc'}    = $opts->{'rrdfileloc'};
-    $selfHash{'rrdcached'}     = $opts->{'rrdcached'};
-    $selfHash{'newGraphStart'} = time - 300;
-
-    unless ( $selfHash{'rrdfileloc'} ) {
-        $log->error('RRD file location not specified');
-        return;
-    }
-
-    $selfHash{'rrdfileloc'} =~ s|([^/])$|$1/|;
 
     my $self = bless( \%selfHash, $class );
 
@@ -38,10 +27,16 @@ sub new {
 
 sub run {
     my $self    = shift;
-    my $results = $self->{'resultset'};
+    my $results = shift;
 
     my $target;        #A job is per target.
     my %rrdUpdates;    #hash keyed on device.
+    
+    my $config     = Grapture::Common::Config->new();
+    $rrdFileLoc    = $config->getSetting('DIR_RRD') || return;
+    $rrdCached     = $config->getSetting('RRD_BIND_ADDR');
+    $newGraphStart = time - 300;
+    $rrdFileLoc =~ s|([^/])$|$1/|;
 
     #First rearrange the result hash so metrics per device are together.
     for my $result ( @{$results} ) {
@@ -79,7 +74,7 @@ sub run {
 
         #Add the hostname as a dir to the RRD file location.
         if ($target) {
-            $rrdFile = $self->{'rrdfileloc'} . $target . '/';
+            $rrdFile = $rrdFileLoc . $target . '/';
             unless ( -d $rrdFile ) {
                 $log->debug("Creating dir $rrdFile for $updDevice");
                 mkdir $rrdFile
@@ -178,16 +173,19 @@ sub _pushUpdate {
     $values =~ s/:$//;
 
     #if using daemon use a relative path (remove the RRD base location
-    if ( $self->{'rrdcached'} ) {
-        $rrdFile =~ s/^$self->{'rrdfileloc'}//;
-        @daemonSettings = ( '--daemon', $self->{'rrdcached'} );
+    if ( $rrdCached ) {
+        $rrdFile =~ s/^$rrdFileLoc//;
+        @daemonSettings = ( '--daemon', $rrdCached );
     }
 
     RRDs::update( $rrdFile, $updateHash->{'time'} . ':' . $values,
         @daemonSettings );
 
     my $error = RRDs::error;
-    $log->error($error) if $error;
+    if ($error) {
+        $log->error($error);
+        return;
+    }
 
     return 1;
 }
@@ -211,7 +209,7 @@ sub _createRrd {
     push @rras, 'RRA:AVERAGE:0.5:6:4320';
     push @rras, 'RRA:AVERAGE:0.5:24:8760';
 
-    RRDs::create( $file, '--step', '300', '--start', $self->{'newGraphStart'},
+    RRDs::create( $file, '--step', '300', '--start', $newGraphStart,
         @datasources, @rras, );
     my $error = RRDs::error;
     $log->error($error) if $error;

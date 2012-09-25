@@ -32,6 +32,7 @@ use Log::Dispatch::Config;
 use Log::Any::Adapter;
 use JSON::XS;
 use Grapture::JobsProcessor;
+use Grapture::Common::Config;
 
 #Setup
 my $bsserver;
@@ -118,11 +119,11 @@ sub loadConfig {
     my $cfgfile = shift;
 
     return unless ( $cfgfile and -f $cfgfile );
-    my $config = Config::Auto::parse($cfgfile);
+    my $GHCONFIG = Grapture::Common::Config->new($cfgfile);
 
-    $bsserver = $config->{'BS_SERVER'};
-    $bsport   = $config->{'BS_PORT'};
-    $bstube   = $config->{'BS_JOBQ'};
+    $bsserver = $GHCONFIG->getSetting('BS_SERVER');
+    $bsport   = $GHCONFIG->getSetting('BS_PORT');
+    $bstube   = $GHCONFIG->getSetting('BS_JOBQ');
 
     if ( $bsserver and $bsport and $bstube ) {
         return 1;

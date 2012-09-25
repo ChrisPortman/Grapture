@@ -1,24 +1,24 @@
 #!/usr/bin/env perl
 
 use strict;
+use lib '../lib';
 use File::Pid;
 use Config::Auto;
 use Log::Dispatch::Config;
 use Getopt::Long;
 use JSON::XS;
-use DBI;
 use POSIX;
+use Grapture::Common::JobsInterface;
+use Grapture::Common::Config;
+use Grapture::Storage::MetaDB;
 
-my $fifo;
 my $rrdbasedir;
 my $rrdcached;
-my $dbh;
-my $sth;
 my $config;
 my $cfgfile;
 my $interval;
 my $daemon;
-my $reload = 1;
+my $reload;
 my $run    = 1;
 my $ident  = 'PollerInput';
 
@@ -64,26 +64,19 @@ else {
     $logger->notice('Submitting a single batch of jobs.');
 }
 
-#Job harvesting query
-my $getSchedQuery = q/select 
-                     a.target,  a.device,      a.metric, a.valbase,
-	                 a.mapbase, a.counterbits, a.max,    a.category,
-	                 a.module, a.output, a.valtype, b.snmpcommunity,
-	                 b.snmpversion
-                     from targetmetrics a
-                     join targets b on a.target = b.target
-                     where a.enabled = true
-                     order by a.target, a.metric --/;
+loadConfig();
+my $metaDB       = Grapture::Storage::MetaDB->new();
+my $jobInterface = Grapture::Common::JobsInterface->new();
 
 #Main loop
 while ($run) {
     if ($reload) { loadConfig(); $reload = 0 }
 
-    my $res = $sth->execute();
+    my $polls = $metaDB->getMetricPolls();
 
     my %jobs;
 
-    for my $job ( @{ $sth->fetchall_arrayref( {} ) } ) {
+    for my $job ( @{ $polls } ) {
 
         #stuff from the DB
         my $target        = $job->{'target'};
@@ -109,10 +102,7 @@ while ($run) {
                     'community' => $job->{'snmpcommunity'},
                     'metrics'   => [],
                 },
-                'outputOptions' => {
-                    'rrdfileloc' => $rrdbasedir,
-                    'rrdcached'  => $rrdcached,
-                },
+                'outputOptions' => {},
             };
         }
 
@@ -126,56 +116,17 @@ while ($run) {
         push @jobList, $jobs{$key};
     }
 
-    my $encodedJobs = encode_json( \@jobList );
-
-    if ( -p $fifo ) {
-        open( my $fifoFH, '>', $fifo )
-          or ( $logger->critical(q|Could not open FIFO, can't continue.|)
-            and die );
-
-        print $fifoFH "$encodedJobs\n";
-
-        close $fifoFH;
-    }
-    else {
-        $logger->critical('FIFO not created, is the pollerMaster running?');
-        exit;
-    }
-
+    $jobInterface->submitJobs(\@jobList);
+    
     last unless $interval;
     sleep $interval;
 }
 
 ## SUBs
-sub getConfig {
-    my $file = shift;
-    return unless ( $file and -f $file );
-    my $config = Config::Auto::parse($file);
-    return $config;
-}
-
 sub loadConfig {
 
     $logger->info('Loading config');
-    $config     = getConfig($cfgfile);
-    $fifo       = $config->{'MASTER_FIFO'};
-    $rrdbasedir = $config->{'DIR_RRD'};
-    $rrdcached  = $config->{'RRD_BIND_ADDR'};
-    my $DBHOST = $config->{'DB_HOSTNAME'};
-    my $DBNAME = $config->{'DB_DBNAME'};
-    my $DBUSER = $config->{'DB_USERNAME'};
-    my $DBPASS = $config->{'DB_PASSWORD'};
-
-    $dbh->disconnect if $dbh;    # disconnect if connected
-    $dbh = DBI->connect(
-        "DBI:Pg:dbname=$DBNAME;host=$DBHOST", $DBUSER, $DBPASS,
-
-        #{'RaiseError' => 1},
-      )
-      or ( $logger->critical("Failed to connect to the database: $DBI::errstr")
-        and exit );
-
-    $sth = $dbh->prepare($getSchedQuery);
+    $config     = Grapture::Common::Config->new($cfgfile);
 
     return 1;
 }
