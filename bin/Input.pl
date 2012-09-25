@@ -12,8 +12,6 @@ use Grapture::Common::JobsInterface;
 use Grapture::Common::Config;
 use Grapture::Storage::MetaDB;
 
-my $rrdbasedir;
-my $rrdcached;
 my $config;
 my $cfgfile;
 my $interval;
