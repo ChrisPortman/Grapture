@@ -15,19 +15,17 @@ Grapture::FetchSnmp.pm
   );
   
   $obj->pollProcess( 
-    {             
-        'maps'  => { <OID> => 1, <OID> => 1 ... },
-        'polls' => { <device> => 
-            [
-                { 
-                    'metric'      => <metric_name>,
-                    'device'      => <device_name>,
-                    'valbase'     => <OID>,
-                },
-                ...
-            ]  
-        }
-    }
+      [
+          { 
+              'metric'  => <metric_name>,
+              'device'  => <device_name>,
+              'valbase' => <OID>,
+              'mapbase' => <oid>, #Include for devices that have an
+                                  #index eg Network interfaces. This
+                                  #is the oid that has the index table.
+          },
+          ...
+      ]  
   );
 
 
@@ -37,135 +35,6 @@ Provides an OO interface to a target with methods to then retrive
 details from the target.
   
 =head1 METHODS
-
-
-
-=head1 DATA STRUCTURE
-
-The following describes in further detail each of the key/values that
-make up the data structure and how they are used.
-
-=head2 Target
-
-Target is the IP address or hostname (that can be resolved to the
-correct IP address) of the system to be polled/monitored.
-
-=head2 Version
-
-The version referes to the SNMP version that should be used when
-retrieving data from the system.  This module currently supports
-versions 1 and 2 (aka 2c) and thus the value for version should be '1'
-or '2'.  At this time, version 3 is not supported but will be added
-when the need arrises.
-
-=head2 Community
-
-The community value should be the SNMP community configured on the
-target allowing read access.
-
-=head2 Metrics
-
-Metrics is a key that stores a list of hash refs describing the
-individual pieces of data that should be retrived from the device and
-how to handle it.  Each hash will have the following keys (optional
-ones will be marked so):
-
-=head3 Name
-
-Name is the name of the metric such as 'Octects In'
-
-=head3 Device (optional)
-
-As discussed previously, device referes to a specific component in the
-system such as a network interface or hard drive.  If this is not
-provided, the metric is assumed to relate to the system as a whole and
-provided 'system' as the device name.
-
-=head3 Mapbase (optional)
-
-Mapbase is used in the mapping process. The mapping process allows the
-polling logic to poll devices specified by name (eg 'eth0'). The map
-base should be an OID that referes to a table that contains the device
-names. The retrieved table is then stored as a hash whos keys are the
-available device names and the values are the last digit in the full
-oid relating to the device name. This digit, when appended to the metric
-table OID (base), yeilds a metric value specific to the desired device.
-
-Using a mapping logic is important becuase:
-a) It allows us to use the friendly device name rather than having to
- know the devices index in the SNMP tables.
-b) There is no guarentee that a specific device will maintain the same
- index in the SNMP tables accross reboots.
-
-Another noteworthy point is that if the system is a large switch for
-example with many interfaces being polled, the metric hash for each
-interface will have the same map base OID. Despite this, the map base
-will only be retrieved once and reused for each interface.
-
-=head3 Base
-
-This is the base oid corresponding to the metric being retrieved. It
-may be a full OID for a leaf object in the case of a system wide value
-(such as 'load') or it may be a table OID, in which case a value from
-the map table (see Mapbase) would be appended to derive the complete
-OID.
-
-=head3 CounterBits (optional)
-
-When polling counters generally they can be 32bit or 64bit counters
-(often systems will offer the same metric in both 32 and 64 bit using
-different OIDs). Knowing which we are using is important because once
-counters reach their maximum value ( 2 ** counterbits ) they restart
-(aka 'roll') from zero.  Counter roll needs to be accounted for to
-avoid wierd spikes in graphes and strange looking data. The counterbits
-value is not used in this particular module but rather passed on to the
-munging functions to help in their manipulations of the data.
-
-=head2 OUTPUT
-
-The result and return value is a reference to an array of hash
-references each hash ref is the original hashref stored in metrics key
-of the input with a couple of keys added:
-
-=head3 Value
-
-This is the value of the metric after the munging function, if
-applicable, applied.
-
-=head3 Timestamp
-
-This is a timestamp in seconds since the POLLER WORKER systems epoc.
-It is not the time from the target system.
-
-=head3 Oid
-
-This is the actual oid queried for the gigen metric on the given device.
-It will be the base plus the map index if applicable.
-
-=head3 Target
-
-This is simply the target value from the input copied to the metric
-output so that the information is available to further processing.
-
-=head3 Output Structure
-
-The structure of the output looks like the following, see the above
-sections for descriptions on each key/value.
-
-  [
-      { name        => '<metricname>',
-	    device      => '<device>',
-	    mapbase     => '<mapbase>',
-	    base        => '<oidbase>',
-	    counterbits => '<No.ofBits>'
-	    munge       => '<mungename>',
-	    value       => '<postMungeResult>',
-	    timestamp   => '<secsSinceEpoc>',
-	    oid         => '<fullOid>',
-	    target      => '<target'>,
-	  },
-	  ...,
-  ]
 
 =cut
 
@@ -233,6 +102,7 @@ sub new {
     }
 
     $params->{'snmpSession'} = $session;
+    $params->{'snmpCounter'} = 0;
 
     my $self = bless $params, $class;
 
@@ -245,36 +115,51 @@ This method takes a collection of polling tasks and processes each one
 and returns the task with the addition of the value and the timestamp at
 which the actual value was retrieved.
 
-Requires a single argument which must be a hash ref. The hash contains
-2 keys, 'maps' and 'polls'.  Maps contains a reference to an array that
-is a list of all the mapbase oids applicable to target and the polls for
-it.  'polls' is a hash ref with a key for each device on the target, the
-values for which describe each metric to poll for the device.
+Requires either a single argument which is an ARRAY ref that contains
+one or more HASH refs or an arbitrary number of HASH ref arguments. 
 
-The method will first poll the target for each oid in the maps list to
-build a library of device indexes this way we only have to do it once 
-before we start polling the metrics.  Then process each device in the
-'polls'.  If the device is found in the device map library, the valbase
-is treated as a table and the whole table is retrieved and stored in a
-cache. This way if another device with the same metric (thus value table
-comes up, we can take the result straight from the cache.
+For each hash in the array or list, if there is a mabbase, it will see if
+we already have the device ID cached, if not the index table will be
+retrived using the mapbase oid and all the devices and their indexes
+will be cached ensuring that if there are 100 interfaces, we only get
+the index table once.
+
+The, again if its there is a mapbase, the valbase will also be a table.
+We get the whole table and cache the entire table of values.  Again, if
+there are 100 interfaces, we only get the values for each metric once.
+
+If there is no mapbase, then a simple get for the specific oid in valbase
+is done.
 
   my $pollResults = $target->pollProcess(
-      {
-          maps  => [ <oid>, <oid>, ... ],
-          polls => {
-              <device> => {
-                  metric  => <metric_name>,
-                  valbase => <oid>,
-              },
-              ...
-          }
+     [
+          {
+              device  => <device_name>,
+              metric  => <metric_name>,
+              valbase => <oid>,
+              mapbase => <oid>,  #Include for devices that have an
+                                 #index eg Network interfaces. This
+                                 #is the oid that has the index table.
+          },
+          ...
+      ]
+  );
+
+The return is the same array of poll hashes as provided in the poll key
+with 'value' and 'timestamp' keys added.  In reallity there will be many
+other keys in the polls hashes however they are not relevant here but 
+probably relevant to the Grapture output module.  This is why we simply
+augment the supplied data structure with new values.
+
+The return is either a hash or reference to a hash depending on the 
+calling context.
+
 
 =cut
 
 sub pollProcess {
     my $self   = shift;
-    my $params = shift;
+    my $params = ref $_[0] eq 'ARRAY' ? shift : \@_ ;
     
     if (ref $params eq 'HASH') {
         unless (     ref($params->{'maps'}) eq 'ARRAY'
@@ -293,32 +178,23 @@ sub pollProcess {
     my $target    = $self->{'target'};
     my $version   = $self->{'version'};
     my $community = $self->{'community'};
-    my @maps      = @{ $params->{'maps'} };
     my @polls     = @{ $params->{'polls'} };
-    my %mapResultsHash;
-    my @mapResults;
 
     $log->debug(
         "Starting SNMP fetch for $target with community string $community");
-
-    #get all the map tables.
-    for my $mapBase ( @maps ) {
-        $log->debug("Getting map table $mapBase for $target...");
-        my $result = $self->getMapping($mapBase) || return;
-
-        %mapResultsHash = ( %mapResultsHash, %{$result} );
-    }
-
+    
     #do the polling
     my @pollsResults;
     my %queuedValmaps;
-    my %fullResultHash;
+    my %fullResultCache;
+    my %mapResultsCache;
     my %timestamps;
 
     for my $poll ( @polls ) {
         my $device  = $poll->{'device'};
         my $metric  = $poll->{'metric'};
         my $valbase = $poll->{'valbase'};
+        my $mapbase = $poll->{'mapbase'} || undef;
         
         $log->debug("Polling $metric for $device on $target...");
 
@@ -326,27 +202,38 @@ sub pollProcess {
         $oid = $valbase;
         $oid =~ s/\.$//;    #remove any trailing period
 
-        #add the mapped index if applicable.
-        if ( $mapResultsHash{$device} ) {
-            $oid .= '.'.$mapResultsHash{$device};
+        if ($mapbase) {
+            if ( defined $mapResultsCache{ $device } 
+                 or defined $mapResultsCache{ $metric } ) {
+                
+                $oid .= '.'.$mapResultsCache{$device} 
+                  || $mapResultsCache{ $metric };
+            }
+            else {
+                #We havent grabed this map table yet. Get it and cache it
+                my $mapTable = $self->getMapping($mapbase) || return;
+                %mapResultsCache = ( %mapResultsCache, %{ $mapTable } );
+                $oid .= '.'.$mapResultsCache{ $device } 
+                  || $mapResultsCache{ $metric };
+           }
         }
-        elsif ( $mapResultsHash{ $metric } ) {
-            $oid .= '.'.$mapResultsHash{ $metric };
-        }
+                
 
         #if this is a mapped metric, then get the whole val table
         #otherwise just get the oid
         my $result;
-        unless ( exists( $fullResultHash{$oid} ) ) {
-
-            if (    $mapResultsHash{ $device } 
-                 or $mapResultsHash{ $metric } ) {
+        
+        unless ( exists( $fullResultCache{$oid} ) ) {
+            $log->debug("$oid not in cache. Must fetch");
+            
+            if (    $mapResultsCache{ $device } 
+                 or $mapResultsCache{ $metric } ) {
 
                 $result = $self->getTable( $valbase );
                 $timestamps{ $valbase } = time();
 
                 for my $key ( keys( %{$result} ) ) {
-                    $fullResultHash{$key} = $result->{$key};
+                    $fullResultCache{$key} = $result->{$key};
                 }
 
             }
@@ -354,7 +241,7 @@ sub pollProcess {
 
                 $result = $self->getValue( $valbase );
                 $timestamps{ $valbase } = time();
-                $fullResultHash{$oid} = $result;
+                $fullResultCache{$oid} = $result;
 
             }
 
@@ -364,12 +251,15 @@ sub pollProcess {
             }
 
         }
+        else {
+            $log->debug("Found $oid in cache");
+        }
 
         #get the timestamp from when the snmp data was actually
         #collected which could be many seconsds prior to doing the
         #processing.
         $poll->{'timestamp'} = $timestamps{ $valbase };
-        $poll->{'value'}     = $fullResultHash{ $oid };
+        $poll->{'value'}     = $fullResultCache{ $oid };
         
         $log->debug("Got ".$poll->{'value'}." for $metric for $device on $target...");
 
@@ -377,7 +267,7 @@ sub pollProcess {
 
     }
 
-    $log->debug("Finished snmp getting $target");
+    $log->info("Finished snmp getting $target using ".$self->{'snmpCounter'}.' SNMP gets.');
 
     return \@pollsResults;
 }
@@ -408,6 +298,8 @@ sub getTable {
         return;
     }
     
+    $self->{'snmpCounter'} ++;
+    
     return wantarray ? %{$result} : $result;
 }
 
@@ -436,6 +328,8 @@ sub getValue {
         
     $result = $result->{$oid};
     
+    $self->{'snmpCounter'} ++;
+    
     return $result;
 }
 
@@ -456,7 +350,7 @@ sub getMapping {
     # which is the last number in the OID.
     for my $key ( keys( %mapping ) ) {
 
-        unless ( $mapping{$key} =~ s/\.(\d+)$/$1/ ) {
+        unless ( $mapping{$key} =~ s/.+(\d+)$/$1/ ) {
             $log->error('While building a mapping from '
                         .$tableOid.' on '.$self->{'target'}
                         .', the index for '.$key.' could not be determined. '
@@ -465,7 +359,8 @@ sub getMapping {
             delete $mapping{$key};
         }
     }
-    
+
+    $self->{'snmpCounter'} ++;
     return wantarray ? %mapping : \%mapping;
 }
 
