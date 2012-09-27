@@ -117,7 +117,7 @@ sub new {
 
     #These values can be suplied in %args or given defaults here.
     $self->{'maxThreadTime'} = $args->{'maxThreadTime'} || 3600;
-    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 5;
+    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 1;
     $self->{'childCount'}    = $args->{'childCount'}    || 0;
     $self->{'childPids'}     = {};
 
@@ -359,7 +359,7 @@ sub runDoerModule {
         my $work = $self->{'doers'}->{$module}->new($options);
         $work or die "Couldn't construct object for module $module";
 
-        $result = $work->run();
+        $result = $work->run($options);
 
         unless ($result) {
             $error = $work->error();

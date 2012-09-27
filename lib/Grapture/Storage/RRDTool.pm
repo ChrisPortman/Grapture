@@ -29,7 +29,9 @@ sub run {
     my $self    = shift;
     my $results = shift;
 
-    my $target;        #A job is per target.
+    my $target      = $results->{'target'}  || return;
+    my $pollResults = $results->{'results'} || return;
+    
     my %rrdUpdates;    #hash keyed on device.
     
     my $config     = Grapture::Common::Config->new();
@@ -39,7 +41,7 @@ sub run {
     $rrdFileLoc =~ s|([^/])$|$1/|;
 
     #First rearrange the result hash so metrics per device are together.
-    for my $result ( @{$results} ) {
+    for my $result ( @{$pollResults} ) {
 
         #Simplify some vars
         my $category  = $result->{'category'};
@@ -72,22 +74,9 @@ sub run {
         my $rrdFile;
         my $category = delete $rrdUpdates{$updDevice}->{'category'};
 
-        #Add the hostname as a dir to the RRD file location.
-        if ($target) {
-            $rrdFile = $rrdFileLoc . $target . '/';
-            unless ( -d $rrdFile ) {
-                $log->debug("Creating dir $rrdFile for $updDevice");
-                mkdir $rrdFile
-                  or return;
-            }
-        }
-        else {
-            return;
-        }
-
         # Add the category to RRD file location if applicable
         if ($category) {
-            $rrdFile .= $category . '/';
+            $rrdFile .= $rrdFileLoc.$target.'/'.$category . '/';
             unless ( -d $rrdFile ) {
                 $log->debug("Creating dir $rrdFile for $updDevice");
                 mkdir $rrdFile
@@ -153,13 +142,13 @@ sub _pushUpdate {
 
     #check that $updateHash is a hash ref.
     unless ( ref($updateHash) and ref($updateHash) eq 'HASH' ) {
-        print "Arg not a hash\n";
+        $log->error('RRDTool: The updateHash is not a valid format');
         return;
     }
 
     if ($rrdFile) {
         unless ( -f $rrdFile ) {
-            print "Creating file $rrdFile for\n";
+            $log->debug( "Creating file $rrdFile for" );
             $self->_createRrd( $rrdFile, $updateHash )
               or return;
         }
@@ -178,12 +167,13 @@ sub _pushUpdate {
         @daemonSettings = ( '--daemon', $rrdCached );
     }
 
+    $log->debug("RRDTool: Sending updates to $rrdFile");
     RRDs::update( $rrdFile, $updateHash->{'time'} . ':' . $values,
         @daemonSettings );
 
     my $error = RRDs::error;
     if ($error) {
-        $log->error($error);
+        $log->error('Could not update '.$rrdFile.': '.$error);
         return;
     }
 
@@ -212,7 +202,7 @@ sub _createRrd {
     RRDs::create( $file, '--step', '300', '--start', $newGraphStart,
         @datasources, @rras, );
     my $error = RRDs::error;
-    $log->error($error) if $error;
+    $log->error('Could not create RRD file: '.$error) if $error;
 
     return 1;
 }
