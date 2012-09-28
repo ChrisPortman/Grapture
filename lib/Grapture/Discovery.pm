@@ -4,6 +4,7 @@ package Grapture::Discovery;
 
 use strict;
 use Net::SNMP;
+use Grapture::FetchSnmp;
 use Log::Any qw ( $log );
 use Data::Dumper;
 
@@ -31,15 +32,7 @@ sub new {
         die "Options must include 'target', 'version' and 'community'\n";
     }
 
-    my ( $session, $error ) = Net::SNMP->session(
-        '-hostname'  => $options->{'target'},
-        '-version'   => $options->{'version'},
-        '-community' => $options->{'community'},
-    );
-
-    unless ($session) {
-        die "$error\n";
-    }
+    my $session = Grapture::FetchSnmp->new( $options );
 
     my %self = (
         'target'  => $options->{'target'},
@@ -49,8 +42,6 @@ sub new {
     );
 
     my $self = bless \%self, $class;
-
-$log->info('Version 3');
 
     return $self;
 }
@@ -103,13 +94,7 @@ sub runDiscParams {
     #Get the sysdesc first.  It will be needed later.  Its also going to
     #a common requirenment of any device.  We also can use getting the
     #sysdesc as an availabiltiy test for the device
-    $sysDesc =
-      $session->get_request( '-varbindlist' => ['.1.3.6.1.2.1.1.1.0'] );
-
-    if ( $sysDesc->{'.1.3.6.1.2.1.1.1.0'} ) {
-        $sysDesc = $sysDesc->{'.1.3.6.1.2.1.1.1.0'};
-    }
-    else {
+    unless ( $sysDesc = $session->getValue( '.1.3.6.1.2.1.1.1.0', 1 ) ){
         $self->error("$target did not respond");
         return;
     }
@@ -118,47 +103,18 @@ sub runDiscParams {
     for my $metricDef ( @{$params} ) {
         next METRIC unless ref($metricDef) and ref($metricDef) eq 'HASH';
 
-        my $metric = $metricDef->{'metric'};
+        my $metric = $metricDef->{'metric'}   || next METRIC;
+        my $valbase = $metricDef->{'valbase'} || next METRIC;
+        my $filterInclude;
+        my $max;
+
         unless ( $metric =~ /^[a-zA-Z0-9_\-]{1,19}$/ ) {
             $log->error("Metric name $metric is invalid. Skipping");
             next METRIC;
         }
 
-        my $valbase = $metricDef->{'valbase'};
-        my $filterInclude;
-        my $max;
-
         if ( $authoritives{$metric} ) {
-
             #We already have a metric def that is authoritive. Skip
-            next METRIC;
-        }
-
-        if ( $metricDef->{'group'} ) {
-
-            #this is a group definition hash
-            #If we already have the group sorted. skip.
-
-            next METRIC if $group;
-
-          EXPRESSION:
-            for my $exp ( @{ $metricDef->{'sysDesc'} } )
-            {    # FIXME, i wonder if we can move this out to a config file?
-
-                if ( $sysDesc =~ m/$exp/ ) {
-                    $group = $metricDef->{'group'};
-                    $log->info("Setting Group $group for $target");
-                    last EXPRESSION;
-                }
-
-            }
-
-            push @return,
-              {
-                'group'  => $group,
-                'target' => $target,
-              };
-
             next METRIC;
         }
 
@@ -170,38 +126,25 @@ sub runDiscParams {
             $filterInclude = '';
         }
 
-        #essential params
-        next METRIC
-          unless ( $metricDef->{'metric'}
-            and $metricDef->{'valbase'} );
-
         if ( $metricDef->{'mapbase'} ) {
             my $map;
             my $vals;
 
-            #test the valbase
-
-            $session->error();
-            $vals = $session->get_table(
-                '-baseoid'        => $metricDef->{'valbase'},
-                '-maxrepetitions' => 10,
-            ) or next METRIC;
+            $log->debug("Getting values for $metric");
+            $vals = $session->getTable( $valbase, 1 )
+              || next METRIC;
 
             #we need to get the table for map base
-            $map = $session->get_table(
-                '-baseoid'        => $metricDef->{'mapbase'},
-                '-maxrepetitions' => 10,
-            ) or next METRIC;
-
-            $map = { reverse( %{$map} ) };
+            $log->debug("Getting mapbase for $metric");
+            $map = $session->getMapping( $metricDef->{'mapbase'}, 1 )
+              || next METRIC;
 
             $log->debug("Got the map table for $metric");
 
             if ( $metricDef->{'maxbase'} ) {
-                $max = $session->get_table(
-                    '-baseoid'        => $metricDef->{'maxbase'},
-                    '-maxrepetitions' => 10,
-                ) or next METRIC;
+                $log->debug("Getting maxbase for $metric");
+                $max = $session->getTable( $metricDef->{'maxbase'}, 1 )
+                  || next METRIC;
 
          #knock the max keys down to just the index part of the OID (last digit)
                 for my $key ( keys %{$max} ) {
@@ -222,7 +165,7 @@ sub runDiscParams {
                 #metric.  Not all devices in the map will have all the
                 #metrics we've specified
 
-                my ($devId) = $map->{$device} =~ m/(\d+)$/;
+                my $devId = $map->{$device};
                 my $devValOid = $valbase . '.' . $devId;
                 $devValOid =~ s/\.\././;
 
@@ -271,7 +214,7 @@ sub runDiscParams {
                         }
                         else {
                             $log->debug(
-"Determined that $device SHOULD NOT be monitored"
+                                "Determined that $device SHOULD NOT be monitored"
                             );
                         }
                     }
@@ -343,26 +286,16 @@ sub runDiscParams {
             }
 
             #test the valbase
-            my $val = $session->get_request(
-                '-varbindlist' => [ $metricDef->{'valbase'} ] )
-              or next METRIC;
-
-            unless ( defined( $val->{ $metricDef->{'valbase'} } )
-                and $val->{ $metricDef->{'valbase'} } !~
-                /noSuch(?:Object|Instance)/ )
-            {
-                next METRIC;
-            }
+            my $val = $session->getValue( $valbase, 1 );
+            defined $val or next METRIC;  #Could be zero
 
             $log->debug("Found $metric on $target $device");
 
             #See if there should be a max value for this metric
             if ( $metricDef->{'maxbase'} ) {
-                $max = $session->get_request(
-                    '-varbindlist' => [ $metricDef->{'maxbase'} ] );
-                ( $max and $max->{ $metricDef->{'maxbase'} } ) or next METRIC;
+                $max = $session->getValue( $metricDef->{'maxbase'}, 1 );
+                defined $max or next METRIC;  #Could be zero
 
-                $max = $max->{ $metricDef->{'maxbase'} };
                 $log->debug("Got the max $max for $metric");
             }
 
@@ -400,7 +333,6 @@ sub runDiscParams {
             $authoritives{$metric} = 1;
         }
         $log->info("$metric found on $target");
-
     }
 
     return wantarray ? @return : \@return;

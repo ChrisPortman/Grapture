@@ -31,7 +31,7 @@ sub includeFilter {
     my $options = shift;
     my $session = shift;
 
-    return if ( $device =~ m|^/| );
+    return 1 if ( $device =~ m|^/| );
 
     return;
 }

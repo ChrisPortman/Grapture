@@ -224,13 +224,10 @@ package Grapture::JobsProcessor::Doer::FetchSnmp;
             }
         ) || ( $log->error('Failed to create Grapture::Snmp object') and return);
             
-        #Build a hash for the Grapture::FetchSnmp->pollProcess() process.
-        my %jobParams = ( $params->{'metrics'} );
-        
         #build the result data structure
         my %result;
         $result{'target'}  = $target;
-        $result{'results'} = $GraptureSnmp->pollProcess(\%jobParams) 
+        $result{'results'} = $GraptureSnmp->pollProcess($params->{'metrics'}) 
           || ( $log->error('Grapture::Snmp did not return a result') and return);
         
         return wantarray ? %result : \%result;

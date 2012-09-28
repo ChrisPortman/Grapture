@@ -167,7 +167,7 @@ sub _pushUpdate {
         @daemonSettings = ( '--daemon', $rrdCached );
     }
 
-    $log->debug("RRDTool: Sending updates to $rrdFile");
+    $log->debug("RRDTool: Sending updates to $rrdFile: $values");
     RRDs::update( $rrdFile, $updateHash->{'time'} . ':' . $values,
         @daemonSettings );
 

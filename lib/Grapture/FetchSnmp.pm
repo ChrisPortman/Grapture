@@ -160,17 +160,6 @@ calling context.
 sub pollProcess {
     my $self   = shift;
     my $params = ref $_[0] eq 'ARRAY' ? shift : \@_ ;
-    
-    if (ref $params eq 'HASH') {
-        unless (     ref($params->{'maps'}) eq 'ARRAY'
-                 and ref($params->{'polls'}) eq 'ARRAY' ){
-            return;
-        }
-    }
-    else {
-        $log->error( 'pollProcess expects a hash ref' );
-        return;
-    }
 
     $|++;
 
@@ -178,7 +167,7 @@ sub pollProcess {
     my $target    = $self->{'target'};
     my $version   = $self->{'version'};
     my $community = $self->{'community'};
-    my @polls     = @{ $params->{'polls'} };
+    my @polls     = @{ $params };
 
     $log->debug(
         "Starting SNMP fetch for $target with community string $community");
@@ -275,6 +264,8 @@ sub pollProcess {
 sub getTable {
     my $self     = shift;
     my $tableOid = shift || return;
+    my $quiet    = shift;
+    
     my $snmpObj = $self->{'snmpSession'};
     my $result;    
     my $error;
@@ -291,10 +282,12 @@ sub getTable {
     );
     
     unless ( $result ) {
-        $log->error( "An error occured retriving $tableOid from "
-                     .$self->{'_target'}.' : '
-                     .$snmpObj->error()
-        );
+        unless ( $quiet ) {
+            $log->error( "An error occured retriving $tableOid from "
+                         .$self->{'target'}.' : '
+                         .$snmpObj->error()
+            );
+        }
         return;
     }
     
@@ -304,8 +297,9 @@ sub getTable {
 }
 
 sub getValue {
-    my $self = shift;
-    my $oid =shift || return;
+    my $self  = shift;
+    my $oid   =shift || return;
+    my $quiet = shift;
     
     my $snmpObj = $self->{'snmpSession'};
     my $result;    
@@ -318,11 +312,17 @@ sub getValue {
 
     $result = $snmpObj->get_request( -varbindlist => [ $oid ] );
     
-    unless ( $result ) {
-        $log->error( "An error occured retriving $oid from "
-                     .$self->{'_target'}.' : '
-                     .$snmpObj->error()
-        );
+    unless ( defined $result ) {  # Result my be 0 and valid.
+        unless ( $quiet ) {
+            $log->error( "An error occured retriving $oid from "
+                         .$self->{'target'}.' : '
+                         .$snmpObj->error()
+            );
+        }
+        return;
+    }
+    
+    if ( $result->{$oid} =~ /noSuch(?:Object|Instance)/ ) {
         return;
     }
         
@@ -338,8 +338,9 @@ sub getMapping {
     #number of the oid is the value eg 'eth0' => 1
     my $self     = shift;
     my $tableOid = shift || return;
+    my $quiet    = shift;
 
-    my $table = $self->getTable( $tableOid);
+    my $table = $self->getTable( $tableOid, $quiet );
     
     # Reverse the table so that the values become the keys.
     # It is possible that some of the entries are lost if there are 
@@ -350,7 +351,7 @@ sub getMapping {
     # which is the last number in the OID.
     for my $key ( keys( %mapping ) ) {
 
-        unless ( $mapping{$key} =~ s/.+(\d+)$/$1/ ) {
+        unless ( $mapping{$key} =~ s/.+\.(\d+)$/$1/ ) {
             $log->error('While building a mapping from '
                         .$tableOid.' on '.$self->{'target'}
                         .', the index for '.$key.' could not be determined. '
