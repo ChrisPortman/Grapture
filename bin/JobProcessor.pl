@@ -100,7 +100,7 @@ while ($run) {    #loop almost indefinitely
     my $thread = $jobsDoer->startThread();
 
     $logger->info(
-        'Started $thread. ' . $jobsDoer->{'childCount'} . ' running' )
+        "Started thread $thread. " . $jobsDoer->{'childCount'} . ' running' )
       if $thread;
     $logger->info('Slots are full.') unless $thread;
 

@@ -18,7 +18,7 @@ my $interval;
 my $daemon;
 my $reload;
 my $run    = 1;
-my $ident  = 'PollerInput';
+my $ident  = 'Input Daemon';
 
 # Process command line options
 my $optsOk = GetOptions(
@@ -52,14 +52,14 @@ die "Process is already running\n" if $pidfile->running;
 $pidfile->write or die "Could not create pidfile: $!\n";
 
 #Init notices
-$logger->notice('Input starting...');
-$logger->notice("Using config file $cfgfile");
+$logger->notice('Input Daemon: Input starting...');
+$logger->notice("Input Daemon: Using config file $cfgfile");
 
 if ($interval) {
-    $logger->notice("Submitting jobs every $interval seconds.");
+    $logger->notice("Input Daemon: Submitting jobs every $interval seconds.");
 }
 else {
-    $logger->notice('Submitting a single batch of jobs.');
+    $logger->notice('Input Daemon: Submitting a single batch of jobs.');
 }
 
 loadConfig();
@@ -69,9 +69,11 @@ my $jobInterface = Grapture::Common::JobsInterface->new();
 #Main loop
 while ($run) {
     if ($reload) { loadConfig(); $reload = 0 }
-
+    
+    $logger->info('Input Daemon: Getting polling target metrics');
     my $polls = $metaDB->getMetricPolls();
-
+    $logger->info('Input Daemon: Got '.scalar @{$polls}.' metrics to poll.');
+    
     my %jobs;
 
     for my $job ( @{ $polls } ) {
@@ -113,8 +115,10 @@ while ($run) {
     for my $key ( keys %jobs ) {
         push @jobList, $jobs{$key};
     }
-
+    
+    $logger->info('Input Daemon: Submitting '.scalar @jobList.' job(s)');
     $jobInterface->submitJobs(\@jobList);
+    $logger->info('Input Daemon: '.scalar @jobList.' job(s) added.');
     
     last unless $interval;
     sleep $interval;
@@ -123,8 +127,9 @@ while ($run) {
 ## SUBs
 sub loadConfig {
 
-    $logger->info('Loading config');
-    $config     = Grapture::Common::Config->new($cfgfile);
+    $logger->info('Input Daemon: Loading config');
+    $config = Grapture::Common::Config->new($cfgfile);
+    $logger->info('Input Daemon: Config loaded');
 
     return 1;
 }
@@ -153,5 +158,5 @@ sub daemonize {
 }
 
 $pidfile->remove;
-$logger->notice('Shutting Down');
+$logger->notice('Input Daemon: Shutting Down');
 exit;

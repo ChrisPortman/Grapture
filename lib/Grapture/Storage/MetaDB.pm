@@ -233,11 +233,8 @@ sub getMetricPolls {
     my $sth = $dbh->prepare($query);
     my $res = $sth->execute() or return;
 
-    for my $poll ( @{ $sth->fetchall_arrayref( {} ) } ) {
-        push @polls, $poll; #push the row hash
-    }
-    
-    return wantarray ? @polls : \@polls;    
+    return wantarray ? @{ $sth->fetchall_arrayref( {} ) } 
+                     : $sth->fetchall_arrayref( {} );    
 }
 
 

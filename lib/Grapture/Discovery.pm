@@ -3,7 +3,6 @@
 package Grapture::Discovery;
 
 use strict;
-use Net::SNMP;
 use Grapture::FetchSnmp;
 use Log::Any qw ( $log );
 use Data::Dumper;

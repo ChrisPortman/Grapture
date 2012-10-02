@@ -37,7 +37,7 @@
   Jobs can be submitted in batches and should be submitted to the master
   as a JSON string via the FIFO. Its structure is as follows:
 
-  $job = [
+  $jobs = [
       {
 		  'process'  => <processor module>,
 		  'output'   => <output module>,
@@ -49,7 +49,7 @@
 			  <hash of options required by the output module>
 		  }
       },
-      ...
+      @more_hash_refs,
   ];
 
   The 'process' key is really the only mandatory key.  Without this key,
@@ -312,7 +312,7 @@ sub jobFetchProc {
 			}
 		}
 
-		$logger->debug('JobFetch - Waiting for Jobs');
+		$logger->info('JobFetch - Waiting for Jobs');
    		unless ( open($fifoFh, '<', $fifo) ) {
 			#check run here, we may have unblocked due to exiting
 			last unless $run;
@@ -336,7 +336,7 @@ sub jobFetchProc {
 			next;
 	    };
 
-	    $logger->debug('JobFetch - Job batch recieved');
+	    $logger->info('JobFetch - Job batch recieved');
 
 		JOB:
 		for my $job ( @{$input} ) {
@@ -408,8 +408,8 @@ sub logFetchProc {
         eval {
 			#Need to have specific sig handlers for the reserve so we can
 			#stop it.
-			local $SIG{'INT'}   = sub { $run = 0; die; };
-			local $SIG{'TERM'}  = sub { $run = 0; die; };
+			local $SIG{'INT'}  = sub { $run = 0; die; };
+			local $SIG{'TERM'} = sub { $run = 0; die; };
             $log = $bsclient->reserve(); #blocks until a job is ready
 	    };
         last unless $run;
