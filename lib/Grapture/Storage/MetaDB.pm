@@ -237,5 +237,73 @@ sub getMetricPolls {
                      : $sth->fetchall_arrayref( {} );    
 }
 
+sub getTargetCount {
+    my $self = shift;
+    my $dbh  = $self->{'dbh'};
+	
+    my $query = q/SELECT count(*) from targets --/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+    my $count = $sth->fetchall_arrayref( {} )->[0]->{'count'} 
+      || return;
+
+    return $count;
+}
+
+sub getMetricCount {
+    my $self = shift;
+    my $dbh  = $self->{'dbh'};
+	
+    my $query = q/SELECT count(*) from targetmetrics --/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+    my $count = $sth->fetchall_arrayref( {} )->[0]->{'count'} 
+      || return;
+
+    return $count;
+}
+
+sub getNotDiscTargetCount {
+    my $self = shift;
+    my $dbh  = $self->{'dbh'};
+	
+    my $query = q/SELECT count(*) from targets where lastdiscovered = NULL --/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+    my $count = $sth->fetchall_arrayref( {} )->[0]->{'count'} 
+      || return;
+
+    return $count;
+}
+
+sub getLastDiscovery {
+    my $self = shift;
+    my $dbh  = $self->{'dbh'};
+	
+    my $query = q/SELECT lastdiscovered from targets
+                   order by lastdiscovered DESC
+                   limit 1 --/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute() or return;
+
+    my $lastDiscovered = $sth->fetchall_arrayref( {} )->[0]->{'lastdiscovered'} 
+      || return;
+
+    my ($date, $time) = split(/\s/, $lastDiscovered);
+    $date = scalar reverse $date;
+    $time =~ s/\..+$//; #remove the fraction of second.
+    $lastDiscovered = $date.' - '.$time;
+
+    return $lastDiscovered;
+}
+
+
 
 1;        

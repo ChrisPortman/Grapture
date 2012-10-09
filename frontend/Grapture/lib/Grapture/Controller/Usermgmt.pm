@@ -19,7 +19,9 @@ Catalyst Controller.
 
 =cut
 
-sub login : Local : ActionClass('REST') {}
+#User management
+sub login  : Local : ActionClass('REST') {}
+sub logout : Local : ActionClass('REST') {}
 
 sub login_POST {
 	my ($self, $c) = @_;
@@ -47,6 +49,24 @@ sub login_POST {
 	}
 	
 	return 1;
+}
+
+sub logout_GET {
+	my ($self, $c) = @_;
+    my $message;
+        
+    if ( $c->session->{'loggedIn'} ) {
+        $c->session->{'loggedIn'} = undef;
+        $message = 'Logged out';
+    }
+    else {
+        $message = "You weren't logged in.";
+    }
+
+    $self->status_ok(
+        $c,
+        entity => { 'success' => 1, 'data' => $message },
+    );
 }
 
 =head1 AUTHOR

@@ -3,6 +3,7 @@ package Grapture::Model::Postgres;
 use strict;
 use warnings;
 use base 'Catalyst::Model::DBI';
+use Grapture::Storage::MetaDB;
 use Data::Dumper;
 
 my $DBHOST = $Grapture::GHCONFIG->{'DB_HOSTNAME'};
@@ -677,6 +678,20 @@ sub checkUserLogin {
 	}
 	
 	return;
+}
+
+sub getMetaSysStats {
+    my $self = shift;
+    my $metaDB = Grapture::Storage::MetaDB->new();
+
+    my %sysStats = (
+	    targetCount => $metaDB->getTargetCount(),
+	    metricCount => $metaDB->getMetricCount(),
+	    notDiscTargetCount => $metaDB->getNotDiscTargetCount(),
+	    lastDiscovery => $metaDB->getLastDiscovery(),
+    );
+    
+    return wantarray ? %sysStats : \%sysStats;
 }
 
 sub sortNatural {

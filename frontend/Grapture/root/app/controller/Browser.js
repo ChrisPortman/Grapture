@@ -525,7 +525,7 @@ function submitEditHost(button) {
 function showLoginGui(button) {
     if ( Grapture.loggedIn ) {
         Ext.Ajax.request({
-			url    : '/rest/logout',
+			url    : '/usermgmt/logout',
 			scope  : this,
 			success: function(response) {
                 var msg = Ext.JSON.decode(response.responseText)['data'];

@@ -117,7 +117,7 @@ sub new {
 
     #These values can be suplied in %args or given defaults here.
     $self->{'maxThreadTime'} = $args->{'maxThreadTime'} || 3600;
-    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 1;
+    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 4;
     $self->{'childCount'}    = $args->{'childCount'}    || 0;
     $self->{'childPids'}     = {};
 

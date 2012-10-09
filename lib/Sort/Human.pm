@@ -97,7 +97,7 @@ Requires a list of items to sort or a reference to an array containing
 the items to sort.
 
 Returns a list or reference to a list depending on the calling context
-sorted naturally case sensitivity.  I.e. 'a' > 'A'.
+sorted naturally with case sensitivity.  I.e. 'a' > 'A'.
 
 =cut
 

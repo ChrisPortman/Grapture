@@ -23,17 +23,22 @@ Catalyst Controller.
 =head1 METHODS
 
 =cut
+#Target info
 sub targets       : Local : ActionClass('REST') {}
 sub targetcats    : Local : ActionClass('REST') {}
+sub targetconfig  : Local : ActionClass('REST') {}
 sub targetdevices : Local : ActionClass('REST') {}
+
+#Graph data
 sub graphs        : Local : ActionClass('REST') {}
 sub graphdetails  : Local : ActionClass('REST') {}
 sub graphdata     : Local : ActionClass('REST') {}
+
+#CRUD
 sub addhost       : Local : ActionClass('REST') {}
 sub edithost      : Local : ActionClass('REST') {}
 sub addgroup      : Local : ActionClass('REST') {}
-sub targetconfig  : Local : ActionClass('REST') {}
-sub logout        : Local : ActionClass('REST') {}
+
 
 sub targets_GET {
 	my ($self, $c) = @_;
@@ -210,25 +215,6 @@ sub targetconfig_GET {
 	    entity => { 'success' => $status, 'data' => $config },
     );
 }
-
-sub logout_GET {
-	my ($self, $c) = @_;
-    my $message;
-        
-    if ( $c->session->{'loggedIn'} ) {
-        $c->session->{'loggedIn'} = undef;
-        $message = 'Logged out';
-    }
-    else {
-        $message = "You weren't logged in.";
-    }
-
-    $self->status_ok(
-        $c,
-        entity => { 'success' => 1, 'data' => $message },
-    );
-}
-
 
 sub auto :Private {
     my ( $self, $c ) = @_;

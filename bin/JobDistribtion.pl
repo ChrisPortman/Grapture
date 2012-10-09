@@ -72,6 +72,7 @@
 =cut
 
 use strict;
+use lib '../lib';
 use File::Pid;
 use IO::Select;
 use IO::Handle;

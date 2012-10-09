@@ -12,6 +12,19 @@ SET standard_conforming_strings = on;
 SET check_function_bodies = false;
 SET client_min_messages = warning;
 
+-- Create role grapture
+
+CREATE ROLE grapture WITH LOGIN PASSWORD 'password';
+
+-- Create database
+CREATE DATABASE grapture
+  WITH OWNER = grapture
+       ENCODING = 'UTF8'
+       TABLESPACE = pg_default
+       LC_COLLATE = 'en_AU.UTF-8'
+       LC_CTYPE = 'en_AU.UTF-8'
+       CONNECTION LIMIT = -1;
+
 --
 -- TOC entry 166 (class 3079 OID 11647)
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
