@@ -5,6 +5,7 @@ package Grapture::Storage::RRDTool;
 use strict;
 
 use Grapture::Common::Config;
+use IPC::ShareLite;
 use Data::Dumper;
 use RRDs;
 use Sys::Hostname qw(hostname);
@@ -137,12 +138,15 @@ sub run {
         }
     }
 
-    $self->storeGrapturePerformance( 
-        {
-            'targets' => $targetCount,
-            'metrics' => $pollCount
-        }
+
+    my %pollerPerformance = (
+        'targets' => $targetCount,
+        'metrics' => $pollCount
     );
+
+    for my $metric ( keys %pollerPerformance ) {
+        $self->_updateStatsCounter($metric, $pollerPerformance{$metric});
+    }
     
     return 1;
 }
@@ -168,17 +172,14 @@ sub _pushUpdate {
         }
     }
 
-    my $values .= $updateHash->{'value'} . ':';;
-    $values =~ s/:$//;
-
     #if using daemon use a relative path (remove the RRD base location
     if ( $rrdCached ) {
         $rrdFile =~ s/^$rrdFileLoc//;
         @daemonSettings = ( '--daemon', $rrdCached );
     }
 
-    $log->debug("RRDTool: Sending updates to $rrdFile: $values");
-    RRDs::update( $rrdFile, $updateHash->{'time'} . ':' . $values,
+    $log->debug("RRDTool: Sending updates to $rrdFile: ".$updateHash->{'value'});
+    RRDs::update( $rrdFile, $updateHash->{'time'} . ':' . $updateHash->{'value'},
         @daemonSettings );
 
     my $error = RRDs::error;
@@ -201,8 +202,9 @@ sub _createRrd {
     my $ds   = $updateHash->{'metric'};
     my $type = uc( $updateHash->{'valtype'} );
     my $max  = $updateHash->{'valmax'} || 'U';
+    my $min  = $updateHash->{'valmin'} || 'U';
 
-    push @datasources, ("DS:$ds:$type:600:U:$max");
+    push @datasources, ("DS:$ds:$type:600:$min:$max");
 
     push @rras, 'RRA:AVERAGE:0.5:1:2880';
     push @rras, 'RRA:AVERAGE:0.5:6:4320';
@@ -216,9 +218,97 @@ sub _createRrd {
     return 1;
 }
 
-sub storeGrapturePerformance {
-    my $self = shift;
-    my $perfData = ref $_[0] ? shift : \@_;
+# Create an async process for upping the memory counters.  Async so that
+# any blocking on accessing the memory will not delay the main process.
+sub _updateStatsCounter {
+    my $self   = shift;
+    my $metric = shift;
+    my $value  = shift;
+    my $memVal;
+    my $time;
+    
+    # Keys for the shared memory locations mapped to the metric names.
+    # Keys may be numeric OR 4 character strings.
+    my %metrics = (
+        'targets' => 'targ',
+        'metrics' => 'mets',
+    );
+    
+    my %times = (
+        'targets' => 'ttim',
+        'metrics' => 'mtim',
+    );
+    
+    $metrics{$metric} || return;
+    
+    #Auto reap dead children to avoid zombies
+    local $SIG{'CHLD'} = 'IGNORE';
+    
+    # Fork a process to do the update creating the async behaviour
+    my $pid = fork;
+    
+    if ($pid) {
+        #true $pid is parent process
+        return 1;
+    } 
+    elsif ( defined $pid ) { 
+        #$pid is 0 but defined = child process
+        my $shareVal = IPC::ShareLite->new(
+            -key => $metrics{$metric},
+            -create => 'yes',
+            -destroy => 'no',
+        );
+        
+        my $shareTime = IPC::ShareLite->new(
+            -key => $times{$metric},
+            -create => 'yes',
+            -destroy => 'no',
+        );
+
+        #update the metric value
+        $shareVal->lock;
+        
+        $memVal  = $shareVal->fetch();
+        $memVal += $value;
+        
+        $shareVal->store($memVal);
+        
+        #Check the time since the values were last sent to RRDtool
+        #if > 30 secs, send an update and update the time.
+        $shareTime->lock; 
+        $time = $shareTime->fetch();
+        
+        if (time - $time > 30) {
+            $log->info("Sending metric $metric to RRD with value $memVal"); 
+            #update the timre in mem
+            $shareTime->store(time);
+            $shareTime->unlock;
+            
+            #update the RRD.
+            $self->_storeGrapturePerformance($metric, $memVal);
+        }
+        else {
+            $shareTime->unlock;
+        }
+
+        $shareVal->unlock;
+
+        $log->info("$hostname has performed $memVal $metric operations");
+        
+        exit;
+    }
+    else {
+        #undef $pid indicated for fail
+        $log->error('Failed to update grapture stats');
+    }
+    
+    return 1;
+}
+
+sub _storeGrapturePerformance {
+    my $self   = shift;
+    my $metric = shift || return;
+    my $value  = shift || return;
 
     my $rrdPath = $rrdFileLoc.'Grapture/'.$hostname.'/';
 
@@ -235,28 +325,21 @@ sub storeGrapturePerformance {
             }
         }
     }
+    
+    my $rrdFile = $rrdPath.$metric.'.rrd';
 
-    my %vals = (
-        'targetsPerSec' => $perfData->{'targets'},
-        'metricsPerSec' => $perfData->{'metrics'},
+    my %update = (
+        'metric'  => $metric,
+        'time'    => time,
+        'value'   => $value,
+        'valtype' => 'DERIVE',
+        'valmin'  => '0',
     );
 
-    for my $metric ( keys %vals ) {
-        my $rrdFile .= $rrdPath.$metric.'.rrd';
-
-        my %update;
-        $update{'metric'}  = $metric;
-        $update{'values'}  = $vals{$metric};
-        $update{'valtype'} = 'ABSOLUTE';
-        $update{'time'} = time;
-
-        $self->_pushUpdate($rrdFile, \%update);
-    }
+    $self->_pushUpdate($rrdFile, \%update);
 
     return 1;
 }
-
-
 
 sub error {
 
