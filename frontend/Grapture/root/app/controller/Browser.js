@@ -1,7 +1,6 @@
 Ext.define('Grapture.controller.Browser', {
     extend: 'Ext.app.Controller',
     
-    
     views: [
         'addTarget',
         'addTargetTabs',
@@ -11,6 +10,8 @@ Ext.define('Grapture.controller.Browser', {
         'searchResults',
         'content',
         'catTabs',
+        'homeTabs',
+        'systemTab',
         'deviceList',
         'graphs',
         'login',
@@ -41,6 +42,15 @@ Ext.define('Grapture.controller.Browser', {
 			ref: 'catTabsRef',
 			selector: 'catTabs',
 		},
+   		{
+			ref: 'homeTabsRef',
+			selector: 'homeTabs',
+		},
+
+        {
+            ref: 'contentRef',
+            selector: 'content',
+        },
 		{
 			ref: 'graphsRef',
 			selector: 'graphs',
@@ -61,6 +71,11 @@ Ext.define('Grapture.controller.Browser', {
 			'catTabs': {
 				tabchange: {fn: loadCategory },
 			},
+   			'homeTabs': {
+				tabchange: {fn: loadHomeTab },
+                afterrender: {fn: loadHomeTab },
+			},
+
 			'deviceList': {
 				itemclick: { fn: loadGraphs },
 			},
@@ -81,8 +96,10 @@ Ext.define('Grapture.controller.Browser', {
 			},
 			'#showLoginButton': {
 				click: { fn: showLoginGui },
-			}
-
+			},
+            '#goHome': {
+                click: { fn: loadHome },
+            },
 		});
 		
 		Grapture.loggedIn = false;
@@ -160,10 +177,11 @@ function loadTarget(node, record, item, index, event) {
 	if (target) {
 		//We got a target
 		Grapture.currentTarget = target;
-		
-        var catTabs = this.getCatTabsRef();
-        var catTabsStore = this.getCatTabStoreStore();		
-
+        
+        var contentArea = this.getContentRef();
+        var catTabs = Ext.create('Grapture.view.catTabs');
+        var catTabsStore = this.getCatTabStoreStore();	
+        
         catTabsStore.setProxy( {
 			type: 'rest',		
 			headers: {'Content-type': 'application/json'},
@@ -177,12 +195,9 @@ function loadTarget(node, record, item, index, event) {
 		catTabsStore.load(function(records, operation, success) {
 	        var tabs  = catTabsStore.getRange();
        		
-       		//set removingTabs for the remove all, this will stop the
-       		//tabchange handler from doing stuff unnecessarily.
-       		Grapture.removingTabs = true;
-       		catTabs.removeAll();
-       		Grapture.removingTabs = false;
-       		
+       		contentArea.removeAll();
+            contentArea.add(catTabs);
+       		       		
 	        for ( i = 0; i < catTabsStore.count(); i++ ) {
 				catTabs.add( { 
 					title: tabs[i].data.title,
@@ -204,11 +219,6 @@ function loadTarget(node, record, item, index, event) {
 
 function loadCategory(tabPanel, newTab, oldTab) {
 
-	if ( Grapture.removingTabs ) {
-		//change due to removing tabs, dont do anything.
-		return 1;
-	}
-	
 	var devStore   = this.getDevicesStoreStore();
 	var target     = Grapture.currentTarget;
 	var category   = newTab.title;
@@ -570,18 +580,21 @@ function secureTools() {
     // where those extra conditions are relevant and check Grapture.loggedIn 
     // in that process. However all secured tools should be hidden here
     // as is required in a logout.
-    
-	if ( Grapture.loggedIn ) {
-		Ext.ComponentQuery.query('#addHostTool')[0].show();
-        if (Grapture.currentTarget) {
-            Ext.ComponentQuery.query('#editHostTool')[0].show();
+
+    var tools = [];
+    tools.push(Ext.ComponentQuery.query('#addHostTool')[0]);
+    tools.push(Ext.ComponentQuery.query('#editHostTool')[0]);
+
+    for (tool in tools) {
+        if ( tools[tool] ) {
+            if (Grapture.loggedIn) {
+                tools[tool].show();
+            }
+            else {
+                tools[tool].hide();
+            }
         }
-	}
-	else {
-		Ext.ComponentQuery.query('#addHostTool')[0].hide();
-		Ext.ComponentQuery.query('#editHostTool')[0].hide();
-	}
-	
+    }
 }
 
 function getGroups() {
@@ -606,7 +619,7 @@ function loadGraphs(node, record, item, index, event) {
     var target         = Grapture.currentTarget;
 	var category       = Grapture.currentCat;
 	var device         = record.data.title;
-	var graphContainer = this.getGraphsRef()
+	var graphContainer = this.getGraphsRef();
 	
 	//Blast any old graph data
 	$['cache'] = {};
@@ -617,7 +630,8 @@ function loadGraphs(node, record, item, index, event) {
 	graphContainer.setLoading(true);
 	
 	//remove unfrendly chars from the device
-	device = device.replace(/\//g,'_SLSH_');
+    var slash = new RegExp('/','g');
+	device = device.replace( slash, '_SLSH_' );
 	
 	//Get the graphdata from the server.
 	Ext.Ajax.request({
@@ -625,163 +639,203 @@ function loadGraphs(node, record, item, index, event) {
 		scope  : this,
 		success: buildGraphs, 
     });
-
-	function buildGraphs (response) {
+    
+    function buildGraphs (response) {
 		
-		//Scope in some variables
-		var rrdData = response.responseText;
-		
-		var graphsPanel = this.getGraphsRef();
-	
-		var panels = [];
-		
-		resonse = undefined;
-		rrdData = Ext.JSON.decode(rrdData)['data'];
-
-		//Create a quick store with units for selection on the static link
-		var timeUnits = Ext.create('Ext.data.Store', {
-		    fields: ['unit', 'name'],
-		    data : [
-		        {"unit":"60",       "name":"Minutes"},
-				{"unit":"3600",     "name":"Hours"  },
-				{"unit":"86400",    "name":"Days"   },
-				{"unit":"604800",   "name":"Weeks"  },
-				{"unit":"2592000",  "name":"Months" },
-				{"unit":"31536000", "name":"Years"  },
-		    ],
-		});
-
-		//each 'group' represents one graph on the page.
-		for (group in rrdData) {
-			var bigGraphPh = group;
-			var smlGraphPh = group+'-ov';
-			
-			//Having to stash the data somewhere globally accessable seems
-			//yucky however I cant find a good way of passing it to the 
-			//call back.
-			Grapture['graphdata'][group] = {};  //Create the obj
-			Grapture['graphdata'][group]['settings'] = rrdData[group]['settings'];
-			delete rrdData[group]['settings']; //the rest of rrdData is actual data
-			Grapture['graphdata'][group]['data'] = rrdData[group]; //store the remainder of rrdData
-			
-	        panels.push(
-				{
-					xtype  : 'panel',
-					title  : group,
-					margin : '10 auto 10 auto',
-					layout : 'fit',
-					tools  : [
-						{ 
-							type: 'save', 
-							tooltip: 'Static Image Link',
-							handler: function(event, toolEl, owner, tool){
-								var proto = window.location['protocol'];
-								var host = window.location['host'];
-								var link = proto+'//'+host+'/static/rrd?target='+target+'&category='+category+'&device='+device+'&group='+owner['title']+'&start=604800';
-								var html = '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>';
-								
-								var linkPanel = Ext.create('Ext.panel.Panel',
-							        {
-										xtype         : 'panel',
-										title         : 'Static Link',
-										layout        : {type: 'vbox', align: 'center'},
-										floating      : true,
-										focusOnToFront: true,
-										draggable     : true,
-										closable      : true,
-										items         : [
-										    {
-												xtype  : 'container',
-												layout : {type: 'hbox', align: 'middle'},
-												height : 40,
-												items: [
-													{
-														xtype     : 'numberfield',
-														itemId    : 'numberField',
-														name      : 'period',
-														fieldLabel: 'Show the last ',
-														labelSeparator: '',
-														labelAlign : 'right',
-														labelWidth : 80,
-														value      : 1,
-														minValue   : 1,
-														allowBlank : false,
-														width      : 135,
-														listeners: {
-															change: {
-																fn: function(field, newValue) {
+        //Scope in some variables
+        var rrdData = response.responseText;
+        
+        var graphsPanel = this.getGraphsRef();
+    
+        var panels = [];
+        
+        resonse = undefined;
+        rrdData = Ext.JSON.decode(rrdData)['data'];
+    
+        //Create a quick store with units for selection on the static link
+        var timeUnits = Ext.create('Ext.data.Store', {
+            fields: ['unit', 'name'],
+            data : [
+                {"unit":"60",       "name":"Minutes"},
+                {"unit":"3600",     "name":"Hours"  },
+                {"unit":"86400",    "name":"Days"   },
+                {"unit":"604800",   "name":"Weeks"  },
+                {"unit":"2592000",  "name":"Months" },
+                {"unit":"31536000", "name":"Years"  },
+            ],
+        });
+    
+        //each 'group' represents one graph on the page.
+        for (group in rrdData) {
+            var bigGraphPh = group;
+            var smlGraphPh = group+'-ov';
+            
+            //Having to stash the data somewhere globally accessable seems
+            //yucky however I cant find a good way of passing it to the 
+            //call back.
+            Grapture['graphdata'][group] = {};  //Create the obj
+            Grapture['graphdata'][group]['settings'] = rrdData[group]['settings'];
+            delete rrdData[group]['settings']; //the rest of rrdData is actual data
+            Grapture['graphdata'][group]['data'] = rrdData[group]; //store the remainder of rrdData
+            
+            panels.push(
+                {
+                    xtype  : 'panel',
+                    title  : group,
+                    margin : '10 auto 10 auto',
+                    layout : 'fit',
+                    tools  : [
+                        { 
+                            type: 'save', 
+                            tooltip: 'Static Image Link',
+                            handler: function(event, toolEl, owner, tool){
+                                var proto = window.location['protocol'];
+                                var host = window.location['host'];
+                                var link = proto+'//'+host+'/static/rrd?target='+target+'&category='+category+'&device='+device+'&group='+owner['title']+'&start=604800';
+                                var html = '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>';
+                                
+                                var linkPanel = Ext.create('Ext.panel.Panel',
+                                    {
+                                        xtype         : 'panel',
+                                        title         : 'Static Link',
+                                        layout        : {type: 'vbox', align: 'center'},
+                                        floating      : true,
+                                        focusOnToFront: true,
+                                        draggable     : true,
+                                        closable      : true,
+                                        items         : [
+                                            {
+                                                xtype  : 'container',
+                                                layout : {type: 'hbox', align: 'middle'},
+                                                height : 40,
+                                                items: [
+                                                    {
+                                                        xtype     : 'numberfield',
+                                                        itemId    : 'numberField',
+                                                        name      : 'period',
+                                                        fieldLabel: 'Show the last ',
+                                                        labelSeparator: '',
+                                                        labelAlign : 'right',
+                                                        labelWidth : 80,
+                                                        value      : 1,
+                                                        minValue   : 1,
+                                                        allowBlank : false,
+                                                        width      : 135,
+                                                        listeners: {
+                                                            change: {
+                                                                fn: function(field, newValue) {
                                                                     var currentUnit = linkPanel.down('#unitField').getValue();
                                                                     var start = newValue * currentUnit;
                                                                     html = html.replace(/start=\d+/ig,'start='+start);
                                                                     linkPanel.down('#linkContainer').update(html);
-																},
-															},
-														},
-													},
-													{
-														xtype         : 'combobox',
-														itemId        : 'unitField',
-														store         : timeUnits,
-														queryMode     : 'local',
-														valueField    : 'unit',
-														displayField  : 'name',
-														forceSelection: true,
-														value         : '604800',
-														width         : 80,
-														padding       : '0 10 0 10',
-														listeners: {
-															change: {
-																fn: function(field, newValue) {
+                                                                },
+                                                            },
+                                                        },
+                                                    },
+                                                    {
+                                                        xtype         : 'combobox',
+                                                        itemId        : 'unitField',
+                                                        store         : timeUnits,
+                                                        queryMode     : 'local',
+                                                        valueField    : 'unit',
+                                                        displayField  : 'name',
+                                                        forceSelection: true,
+                                                        value         : '604800',
+                                                        width         : 80,
+                                                        padding       : '0 10 0 10',
+                                                        listeners: {
+                                                            change: {
+                                                                fn: function(field, newValue) {
                                                                     var currentNum = linkPanel.down('#numberField').getValue();
                                                                     var start = newValue * currentNum;
                                                                     html = html.replace(/start=\d+/ig,'start='+start);
                                                                     linkPanel.down('#linkContainer').update(html);
-																},
-															},
-														},													
-													},
-											    ],
-										    },
-										    {
-												xtype : 'container',
-												itemId: 'linkContainer',
-												layout: 'fit',
-												html  : '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>',
-											},
-										],
-										
-										renderTo      : Ext.getBody(),
-									}
-								);
-								linkPanel.show();
-							},
-						}
-					],
-					html: '<div style = "float: left;">                                                                            \
-					           <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
-					           <div style = "float: left;">                                                                        \
-						           <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
-						           <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
-						               Resolution:<br />                                                                           \
-						               <select id="'+group+'-sel" onchange="renderGraph(\''+group+'\', null, true)"></select>      \
-						               <br /><br />                                                                                \
-						               <button type="button" onclick="renderGraph(\''+group+'\', null, true)">Reset Area</button>  \
-						           </div>                                                                                          \
-						       </div>                                                                                              \
-					       </div>',
-					minHeight: 200,
-					minWidth: 400,
-					listeners: {
-						afterrender: {
-							scope: this,
-							fn: renderGraph,
-						},
-					},
-				}
-			);
-		}
-		graphsPanel.setTitle( device + ' Performance Graphs');
-		graphsPanel.add( panels );
-		graphContainer.setLoading(false);
-	}
+                                                                },
+                                                            },
+                                                        },													
+                                                    },
+                                                ],
+                                            },
+                                            {
+                                                xtype : 'container',
+                                                itemId: 'linkContainer',
+                                                layout: 'fit',
+                                                html  : '<p style="margin: 10px 5px 10px 5px;"><a href="'+link+'" target="_blank">'+link+'</a></p>',
+                                            },
+                                        ],
+                                        
+                                        renderTo      : Ext.getBody(),
+                                    }
+                                );
+                                linkPanel.show();
+                            },
+                        }
+                    ],
+                    html: '<div style = "float: left;">                                                                            \
+                               <div id="'+bigGraphPh+'" style="width: 700px; height: 250px; margin: 10px;"></div>                  \
+                               <div style = "float: left;">                                                                        \
+                                   <div id="'+smlGraphPh+'" style="float: left; width: 400px; height: 100px; margin: 10px;"></div> \
+                                   <div id="'+group+'-frm" style = "float: left; margin: 10px;">                                   \
+                                       Resolution:<br />                                                                           \
+                                       <select id="'+group+'-sel" onchange="renderGraph(\''+group+'\', null, true)"></select>      \
+                                       <br /><br />                                                                                \
+                                       <button type="button" onclick="renderGraph(\''+group+'\', null, true)">Reset Area</button>  \
+                                   </div>                                                                                          \
+                               </div>                                                                                              \
+                           </div>',
+                    minHeight: 200,
+                    minWidth: 400,
+                    listeners: {
+                        afterrender: {
+                            scope: this,
+                            fn: renderGraph,
+                        },
+                    },
+                }
+            );
+        }
+        graphsPanel.setTitle( device + ' Performance Graphs');
+        graphsPanel.add( panels );
+        graphContainer.setLoading(false);
+    }
+}
+
+function loadHome () {
+    var contentArea = this.getContentRef();
+    contentArea.removeAll();
+
+    var homeTabs = Ext.create('Grapture.view.homeTabs');
+    contentArea.add(homeTabs);
+    homeTabs.setActiveTab(0);
+}
+
+function loadHomeTab (tabPanel) {
+    var tab = tabPanel.getActiveTab();
+    console.log(tab.title);
+    
+    switch(tab.title) {
+        case 'System':
+            loadSystem();
+            break;
+        case 'Alarms':
+            loadAlarms();
+            break;
+        case 'Log':
+            loadLog();
+            break;
+        default:
+            console.log('switched to an unknown tab');
+    }
+    
+    function loadSystem () {
+        console.log('switched to the system tab');
+        var tabView = Ext.create('Grapture.view.systemTab');
+        tab.add(tabView);
+    }
+    function loadAlarms () {
+        console.log('switched to the alarms tab');
+    }
+    function loadLog () {
+        console.log('switched to the log tab');
+    }
 }

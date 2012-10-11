@@ -16,7 +16,13 @@ Ext.define('Grapture.view.targetTree', {
 				xtype: 'button', 
 				itemId: 'showLoginButton',
 	            text: 'Login',
+	        },
+   	        { 
+				xtype: 'button', 
+				itemId: 'goHome',
+	            text: 'Home',
 	        }
+
 	    ]
 	}]
          

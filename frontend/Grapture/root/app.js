@@ -54,7 +54,6 @@ Ext.application({
 									type   : 'plus',
 									tooltip: 'Add hosts',
 									itemId : 'addHostTool',
-									//~ handler: addTargetGui,
 								},
 							],
 						},
@@ -64,11 +63,11 @@ Ext.application({
 							border: 0,
 						    style: {borderColor:'#000000', borderStyle:'solid', borderWidth:'1px'},
 						    layout: 'fit',
+                            padding: 10,
 						    
 						    items: [
 								{
-									margin: 10,
-									xtype: 'catTabs',
+									xtype: 'homeTabs',
 								},
 							],
 						},
