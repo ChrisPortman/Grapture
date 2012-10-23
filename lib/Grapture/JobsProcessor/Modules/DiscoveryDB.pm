@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-  Grapture::JobsProcessor::Output::DiscoveryDB.pm
+  Grapture::JobsProcessor::Modules::DiscoveryDB.pm
  
 =head1 SYNOPSIS
 
@@ -15,7 +15,7 @@
 
 =cut 
 
-package Grapture::JobsProcessor::Output::DiscoveryDB;
+package Grapture::JobsProcessor::Modules::DiscoveryDB;
 
     use strict;
     use warnings;
@@ -23,17 +23,10 @@ package Grapture::JobsProcessor::Output::DiscoveryDB;
     use vars qw( $wraps );
     use Grapture::Storage::MetaDB;
     
-    sub new {
-        #Just a dummy.  Going to phase out the use of new() for plugables.
-        my $class = shift;
-        my %dummy;
-        my $obj = bless \%dummy, $class;
-        return $obj;
-    }
-    
     sub run {
-        my $self = shift; #remove this when new() is deprecated and just functions
-        my $result = shift;
+        shift if $_[0] eq __PACKAGE__;
+        my $options = shift; #will be empty hash, we need none
+        my $result  = shift;
         
         unless ( ref($result) and ref($result) eq 'ARRAY' ) {
             $log->error(
@@ -47,10 +40,4 @@ package Grapture::JobsProcessor::Output::DiscoveryDB;
         return 1;
     }
     
-    sub error {
-        #dummy error sub for now
-        return 1;
-    }
-
-
 1;

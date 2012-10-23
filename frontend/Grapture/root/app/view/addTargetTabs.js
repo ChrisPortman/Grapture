@@ -148,11 +148,11 @@ Ext.define('Grapture.view.addTargetTabs', {
 								if (form.isValid()) {
 									form.submit({
 										success: function(form, action) {
-										   Ext.Msg.alert('Success', action.result.msg);
+										   Ext.Msg.alert('Success', action.result.data);
 										   form.reset();
 										},
 										failure: function(form, action) {
-											Ext.Msg.alert('Failed', action.result.msg);
+											Ext.Msg.alert('Failed', action.result.data);
 										}
 									});
 								}

@@ -25,6 +25,7 @@ CREATE DATABASE grapture
        LC_CTYPE = 'en_AU.UTF-8'
        CONNECTION LIMIT = -1;
 
+\c grapture
 --
 -- TOC entry 166 (class 3079 OID 11647)
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
@@ -43,219 +44,6 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 SET search_path = public, pg_catalog;
-
---
--- TOC entry 179 (class 1255 OID 32843)
--- Dependencies: 6 507
--- Name: add_group(character varying, character varying); Type: FUNCTION; Schema: public; Owner: grapture
---
-
-CREATE FUNCTION add_group(new_group character varying, new_memberof character varying) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-    existing_group groupings%ROWTYPE;
-    existing_parent groupings%ROWTYPE;
-
-BEGIN
-    -- Check that the new group does not already exist.
-    SELECT * INTO existing_group FROM groupings WHERE groupname = new_group;
-
-    IF NOT FOUND THEN
-
-        -- Check the parent group exists unless its null.
-        SELECT * INTO existing_parent FROM groupings WHERE groupname = new_memberof;
-        IF FOUND OR new_memberof IS NULL THEN
-
-            -- Do an INSERT
-            INSERT INTO groupings (groupname, memberof)
-              VALUES (new_group, new_memberof);
-            
-            IF NOT FOUND THEN
-                RAISE EXCEPTION 'FAILED TO INSERT GROUP';
-            END IF;
-
-        END IF;
-    
-    END IF;
-    
-    RETURN 1;
-    
-END;
-$$;
-
-
-ALTER FUNCTION public.add_group(new_group character varying, new_memberof character varying) OWNER TO grapture;
-
---
--- TOC entry 180 (class 1255 OID 32852)
--- Dependencies: 507 6
--- Name: add_or_update_target(character varying, integer, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: grapture
---
-
-CREATE FUNCTION add_or_update_target(new_target character varying, new_snmpversion integer, new_snmpcommunity character varying, new_groupname character varying, rediscover integer) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-    existing_target targets%ROWTYPE;
-
-BEGIN
-    IF new_groupname IS NULL OR new_groupname = '' THEN
-        new_groupname := 'Unknown';
-    END IF;
-    
-    SELECT * INTO existing_target FROM targets WHERE target = new_target;
-    IF NOT FOUND THEN
-        -- Do an INSERT
-        INSERT INTO targets (target, snmpversion, snmpcommunity, groupname)
-          VALUES (new_target, new_snmpversion, new_snmpcommunity, new_groupname);
-        
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'FAILED TO INSERT TARGET';
-        END IF;        
-    ELSE
-        -- Do an UPDATE where target = target
-        -- DO NOT UPDATE the target name.
-        IF rediscover > 0 or rediscover IS NOT NULL THEN
-            -- NULL the lastdicovered to trigger rediscover
-            UPDATE targets SET 
-              snmpversion    = new_snmpversion,
-              snmpcommunity  = new_snmpcommunity,
-              groupname      = new_groupname,
-              lastdiscovered = NULL
-              
-              WHERE target = new_target;
-            
-            IF NOT FOUND THEN
-                RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
-            END IF;        
-
-        ELSE
-            -- Leave the lastdiscovered alone
-            UPDATE targets SET 
-              snmpversion    = new_snmpversion,
-              snmpcommunity  = new_snmpcommunity,
-              groupname      = new_groupname
-              
-              WHERE target = new_target;
-            
-            IF NOT FOUND THEN
-                RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
-            END IF;        
-            
-        END IF;
-        
-    END IF;
-    
-    RETURN 1;
-
-END;
-$$;
-
-
-ALTER FUNCTION public.add_or_update_target(new_target character varying, new_snmpversion integer, new_snmpcommunity character varying, new_groupname character varying, rediscover integer) OWNER TO grapture;
-
---
--- TOC entry 181 (class 1255 OID 32856)
--- Dependencies: 6 507
--- Name: add_or_update_target_metric(character varying, character varying, character varying, character varying, integer, character varying, character varying, character varying, character varying, character varying, character varying, character varying, boolean, integer, boolean); Type: FUNCTION; Schema: public; Owner: grapture
---
-
-CREATE FUNCTION add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-    existing_metric targetmetrics%ROWTYPE;
-
-BEGIN
-    
-    SELECT * INTO existing_metric FROM targetmetrics 
-      WHERE target = new_target 
-      and device = new_device 
-      and metric = new_metric;
-
-    IF NOT FOUND THEN
-        -- Do an INSERT
-        INSERT INTO targetmetrics 
-          (
-              target,  device,     metric,  mapbase,    counterbits,
-              module,  output,     valbase, max,        category,
-              valtype, graphgroup, enabled, graphorder, aggregate
-          )
-        VALUES 
-          (
-              new_target,  new_device,     new_metric,  new_mapbase,    new_counterbits,
-              new_module,  new_output,     new_valbase, new_max,        new_category,
-              new_valtype, new_graphgroup, new_enabled, new_graphorder, new_aggregate
-          );
-        
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'FAILED TO INSERT TARGET METRIC';
-        END IF;        
-        
-    ELSE
-        -- Do an UPDATE 
-        -- DO NOT UPDATE the target device or metric.
-        UPDATE targetmetrics SET 
-          target      = new_target,      device     = new_device,
-          metric      = new_metric,      mapbase    = new_mapbase,
-          counterbits = new_counterbits, module     = new_module,
-          output      = new_output,      valbase    = new_valbase,
-          max         = new_max,         category   = new_category,
-          valtype     = new_valtype,     graphgroup = new_graphgroup,
-          enabled     = new_enabled,     graphorder = new_graphorder,
-          aggregate   = new_aggregate
-
-          WHERE target = new_target 
-          and device   = new_device 
-          and metric   = new_metric;
-        
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'FAILED TO UPDATE TARGET METRIC';
-        END IF;        
-        
-    END IF;
-    
-    RETURN 1;
-
-END;
-$$;
-
-
-ALTER FUNCTION public.add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean) OWNER TO grapture;
-
---
--- TOC entry 178 (class 1255 OID 32853)
--- Dependencies: 6 507
--- Name: target_discovered(character varying); Type: FUNCTION; Schema: public; Owner: grapture
---
-
-CREATE FUNCTION target_discovered(disc_target character varying) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-
-DECLARE
-
-BEGIN
-    -- Do an UPDATE where target = target
-    UPDATE targets SET 
-      lastdiscovered = LOCALTIMESTAMP
-      WHERE target = disc_target;
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
-    END IF;        
-
-    RETURN 1;
-
-END;
-$$;
-
-
-ALTER FUNCTION public.target_discovered(disc_target character varying) OWNER TO grapture;
 
 SET default_tablespace = '';
 
@@ -477,6 +265,221 @@ ALTER TABLE ONLY targetmetrics
 
 ALTER TABLE ONLY targets
     ADD CONSTRAINT valid_group FOREIGN KEY (groupname) REFERENCES groupings(groupname) ON UPDATE RESTRICT ON DELETE RESTRICT;
+
+
+--
+-- TOC entry 179 (class 1255 OID 32843)
+-- Dependencies: 6 507
+-- Name: add_group(character varying, character varying); Type: FUNCTION; Schema: public; Owner: grapture
+--
+
+CREATE FUNCTION add_group(new_group character varying, new_memberof character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    existing_group groupings%ROWTYPE;
+    existing_parent groupings%ROWTYPE;
+
+BEGIN
+    -- Check that the new group does not already exist.
+    SELECT * INTO existing_group FROM groupings WHERE groupname = new_group;
+
+    IF NOT FOUND THEN
+
+        -- Check the parent group exists unless its null.
+        SELECT * INTO existing_parent FROM groupings WHERE groupname = new_memberof;
+        IF FOUND OR new_memberof IS NULL THEN
+
+            -- Do an INSERT
+            INSERT INTO groupings (groupname, memberof)
+              VALUES (new_group, new_memberof);
+            
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'FAILED TO INSERT GROUP';
+            END IF;
+
+        END IF;
+    
+    END IF;
+    
+    RETURN 1;
+    
+END;
+$$;
+
+
+ALTER FUNCTION public.add_group(new_group character varying, new_memberof character varying) OWNER TO grapture;
+
+--
+-- TOC entry 180 (class 1255 OID 32852)
+-- Dependencies: 507 6
+-- Name: add_or_update_target(character varying, integer, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: grapture
+--
+
+CREATE FUNCTION add_or_update_target(new_target character varying, new_snmpversion integer, new_snmpcommunity character varying, new_groupname character varying, rediscover integer) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    existing_target targets%ROWTYPE;
+
+BEGIN
+    IF new_groupname IS NULL OR new_groupname = '' THEN
+        new_groupname := 'Unknown';
+    END IF;
+    
+    SELECT * INTO existing_target FROM targets WHERE target = new_target;
+    IF NOT FOUND THEN
+        -- Do an INSERT
+        INSERT INTO targets (target, snmpversion, snmpcommunity, groupname)
+          VALUES (new_target, new_snmpversion, new_snmpcommunity, new_groupname);
+        
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'FAILED TO INSERT TARGET';
+        END IF;        
+    ELSE
+        -- Do an UPDATE where target = target
+        -- DO NOT UPDATE the target name.
+        IF rediscover > 0 or rediscover IS NOT NULL THEN
+            -- NULL the lastdicovered to trigger rediscover
+            UPDATE targets SET 
+              snmpversion    = new_snmpversion,
+              snmpcommunity  = new_snmpcommunity,
+              groupname      = new_groupname,
+              lastdiscovered = NULL
+              
+              WHERE target = new_target;
+            
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
+            END IF;        
+
+        ELSE
+            -- Leave the lastdiscovered alone
+            UPDATE targets SET 
+              snmpversion    = new_snmpversion,
+              snmpcommunity  = new_snmpcommunity,
+              groupname      = new_groupname
+              
+              WHERE target = new_target;
+            
+            IF NOT FOUND THEN
+                RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
+            END IF;        
+            
+        END IF;
+        
+    END IF;
+    
+    RETURN 1;
+
+END;
+$$;
+
+
+ALTER FUNCTION public.add_or_update_target(new_target character varying, new_snmpversion integer, new_snmpcommunity character varying, new_groupname character varying, rediscover integer) OWNER TO grapture;
+
+--
+-- TOC entry 181 (class 1255 OID 32856)
+-- Dependencies: 6 507
+-- Name: add_or_update_target_metric(character varying, character varying, character varying, character varying, integer, character varying, character varying, character varying, character varying, character varying, character varying, character varying, boolean, integer, boolean); Type: FUNCTION; Schema: public; Owner: grapture
+--
+
+CREATE FUNCTION add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+    existing_metric targetmetrics%ROWTYPE;
+
+BEGIN
+    
+    SELECT * INTO existing_metric FROM targetmetrics 
+      WHERE target = new_target 
+      and device = new_device 
+      and metric = new_metric;
+
+    IF NOT FOUND THEN
+        -- Do an INSERT
+        INSERT INTO targetmetrics 
+          (
+              target,  device,     metric,  mapbase,    counterbits,
+              module,  output,     valbase, max,        category,
+              valtype, graphgroup, enabled, graphorder, aggregate
+          )
+        VALUES 
+          (
+              new_target,  new_device,     new_metric,  new_mapbase,    new_counterbits,
+              new_module,  new_output,     new_valbase, new_max,        new_category,
+              new_valtype, new_graphgroup, new_enabled, new_graphorder, new_aggregate
+          );
+        
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'FAILED TO INSERT TARGET METRIC';
+        END IF;        
+        
+    ELSE
+        -- Do an UPDATE 
+        -- DO NOT UPDATE the target device or metric.
+        UPDATE targetmetrics SET 
+          target      = new_target,      device     = new_device,
+          metric      = new_metric,      mapbase    = new_mapbase,
+          counterbits = new_counterbits, module     = new_module,
+          output      = new_output,      valbase    = new_valbase,
+          max         = new_max,         category   = new_category,
+          valtype     = new_valtype,     graphgroup = new_graphgroup,
+          enabled     = new_enabled,     graphorder = new_graphorder,
+          aggregate   = new_aggregate
+
+          WHERE target = new_target 
+          and device   = new_device 
+          and metric   = new_metric;
+        
+        IF NOT FOUND THEN
+            RAISE EXCEPTION 'FAILED TO UPDATE TARGET METRIC';
+        END IF;        
+        
+    END IF;
+    
+    RETURN 1;
+
+END;
+$$;
+
+
+ALTER FUNCTION public.add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean) OWNER TO grapture;
+
+--
+-- TOC entry 178 (class 1255 OID 32853)
+-- Dependencies: 6 507
+-- Name: target_discovered(character varying); Type: FUNCTION; Schema: public; Owner: grapture
+--
+
+CREATE FUNCTION target_discovered(disc_target character varying) RETURNS integer
+    LANGUAGE plpgsql
+    AS $$
+
+DECLARE
+
+BEGIN
+    -- Do an UPDATE where target = target
+    UPDATE targets SET 
+      lastdiscovered = LOCALTIMESTAMP
+      WHERE target = disc_target;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'FAILED TO UPDATE TARGET';
+    END IF;        
+
+    RETURN 1;
+
+END;
+$$;
+
+
+ALTER FUNCTION public.target_discovered(disc_target character varying) OWNER TO grapture;
+
 
 
 --

@@ -5,7 +5,7 @@ package Grapture::Storage::RRDTool;
 use strict;
 
 use Grapture::Common::Config;
-use IPC::ShareLite;
+use IPC::ShareLite qw( :lock ); 
 use Data::Dumper;
 use RRDs;
 use Sys::Hostname qw(hostname);
@@ -20,21 +20,13 @@ my $hostname = hostname();
 #Just keep the machine and environment
 $hostname =~ s/\.optus(?:net)?\.com\.au\s*$//i;
 
-sub new {
-    #Dummy till new() is deprecated
-    my $class = ref $_[0] || $_[0];
-
-    my %selfHash;
-
-    my $self = bless( \%selfHash, $class );
-
-    return $self;
-}
-
 sub run {
-    my $self    = shift;
+    shift if    $_[0] eq __PACKAGE__ 
+             || $_[0] eq 'Grapture::JobsProcessor::Modules::RRDTool';
+    my $options = shift; #will be empty hash, we need none
     my $results = shift;
-
+    
+    
     my $target      = $results->{'target'}  || return;
     my $pollResults = $results->{'results'} || return;
 
@@ -133,7 +125,7 @@ sub run {
             my %update = %{ $rrdUpdates{$updDevice}->{$updMetric} };
             $update{'metric'} = $updMetric;
 
-            $self->_pushUpdate( $finalFileName, \%update );
+            _pushUpdate( $finalFileName, \%update );
             $pollCount ++;
         }
     }
@@ -145,14 +137,13 @@ sub run {
     );
 
     for my $metric ( keys %pollerPerformance ) {
-        $self->_updateStatsCounter($metric, $pollerPerformance{$metric});
+        _updateStatsCounter($metric, $pollerPerformance{$metric});
     }
     
     return 1;
 }
 
 sub _pushUpdate {
-    my $self       = shift;
     my $rrdFile    = shift;
     my $updateHash = shift;
     my $rrdObj;
@@ -167,7 +158,7 @@ sub _pushUpdate {
     if ($rrdFile) {
         unless ( -f $rrdFile ) {
             $log->debug( "Creating file $rrdFile for" );
-            $self->_createRrd( $rrdFile, $updateHash )
+            _createRrd( $rrdFile, $updateHash )
               or return;
         }
     }
@@ -192,7 +183,6 @@ sub _pushUpdate {
 }
 
 sub _createRrd {
-    my $self       = shift;
     my $file       = shift;
     my $updateHash = shift;
 
@@ -221,7 +211,6 @@ sub _createRrd {
 # Create an async process for upping the memory counters.  Async so that
 # any blocking on accessing the memory will not delay the main process.
 sub _updateStatsCounter {
-    my $self   = shift;
     my $metric = shift;
     my $value  = shift;
     my $memVal;
@@ -266,7 +255,7 @@ sub _updateStatsCounter {
         );
 
         #update the metric value
-        $shareVal->lock;
+        $shareVal->lock( LOCK_EX );
         
         $memVal  = $shareVal->fetch();
         $memVal += $value;
@@ -275,7 +264,7 @@ sub _updateStatsCounter {
         
         #Check the time since the values were last sent to RRDtool
         #if > 30 secs, send an update and update the time.
-        $shareTime->lock; 
+        $shareTime->lock( LOCK_EX ); 
         $time = $shareTime->fetch();
         
         if (time - $time > 30) {
@@ -285,7 +274,7 @@ sub _updateStatsCounter {
             $shareTime->unlock;
             
             #update the RRD.
-            $self->_storeGrapturePerformance($metric, $memVal);
+            _storeGrapturePerformance($metric, $memVal);
         }
         else {
             $shareTime->unlock;
@@ -306,7 +295,6 @@ sub _updateStatsCounter {
 }
 
 sub _storeGrapturePerformance {
-    my $self   = shift;
     my $metric = shift || return;
     my $value  = shift || return;
 
@@ -336,15 +324,9 @@ sub _storeGrapturePerformance {
         'valmin'  => '0',
     );
 
-    $self->_pushUpdate($rrdFile, \%update);
+    _pushUpdate($rrdFile, \%update);
 
     return 1;
-}
-
-sub error {
-
-    #dummy
-    return;
 }
 
 1;

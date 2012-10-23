@@ -19,6 +19,7 @@ Required Packages (Debian)
  - libfile-pid-perl
  - rrdtool
  - rrdcached
+ - librrds-perl
  - beanstalkd
  - postgresql
  - pgadmin3 (recommended)

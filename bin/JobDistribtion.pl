@@ -143,11 +143,11 @@ my $children;
 my %activeJobs;
 my %childPids;
 my %returnCodes = (
-    1 => 'Successful',
-    2 => 'Job data malformed',
-    3 => 'Doer module returned a failure',
-    4 => 'Output module returned a failure',
-    5 => 'Some unknown error occured',
+    1 => 'Successful.',
+    2 => 'Job data malformed.',
+    3 => 'A module in the process does not exist.',
+    4 => 'A process module did not return a result.',
+    5 => 'A process module died.',
 );
 
 $logger->notice('Logs tube is '.$logTube);

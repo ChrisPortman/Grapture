@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-  Grapture::JobsProcessor::Doer::Discovery.pm
+  Grapture::JobsProcessor::Modules::Discovery.pm
  
 =head1 SYNOPSIS
 
@@ -14,7 +14,7 @@
 
 =cut 
 
-package Grapture::JobsProcessor::Doer::Discovery;
+package Grapture::JobsProcessor::Modules::Discovery;
 
     use strict;
     use warnings;

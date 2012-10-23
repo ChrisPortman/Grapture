@@ -88,15 +88,10 @@ use Cwd;
 
 #Use plugable modules to allow on the fly expansion of functionality
 use Module::Pluggable
-  search_path => ['Grapture::JobsProcessor::Doer'],
-  except      => qr/^Grapture::JobsProcessor::Doer::.+::/, #limit to 1 level.
+  search_path => ['Grapture::JobsProcessor::Modules'],
+  except      => qr/^Grapture::JobsProcessor::Modules::.+::/, #limit to 1 level.
   require     => 1,
-  sub_name    => 'doers';
-use Module::Pluggable
-  search_path => ['Grapture::JobsProcessor::Output'],
-  except      => qr/^Grapture::JobsProcessor::Output::.+::/, #limit to 1 level.
-  require     => 1,
-  sub_name    => 'outputs';
+  sub_name    => 'modules';
 
 sub new {
     my $class = shift;
@@ -117,7 +112,7 @@ sub new {
 
     #These values can be suplied in %args or given defaults here.
     $self->{'maxThreadTime'} = $args->{'maxThreadTime'} || 3600;
-    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 4;
+    $self->{'maxThreads'}    = $args->{'maxThreads'}    || 1;
     $self->{'childCount'}    = $args->{'childCount'}    || 0;
     $self->{'childPids'}     = {};
 
@@ -215,30 +210,20 @@ sub loadModules {
     }
 
     #Stash the available pluggins in %modules, then to the object.
-    my %doers = map {
+    my %modules = map {
         my $mod = $_;
-        $mod =~ s/^Grapture::JobsProcessor::Doer:://;
+        $mod =~ s/^Grapture::JobsProcessor::Modules:://;
         $mod => $_
-    } $self->doers();
+    } $self->modules();
 
-    my %outputs = map {
-        my $mod = $_;
-        $mod =~ s/^Grapture::JobsProcessor::Output:://;
-        $mod => $_
-    } $self->outputs();
     
     $log->info("Loading modules...");
     
-    for my $module ( keys %doers ) {
-		$log->info("Loaded doer module $module");
+    for my $module ( keys %modules ) {
+		$log->info("Loaded process module $module");
 	}
 	
-    for my $module ( keys %outputs ) {
-		$log->info("Loaded output module $module");
-	}
-
-    $self->{'doers'}   = \%doers;
-    $self->{'outputs'} = \%outputs;
+    $self->{'modules'}   = \%modules;
 
     return 1;
 }
@@ -291,7 +276,7 @@ sub runJob {
     my $jobData = decode_json( $job->{'data'} );
     debug(  "Starting job ID $job->{'id'} at "
           . localtime()
-          . " for $jobData->{'processOptions'}->{'target'}" );
+          );
 
     $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
     
@@ -300,9 +285,6 @@ sub runJob {
         'jobId'          => $job->{'id'},
         'jobData'        => $jobData,
         'process'        => $jobData->{'process'},
-        'output'         => $jobData->{'output'},
-        'processOptions' => $jobData->{'processOptions'},
-        'outputOptions'  => $jobData->{'outputOptions'} || {}, #optional
         'logsTube'       => $jobData->{'logsTube'},
     };
 
@@ -316,128 +298,72 @@ sub runJob {
         return 2;
     }
 
-    my $result = $self->runDoerModule();
+    my $result = $self->runProcess();
 
-    my %resultData;
-
-    if ($result) {
-
-        %resultData = (
-            'id'     => $self->{'currentJobData'}->{'jobId'},
-            'result' => $result,
-        );
-
-        return wantarray ? %resultData : \%resultData;
-    }
-    $self->log( 'Doer module '
-          . $self->{'currentJobData'}->{'process'}
-          . ' did not return a result' );
-    return 3;
+    #~ my %resultData;
+#~ 
+    #~ if ($result) {
+#~ 
+        #~ %resultData = (
+            #~ 'id'     => $self->{'currentJobData'}->{'jobId'},
+            #~ 'result' => $result,
+        #~ );
+#~ 
+        #~ return wantarray ? %resultData : \%resultData;
+    #~ }
+    #~ $self->log( 'Doer module '
+          #~ . $self->{'currentJobData'}->{'process'}
+          #~ . ' did not return a result' );
+    return $result;
 
 }
 
-sub runDoerModule {
+sub runProcess {
     my $self    = shift;
-    my $module  = $self->{'currentJobData'}->{'process'};
-    my $options = $self->{'currentJobData'}->{'processOptions'};
+    my $process  = $self->{'currentJobData'}->{'process'};
     my $jobId   = $self->{'currentJobData'}->{'jobId'};
 
-    unless ( $module or $options or $jobId ) {
+    unless ( $process or  $jobId ) {
         $self->log('Did not get the required details');
         return;
     }
-
-    unless ( $self->{'doers'}->{$module} ) {
-        $self->log("Module specified ($module) is not valid");
-        return;
-    }
-
-    my $result;
-    my $error;
-
-    eval {
-        my $work = $self->{'doers'}->{$module}->new($options);
-        $work or die "Couldn't construct object for module $module";
-
-        $result = $work->run($options);
-
-        unless ($result) {
-            $error = $work->error();
-
-            if ($error) {
-				$log->error($error);
-                $self->log($error);
-            }
-        }
-
-        1;
-    };
-
-    if ($@) {
-		$log->error("Doer module $module returned error $@");
-        $self->log($@);
-        return;
-    }
-
-    return $result if $result;
-
-    return;
-}
-
-sub runOutputModule {
-    my $self       = shift;
-    my $result     = shift;
-    my $module     = $self->{'currentJobData'}->{'output'};
-    my $moduleOpts = $self->{'currentJobData'}->{'outputOptions'};
- 
-    return 1 unless $module; #no output module is valid.
-
-    unless ( $self->{'outputs'}->{$module} ) {
-        $self->log("Output module specified ($module) is not valid");
-        return;
-    }
-
-    my $error;
-    my $resultData = $result->{'result'};
-
-    eval {
-        my $work = $self->{'outputs'}->{$module}->new($resultData, $moduleOpts);
-
-        if ($work) {
-
-            $result = $work->run($resultData);
-            $error  = $work->error();
-
-        }
-
-        1;
-    };
-
-    if ($@) {
-        $log->error("Output module $module returned error $@");
-        $self->log($@);
-        return;
-    }
-
-    if ($result) {
-        return $result;
-    }
     
-    $log->error("The $module output module did not return a result");
+    my $result;
+    my $status = 1; #default to unknown error
 
-    return;
-}
+    for my $step ( @{$self->{'currentJobData'}->{'process'}} ) {
+        my $module  = $step->{'name'};
+        my $options = $step->{'options'} || {};
 
-sub submitResult {
-    my $self   = shift;
-    my $result = shift;
+        unless ( $self->{'modules'}->{$module} ) {
+            $self->log("Module specified ($module) is not valid");
+            $status = 3;
+            last;
+        }
+    
+        eval {
+            my $package = $self->{'modules'}->{$module};
+            $result = $package->run($options, $result);
+                        
+            unless ($result) {
+                $self->log("$module did not return a result for $jobId");
+                $status = 4;
+            }
+            
+            1;
+        };
+    
+        if ($@) {
+            my $error = $@;
+            $log->error("Process module $module returned error $error");
+            $self->log($error);
+            $status = 5;
+        }
+        
+        last unless $status == 1;        
+    }
 
-    #We have output of a successfull doer run.  Run it thorough the
-    #output module.  If it fails set result to a code
-    $self->runOutputModule($result)
-      or return 4;
-
-    return 1;
+    return $status;
 }
 
 sub deleteJob {
@@ -529,10 +455,6 @@ sub _jobDoerThread {
         if ($jobObj) {
 
             $result = $self->runJob($jobObj);
-
-            if ( ref $result ) {
-                $result = $self->submitResult($result);
-            }
 
             $self->deleteJob();
 

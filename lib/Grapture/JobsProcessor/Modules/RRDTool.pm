@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-  Grapture::JobsProcessor::Output::RRDTool.pm
+  Grapture::JobsProcessor::Modules::RRDTool.pm
  
 =head1 SYNOPSIS
 
@@ -15,10 +15,11 @@
 
 =cut 
 
-package Grapture::JobsProcessor::Output::RRDTool;
+package Grapture::JobsProcessor::Modules::RRDTool;
 
     use strict;
     use warnings;
+    use Data::Dumper;
     
     use vars qw( $wraps );
     
@@ -33,15 +34,15 @@ package Grapture::JobsProcessor::Output::RRDTool;
         if ( $INC{ $wrapFile } ) {
             delete $INC{ $wrapFile };
         }
+    
+        {
+            no warnings 'redefine';
+            eval "require $wraps";
+        }
+
+        our @ISA;
+        push @ISA, $wraps;
+        
     }
-    
-    our @ISA;
-    
-    {
-        no warnings 'redefine';
-        eval "require $wraps";
-    }
-    
-    push @ISA, $wraps;
 
 1;
