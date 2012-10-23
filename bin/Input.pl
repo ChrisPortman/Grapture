@@ -63,8 +63,11 @@ else {
 }
 
 loadConfig();
-my $metaDB       = Grapture::Storage::MetaDB->new();
-my $jobInterface = Grapture::Common::JobsInterface->new();
+my $metaDB       = Grapture::Storage::MetaDB->new()
+  or ($logger->error('Cannot connect to database.  Exiting') and exit);
+  
+my $jobInterface = Grapture::Common::JobsInterface->new()
+  or ($logger->error('Cannot connect Jobs interface.  Exiting') and exit);
 
 #Main loop
 while ($run) {
@@ -93,20 +96,26 @@ while ($run) {
 
         unless ( $jobs{$target} ) {
             $jobs{$target} = {
-                'process'        => $job->{'module'},
-                'output'         => $job->{'output'},
+                'process'        => [ 
+                    {
+                        'name'    => $job->{'module'},
+                        'options' => {                    
+                            'target'    => $target,
+                            'version'   => $job->{'snmpversion'},
+                            'community' => $job->{'snmpcommunity'},
+                            'metrics'   => [],
+                        },
+                    },
+                    {
+                        'name'    => $job->{'output'},
+                        'options' => {},
+                    }
+                ],
                 'waitTime'       => 300,
-                'processOptions' => {
-                    'target'    => $target,
-                    'version'   => $job->{'snmpversion'},
-                    'community' => $job->{'snmpcommunity'},
-                    'metrics'   => [],
-                },
-                'outputOptions' => {},
             };
         }
 
-        push @{ $jobs{$target}->{'processOptions'}->{'metrics'} },
+        push @{ $jobs{$target}->{'process'}->[0]->{'options'}->{'metrics'} },
           $metricDetails;
     }
 

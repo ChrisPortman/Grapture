@@ -2,7 +2,7 @@
 
 =head1 NAME
 
-Grapture::JobsProcessor::Doer::FetchSnmp.pm
+Grapture::JobsProcessor::Modules::FetchSnmp.pm
  
 =head1 SYNOPSIS
 
@@ -167,7 +167,7 @@ sections for descriptions on each key/value.
 
 =cut 
 
-package Grapture::JobsProcessor::Doer::FetchSnmp;
+package Grapture::JobsProcessor::Modules::FetchSnmp;
 
     use strict;
     use warnings;
@@ -190,15 +190,8 @@ package Grapture::JobsProcessor::Doer::FetchSnmp;
         }
     }
 
-    sub new {
-        #dummy new until new() is deprecated.
-        my $class = shift;
-        my %dummy;
-        return bless(\%dummy, $class);
-    }
-    
     sub run {
-        my $self = shift;
+        shift if $_[0] eq __PACKAGE__;
         my $params = shift;
         
         unless ( $params and ref( $params ) eq 'HASH' ) {
@@ -231,11 +224,6 @@ package Grapture::JobsProcessor::Doer::FetchSnmp;
           || ( $log->error('Grapture::Snmp did not return a result') and return);
         
         return wantarray ? %result : \%result;
-    }
-
-    sub error {
-        #dummy shile OO is depricated.
-        return;
     }
 
 1;

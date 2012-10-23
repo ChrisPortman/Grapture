@@ -444,6 +444,8 @@ function addTargetGui(event, toolEl, owner, tool){
 	var groups = getGroups();
 	
     var addPanel = Ext.create('Grapture.view.addTarget');
+    addPanel.down('#parentgroup').getStore().removeAll();
+    addPanel.down('#targetgroup').getStore().removeAll();
     addPanel.down('#parentgroup').getStore().add(groups);
     addPanel.down('#targetgroup').getStore().add(groups);
 

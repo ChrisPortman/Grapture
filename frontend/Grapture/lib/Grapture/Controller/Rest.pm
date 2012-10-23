@@ -164,7 +164,7 @@ sub addhost_POST {
 		location => $c->req->uri,
 		entity => {
 			'success' => $success,
-			'data'     => $message,
+			'data'    => $message,
 		}
 	);
 }

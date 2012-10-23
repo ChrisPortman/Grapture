@@ -493,7 +493,7 @@ sub addHosts {
 		my $hostname  = $c->request->params->{'hostname'};
 		my $version   = $c->request->params->{'snmpversion'};
 		my $community = $c->request->params->{'snmpcommunity'};
-		my $group     = $c->request->params->{'group'};
+		my $group     = $c->request->params->{'targetgroup'};
 		
 		push @hosts, { hostname  => $hostname,
 			           version   => $version,

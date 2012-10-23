@@ -14,45 +14,26 @@ use Module::Pluggable
   sub_name    => 'discoverers',
   inner       => 0;
 
-sub new {
-    my $class   = shift;
+sub run {
+    shift if    $_[0] eq __PACKAGE__
+             || $_[0] eq 'Grapture::JobsProcessor::Modules::Discovery';
     my $options = shift;
+    my @metrics;
 
-    $class = ref($class) || $class;
-
-    unless ( ref($options) and ref($options) eq 'HASH' ) {
-        die "Arg must be a hash ref\n";
-    }
-
-    unless ($options->{'target'}
+    unless (ref $options 
+        and $options->{'target'}
         and $options->{'version'}
         and $options->{'community'} )
     {
         die "Options must include 'target', 'version' and 'community'\n";
     }
-
-    my $session = Grapture::FetchSnmp->new( $options );
-
-    my %self = (
-        'target'  => $options->{'target'},
-        'session' => $session,
-        'metrics' => [],
-        'error'   => undef,
-    );
-
-    my $self = bless \%self, $class;
-
-    return $self;
-}
-
-sub run {
-    my $self = shift;
     
-    my @discoveryMods = $self->discoverers();
+    
+    my @discoveryMods = discoverers();
 
     for my $discoverer (@discoveryMods) {
         my $params;
-        eval { $params = $discoverer->discover($self); };
+        eval { $params = $discoverer->discover($options); };
         if ($@) {
             warn
 "An error occured trying to run $discoverer, its being ignored: $@\n";
@@ -61,25 +42,24 @@ sub run {
 
         if ( ref $params eq 'ARRAY' ) {
 
-            my $result = $self->runDiscParams($params);
+            my $result = runDiscParams($params);
 
             if ( ref $result eq 'ARRAY' ) {
-                push @{ $self->{'metrics'} }, @{$result};
+                push @metrics, @{$result};
             }
         }
     }
 
-    return wantarray ? @{ $self->{'metrics'} } : $self->{'metrics'};
+    return wantarray ? @metrics : \@metrics;
 }
 
 sub runDiscParams {
-    my $self   = shift;
     my $params = shift;
 
     return unless ref $params eq 'ARRAY';
 
-    my $target  = $self->{'target'};
-    my $session = $self->{'session'};
+    my $target  = $params->{'target'};
+    my $session = Grapture::FetchSnmp->new( $options );
     my $sysDesc;
     my $group;
 
@@ -94,7 +74,7 @@ sub runDiscParams {
     #a common requirenment of any device.  We also can use getting the
     #sysdesc as an availabiltiy test for the device
     unless ( $sysDesc = $session->getValue( '.1.3.6.1.2.1.1.1.0', 1 ) ){
-        $self->error("$target did not respond");
+        $log->error("$target did not respond");
         return;
     }
 
@@ -336,19 +316,6 @@ sub runDiscParams {
 
     return wantarray ? @return : \@return;
 
-}
-
-sub error {
-    my $self  = shift;
-    my $error = shift;
-
-    if ($error) {
-        $self->{'error'} = $error;
-    }
-
-    $self->{'error'} and return $self->{'error'};
-
-    return;
 }
 
 1;
