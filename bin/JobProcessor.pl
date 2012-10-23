@@ -170,8 +170,10 @@ sub REAPER {
     $pid = waitpid( -1, &WNOHANG );
 
     while ( $pid > 0 ) {
-        $jobsDoer->{'childCount'}--;
-        delete $jobsDoer->{'childPids'}->{$pid};
+        #Only decrease the child count if its one of our children, not
+        #grand children.
+        $jobsDoer->{'childCount'}--
+          if delete $jobsDoer->{'childPids'}->{$pid};
 
         $pid = waitpid( -1, &WNOHANG );
     }

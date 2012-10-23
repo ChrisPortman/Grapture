@@ -251,7 +251,11 @@ sub _updateStatsCounter {
         #true $pid is parent process
         return 1;
     } 
-    elsif ( defined $pid ) { 
+    elsif ( defined $pid ) {
+        #Child has a 5 second max life span.
+        local $SIG{'ALRM'} = sub { $log->notice('A grapture stats alarm expired'); exit; };
+        alarm 5;
+        
         #$pid is 0 but defined = child process
         my $shareVal = IPC::ShareLite->new(
             -key => $metrics{$metric},
@@ -264,6 +268,10 @@ sub _updateStatsCounter {
             -create => 'yes',
             -destroy => 'no',
         );
+        
+        unless ($shareVal and $shareTime) {
+            exit;
+        }
 
         #update the metric value
         $shareVal->lock;
