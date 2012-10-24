@@ -182,29 +182,16 @@ sub loadModules {
     
     # First clear any pluggable modules from %INC so they are reloaded.
     $log->info('Looking for modules that need clearing to be reloaded');
-    if ( $self->{'doers'} ) {
-        $log->info('Clearing doer modules...');
-        for my $module ( keys %{ $self->{'doers'} } ) {
-            my $incmod = $self->{'doers'}->{$module}.'.pm';
+    if ( $self->{'modules'} ) {
+        $log->info('Clearing modules...');
+        for my $module ( keys %{ $self->{'modules'} } ) {
+            my $incmod = $self->{'modules'}->{$module}.'.pm';
             $incmod =~ s|::|/|g;
-            $log->info('Clearing ' . $self->{'doers'}->{$module});
+            $log->info('Clearing ' . $self->{'modules'}->{$module});
             
             if ( $INC{ $incmod } ) {
                 $log->info('Clearing module ' . $incmod . ' from %INC');
                 delete $INC{ $incmod }
-            }
-        }
-    }
-    if ( $self->{'outputs'} ) {
-        $log->info('Clearing output modules...');
-        for my $module ( keys %{ $self->{'outputs'} } ) {
-            my $incmod = $self->{'outputs'}->{$module}.'.pm';
-            $incmod =~ s|::|/|g;
-            $log->info('Clearing ' . $self->{'outputs'}->{$module});
-
-            if ( $INC{ $incmod } ) {
-                $log->info('Clearing module ' . $incmod . ' from %INC');
-                delete $INC{ $incmod     }
             }
         }
     }
@@ -270,13 +257,9 @@ sub runJob {
     return unless $job;
     
     $log->debug('Processing job');
-
-    my $bsclientObj = $self->{'bsclient'};
+    debug(  "Starting job ID $job->{'id'} at ". localtime() );
 
     my $jobData = decode_json( $job->{'data'} );
-    debug(  "Starting job ID $job->{'id'} at "
-          . localtime()
-          );
 
     $log->debug("Job details $job->{'id'}, logs tube $jobData->{'logsTube'}");
     
@@ -288,34 +271,17 @@ sub runJob {
         'logsTube'       => $jobData->{'logsTube'},
     };
 
-    if (
-        not(    $self->{'currentJobData'}->{'jobData'}
-            and $self->{'currentJobData'}->{'process'} )
-      )
+    unless (    $self->{'currentJobData'}->{'jobData'}
+            and ref $self->{'currentJobData'}->{'process'} )
     {
         $self->log('Received malformed job data.  Job will be deleted.');
-        $bsclientObj->delete( $self->{'currentJobData'}->{'jobId'} );
+        $self->{'bsclient'}->delete( $self->{'currentJobData'}->{'jobId'} );
         return 2;
     }
 
     my $result = $self->runProcess();
 
-    #~ my %resultData;
-#~ 
-    #~ if ($result) {
-#~ 
-        #~ %resultData = (
-            #~ 'id'     => $self->{'currentJobData'}->{'jobId'},
-            #~ 'result' => $result,
-        #~ );
-#~ 
-        #~ return wantarray ? %resultData : \%resultData;
-    #~ }
-    #~ $self->log( 'Doer module '
-          #~ . $self->{'currentJobData'}->{'process'}
-          #~ . ' did not return a result' );
     return $result;
-
 }
 
 sub runProcess {
@@ -342,6 +308,9 @@ sub runProcess {
         }
     
         eval {
+            #Call run() of the module as a method call so that
+            #inheritance works within the module.  we're not getting an
+            #object back.
             my $package = $self->{'modules'}->{$module};
             $result = $package->run($options, $result);
                         

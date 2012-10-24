@@ -28,12 +28,11 @@ sub run {
         die "Options must include 'target', 'version' and 'community'\n";
     }
     
-    
     my @discoveryMods = discoverers();
 
     for my $discoverer (@discoveryMods) {
         my $params;
-        eval { $params = $discoverer->discover($options); };
+        eval { $params = $discoverer->discover(); };
         if ($@) {
             warn
 "An error occured trying to run $discoverer, its being ignored: $@\n";
@@ -42,7 +41,7 @@ sub run {
 
         if ( ref $params eq 'ARRAY' ) {
 
-            my $result = runDiscParams($params);
+            my $result = runDiscParams($options, $params);
 
             if ( ref $result eq 'ARRAY' ) {
                 push @metrics, @{$result};
@@ -54,15 +53,19 @@ sub run {
 }
 
 sub runDiscParams {
-    my $params = shift;
+    my $options = shift;
+    my $params  = shift;
+    
+    print Dumper($options);
+    
+    return unless ref $options eq 'HASH';
+    return unless ref $params  eq 'ARRAY';
 
-    return unless ref $params eq 'ARRAY';
-
-    my $target  = $params->{'target'};
-    my $session = Grapture::FetchSnmp->new( $options );
+    my $target  = $options->{'target'};
     my $sysDesc;
     my $group;
 
+    my $session = Grapture::FetchSnmp->new( $options );
     return unless ( $target and $session );
 
     my @return;

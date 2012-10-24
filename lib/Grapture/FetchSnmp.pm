@@ -64,20 +64,17 @@ Arguments are supplied as a hash ref.
 =cut 
 
 sub new {
-    my $class = shift;
-    $class = ref($class) if ref($class);    #in case we're cloning the obj.
-
-    my $params = shift
-      if ( ref( $_[0] ) and ref( $_[0] ) eq 'HASH' );
+    my $class  = shift;
+    my %params = ref $_[0] ? %{$_[0]} : @_;
 
     my $target;
     my $version;
     my $community;
 
-    if ($params) {
-        $target    = $params->{'target'};
-        $version   = $params->{'version'};
-        $community = $params->{'community'};
+    if (%params) {
+        $target    = $params{'target'};
+        $version   = $params{'version'};
+        $community = $params{'community'};
     }
 
     unless ( $target and $version and $community ) {
@@ -101,10 +98,10 @@ sub new {
         return;
     }
 
-    $params->{'snmpSession'} = $session;
-    $params->{'snmpCounter'} = 0;
+    $params{'snmpSession'} = $session;
+    $params{'snmpCounter'} = 0;
 
-    my $self = bless $params, $class;
+    my $self = bless \%params, ref $class || $class;
 
     return $self;
 }

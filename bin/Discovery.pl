@@ -46,15 +46,22 @@ for my $targetRef ( @{ $targets } ) {
 
     push @jobList,
       {
-        'process'        => $module,
-        'output'         => $output,
+        'process'        => [
+            {
+                'name'    => $module,
+                'options' => {
+                    'target'    => $target,
+                    'version'   => $version,
+                    'community' => $community,
+                },
+            },
+            {
+                'name'    => $output,
+                'options' => {},
+            },
+        ],
+                    
         'priority'       => 100,
-        'processOptions' => {
-            'target'    => $target,
-            'version'   => $version,
-            'community' => $community,
-        },
-        'outputOptions' => {},
       };
 
     $logger->info("Queued discovery for $target");
