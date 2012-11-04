@@ -17,30 +17,30 @@ sub discover {
     #if name use ifDesc
     [
         #32 bit counters IfDesc
-        {    #Interface Octets (~Bytes) in
-            'metric'  => 'OctetsIn',
+        {    #Interface Bits in
+            'metric'  => 'BitsIn',
             'mapbase' => '1.3.6.1.2.1.2.2.1.2',
             'valbase' => '1.3.6.1.2.1.2.2.1.10',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 20,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
-        {    #Interface Octets (~Bytes) out
-            'metric'  => 'OctetsOut',
+        {    #Interface Bits out
+            'metric'  => 'BitsOut',
             'mapbase' => '1.3.6.1.2.1.2.2.1.2',
             'valbase' => '1.3.6.1.2.1.2.2.1.16',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 10,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
@@ -50,7 +50,7 @@ sub discover {
             'valbase'     => '1.3.6.1.2.1.2.2.1.14',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
@@ -61,37 +61,37 @@ sub discover {
             'valbase'     => '1.3.6.1.2.1.2.2.1.20',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
         #32 bit counters IfName
-        {    #Interface Octets (~Bytes) in
-            'metric'  => 'OctetsIn',
+        {    #Interface Bits in
+            'metric'  => 'BitsIn',
             'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
             'valbase' => '1.3.6.1.2.1.2.2.1.10',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 20,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
-        {    #Interface Octets (~Bytes) out
-            'metric'  => 'OctetsOut',
+        {    #Interface Bits out
+            'metric'  => 'BitsOut',
             'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
             'valbase' => '1.3.6.1.2.1.2.2.1.16',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 10,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
@@ -101,7 +101,7 @@ sub discover {
             'valbase'     => '1.3.6.1.2.1.2.2.1.14',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
@@ -112,64 +112,64 @@ sub discover {
             'valbase'     => '1.3.6.1.2.1.2.2.1.20',
             'counterbits' => '32',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
         #64 bit counters
-        {    #Interface Octets (~Bytes) in ifDesc
-            'metric'  => 'OctetsIn',
+        {    #Interface Bits in ifDesc
+            'metric'  => 'BitsIn',
             'mapbase' => '1.3.6.1.2.1.2.2.1.2',
             'valbase' => '1.3.6.1.2.1.31.1.1.1.6',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 20,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
-        {    #Interface Octets (~Bytes) out
-            'metric'  => 'OctetsOut',
+        {    #Interface Bits out
+            'metric'  => 'BitsOut',
             'mapbase' => '1.3.6.1.2.1.2.2.1.2',
             'valbase' => '1.3.6.1.2.1.31.1.1.1.10',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 10,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
 
-        {    #Interface Octets (~Bytes) in ifName
-            'metric'  => 'OctetsIn',
+        {    #Interface Bits in ifName
+            'metric'  => 'BitsIn',
             'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
             'valbase' => '1.3.6.1.2.1.31.1.1.1.6',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 20,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
-        {    #Interface Octets (~Bytes) out
-            'metric'  => 'OctetsOut',
+        {    #Interface Bits out
+            'metric'  => 'BitsOut',
             'mapbase' => '1.3.6.1.2.1.31.1.1.1.1',
             'valbase' => '1.3.6.1.2.1.31.1.1.1.10',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 10,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
         },
     ];
@@ -184,16 +184,12 @@ sub onlyUpWithPosInCounter {
     my $options = shift;
     my $session = shift;
 
-    return if $device =~ m/^(lo$|unrouted|Loopback|Null)/;
+    return if $device =~ m/^(lo\d*$|unrouted|Loopback|Null)/;
 
     #get the opper status
-    my $operStatus = $session->get_request(
-        '-varbindlist' => [ '1.3.6.1.2.1.2.2.1.8.' . $devId ], );
-    $operStatus = $operStatus->{ '1.3.6.1.2.1.2.2.1.8.' . $devId };
-
-    my $inCounter = $session->get_request(
-        '-varbindlist' => [ '1.3.6.1.2.1.2.2.1.10.' . $devId ], );
-    $inCounter = $inCounter->{ '1.3.6.1.2.1.2.2.1.10.' . $devId };
+    my $operStatus = $session->getValue('1.3.6.1.2.1.2.2.1.8.' . $devId);
+    
+    my $inCounter = $session->getValue('1.3.6.1.2.1.2.2.1.10.' . $devId);
 
     if ( $operStatus eq '1' and $inCounter =~ m/^[1-9]\d*$/ ) {
         return 1;

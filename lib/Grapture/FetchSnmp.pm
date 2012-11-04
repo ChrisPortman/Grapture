@@ -41,6 +41,7 @@ details from the target.
 package Grapture::FetchSnmp;
 
 use strict;
+use Grapture::Conversions;
 use Net::SNMP;
 use Data::Dumper;
 use Log::Any qw ( $log );
@@ -177,10 +178,11 @@ sub pollProcess {
     my %timestamps;
 
     for my $poll ( @polls ) {
-        my $device  = $poll->{'device'};
-        my $metric  = $poll->{'metric'};
-        my $valbase = $poll->{'valbase'};
-        my $mapbase = $poll->{'mapbase'} || undef;
+        my $device     = $poll->{'device'};
+        my $metric     = $poll->{'metric'};
+        my $valbase    = $poll->{'valbase'};
+        my $mapbase    = $poll->{'mapbase'}    || undef;
+        my $conversion = $poll->{'conversion'} || undef;
         
         $log->debug("Polling $metric for $device on $target...");
 
@@ -245,7 +247,20 @@ sub pollProcess {
         #collected which could be many seconsds prior to doing the
         #processing.
         $poll->{'timestamp'} = $timestamps{ $valbase };
-        $poll->{'value'}     = $fullResultCache{ $oid };
+        
+        #If there is a conversion to be applied to this value, do it now.
+        if ($conversion) {
+            my $value = eval 'Grapture::Conversions::'
+                             .$conversion.'($fullResultCache{ $oid })';
+            if ($@) {
+                $log->error("Specified converion ($conversion) for $target/$device/$metric died: $@\n");
+                $value = $fullResultCache{ $oid };
+            }
+            $poll->{'value'} = $value
+        }
+        else { 
+            $poll->{'value'} = $fullResultCache{ $oid };
+        }
         
         $log->debug("Got ".$poll->{'value'}." for $metric for $device on $target...");
 

@@ -191,8 +191,8 @@ sub _createRrd {
 
     my $ds   = $updateHash->{'metric'};
     my $type = uc( $updateHash->{'valtype'} );
-    my $max  = $updateHash->{'valmax'} || 'U';
-    my $min  = $updateHash->{'valmin'} || 'U';
+    my $max  = 'U';
+    my $min  = '0';
 
     push @datasources, ("DS:$ds:$type:600:$min:$max");
 

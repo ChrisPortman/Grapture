@@ -39,6 +39,12 @@ BS_JOBQ     =
 # RRD Cached Settings
 RRD_BIND_ADDR  = 127.0.0.1
 
+# MemCached servers. Used for tracking alarm states
+# Port can be specified as part of the server address ie server:port
+# Or if omitted from the server address, MEMCACHED_PORT will apply.
+MEMCACHED_SERVERS = 
+MEMCACHED_PORT    = 11211
+
 #logging
 dispatchers = file syslog
 

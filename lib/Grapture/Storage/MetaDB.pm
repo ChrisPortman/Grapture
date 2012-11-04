@@ -123,8 +123,9 @@ sub runFunction {
     my %functionRequiredArgs = (
         'add_group'                   => 2,
         'add_or_update_target'        => 5,
-        'add_or_update_target_metric' => 15,
+        'add_or_update_target_metric' => 16,
         'target_discovered'           => 1,
+        'update_alarm'                => 5,
     );
     
     unless ($functionRequiredArgs{$function}) {
@@ -208,7 +209,7 @@ sub storeDiscovery {
             $result->{'max'},         $result->{'category'}, 
             $result->{'valtype'},     $result->{'graphgroup'}, 
             $result->{'enabled'},     $result->{'graphorder'}, 
-            $result->{'aggregate'},
+            $result->{'aggregate'},   $result->{'conversion'}
         ) or $log->error('Could not add or update a metric');
 	}
 
@@ -223,15 +224,17 @@ sub getMetricPolls {
     my $query = q/SELECT 
                   a.target,  a.device,      a.metric, a.valbase,
 	              a.mapbase, a.counterbits, a.max,    a.category,
-	              a.module, a.output, a.valtype, b.snmpcommunity,
-	              b.snmpversion
+	              a.module, a.output, a.valtype, a.conversion,
+                  b.snmpcommunity, b.snmpversion
                   FROM targetmetrics a
                   JOIN targets b on a.target = b.target
                   WHERE a.enabled = true
                   ORDER by a.target, a.metric --/;
 
     my $sth = $dbh->prepare($query);
-    my $res = $sth->execute() or return;
+    my $res = $sth->execute();
+    
+    return unless $self->_checkErrorFree($sth);
 
     return wantarray ? @{ $sth->fetchall_arrayref( {} ) } 
                      : $sth->fetchall_arrayref( {} );    
@@ -244,7 +247,9 @@ sub getTargetCount {
     my $query = q/SELECT count(*) from targets --/;
 
     my $sth = $dbh->prepare($query);
-    my $res = $sth->execute() or return;
+    my $res = $sth->execute();
+    
+    return unless $self->_checkErrorFree($sth);
 
     my $count = $sth->fetchall_arrayref( {} )->[0]->{'count'} 
       || return;
@@ -304,6 +309,23 @@ sub getLastDiscovery {
     return $lastDiscovered;
 }
 
+sub _checkErrorFree {
+    my $self   = shift;
+    my $handle = shift;
+    
+    if ($handle->err()) {
+        my $error = $handle->errstr();
+        if ($error) {
+            chomp ($error);
+            for my $err ( split/\n/, $error ) {
+                $log->error($err);
+            }
+        }
+        return;
+    }
+    
+    return 1;
+}
 
 
 1;        

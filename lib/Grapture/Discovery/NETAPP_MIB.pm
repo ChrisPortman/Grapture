@@ -14,31 +14,31 @@ sub discover {
         ########## INTERFACES #############
 
         #64 bit counters IfDesc
-        {    #Interface Octets (~Bytes) in
-            'metric'  => 'OctetsIn',
+        {    #Interface Bits in
+            'metric'  => 'BitsIn',
             'mapbase' => '1.3.6.1.4.1.789.1.22.1.2.1.2',
             'valbase' => '1.3.6.1.4.1.789.1.22.1.2.1.25',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 20,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
             'authoritive' => 1,
         },
-        {    #Interface Octets (~Bytes) out
-            'metric'  => 'OctetsOut',
+        {    #Interface Bits out
+            'metric'  => 'BitsOut',
             'mapbase' => '1.3.6.1.4.1.789.1.22.1.2.1.2',
             'valbase' => '1.3.6.1.4.1.789.1.22.1.2.1.31',
-
-            #'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
+            'maxbase'     => '1.3.6.1.2.1.2.2.1.5',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceTraffic',
             'graphorder'  => 10,
+            'conversion'  => 'bytesToBits',
             'filterSub'   => \&onlyUpWithPosInCounter,
             'authoritive' => 1,
         },
@@ -49,7 +49,7 @@ sub discover {
             'valbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.29',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 20,
             'filterSub'   => \&onlyUpWithPosInCounter,
@@ -61,7 +61,7 @@ sub discover {
             'valbase'     => '1.3.6.1.4.1.789.1.22.1.2.1.35',
             'counterbits' => '64',
             'category'    => 'Interfaces',
-            'valtype'     => 'counter',
+            'valtype'     => 'derive',
             'graphgroup'  => 'InterfaceErrors',
             'graphorder'  => 10,
             'filterSub'   => \&onlyUpWithPosInCounter,

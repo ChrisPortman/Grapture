@@ -75,6 +75,9 @@ while ($run) {
     
     $logger->info('Input Daemon: Getting polling target metrics');
     my $polls = $metaDB->getMetricPolls();
+    
+    next unless ref $polls eq 'ARRAY';
+    
     $logger->info('Input Daemon: Got '.scalar @{$polls}.' metrics to poll.');
     
     my %jobs;
@@ -92,6 +95,7 @@ while ($run) {
             'category'    => $job->{'category'},
             'max'         => $job->{'max'},
             'valtype'     => $job->{'valtype'},
+            'conversion'  => $job->{'conversion'},
         };
 
         unless ( $jobs{$target} ) {

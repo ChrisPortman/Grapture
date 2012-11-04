@@ -186,6 +186,7 @@ sub runDiscParams {
 
                             #If there was any error at all, force the device
                             #enabled
+                            $log->error("Filter sub died: $@\n");
                             $deviceHash{'enabled'} = 1;
                         }
                         $devStateCache{$device} = $deviceHash{'enabled'};
@@ -212,8 +213,8 @@ sub runDiscParams {
                 #optionals
                 $metricDef->{'category'}
                   and $deviceHash{'category'} = $metricDef->{'category'};
-                $metricDef->{'munge'}
-                  and $deviceHash{'munge'} = $metricDef->{'munge'};
+                $metricDef->{'conversion'}
+                  and $deviceHash{'conversion'} = $metricDef->{'conversion'};
                 $metricDef->{'counterbits'}
                   and $deviceHash{'counterbits'} = $metricDef->{'counterbits'};
                 $metricDef->{'maxbase'}
@@ -290,8 +291,8 @@ sub runDiscParams {
             #optionals
             $metricDef->{'category'}
               and $deviceHash{'category'} = $metricDef->{'category'};
-            $metricDef->{'munge'}
-              and $deviceHash{'munge'} = $metricDef->{'munge'};
+            $metricDef->{'conversion'}
+              and $deviceHash{'conversion'} = $metricDef->{'conversion'};
             $metricDef->{'counterbits'}
               and $deviceHash{'counterbits'} = $metricDef->{'counterbits'};
             $metricDef->{'maxbase'}
