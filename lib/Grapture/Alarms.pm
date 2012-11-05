@@ -80,8 +80,11 @@ sub checkAlarms {
             
             $self->raiseAlarm($metricResult,$state);
         }
-             
+
+        print Dumper($self->{'mem'});
+     
         $self->{'mem'}->{$device}->{$metric}->{'state'} = $state;
+        $self->{'memObj'}->set($target, $self->{'mem'});
     }
     
     return 1;
@@ -96,13 +99,15 @@ sub processRules {
         $reloadAlarms = 0;
     }
     
-    my $target = $metricHash->{'target'};
+    my $target = $self->{'target'};
     my $device = $metricHash->{'device'};
     my $metric = $metricHash->{'metric'};
         
-    if ( $self->{'mem'}->{$device}->{$metric} ) {
+    if ( defined $self->{'mem'}->{$device}->{$metric} ) {
         return 1;
     }
+    
+    $log->info("Loading alarm rules for $target/$device/$metric");
     
     $self->{'mem'}->{$device} = {} unless $self->{'mem'}->{$device};
     $self->{'mem'}->{$device}->{$metric} = { 'state' => 1 };
@@ -162,11 +167,12 @@ sub storeResult {
             $log->error("Alarm rule for $target/$device/$metric has invalid value for valspan - must be an integer");
             return;
         }
+        $log->info("Creating RRArray for $target/$device/$metric");
         my $rrArray = Data::RoundRobinArray->new($numValsToTrack);
         $self->{'mem'}->{$device}->{$metric}->{'values'} = $rrArray;
     }
 
-    $self->{'mem'}->{$device}->{$metric}->{'values'}->add($metricHash->{'value'});
+    $self->{'mem'}->{$device}->{$metric}->{'values'}->add($value);
     
     return 1;
 }
@@ -202,8 +208,14 @@ sub checkAlarmThresh {
     }
     
     my $state = 1;
-    $state = 2 if $comparisonVal >= $rule->{'warn'};
-    $state = 3 if $comparisonVal >= $rule->{'crit'};
+    if ($comparisonVal >= $rule->{'warn'} ) {
+        $log->info("$target/$device/$metric is above WARN theshhold.");
+        $state = 2 
+    }
+    if ($comparisonVal >= $rule->{'crit'}) {
+        $log->info("$target/$device/$metric is above CRIT theshhold.");
+        $state = 3 
+    }
     
     return $state;
 }
@@ -218,7 +230,7 @@ sub raiseAlarm {
     my $largest    = $self->{'mem'}->{$device}->{$metric}->{'values'}->largest();
 
     my $metaDB = Grapture::Storage::MetaDB->new();
-    $metaDB->runFunction('update_alarm', $target, $device, $metric, $STATES{$state}, $largest)
+    $metaDB->runFunction('update_alarm', $target, $device, $metric, $state, $largest)
       or $log->error("Failed to update alarm in database");
 
     if ( $self->{'mem'}->{$device}->{$metric}->{'rule'}->{'trapdest'} ) {
