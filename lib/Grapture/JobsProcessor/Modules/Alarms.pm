@@ -30,6 +30,7 @@ sub run {
     
     # No params means nothing to do
     return $result unless $params and ref $params eq 'ARRAY';
+    return $result unless $params->[0];
     
     #Auto reap dead children to avoid zombies
     local $SIG{'CHLD'} = 'IGNORE';
@@ -38,6 +39,10 @@ sub run {
     #back so why wait.  
     my $pid = fork;
     if ($pid) {
+        #this is the parent, just return the result
+        return $result;
+    }
+    elsif ( defined $pid ) {
         local $SIG{'ALRM'} = sub { $log->error("The alarms child process expired"); exit; };
         alarm 10;
 
@@ -48,7 +53,7 @@ sub run {
         );
     
         my $alarms = Grapture::Alarms->new(\%args)
-          or return $result;
+          or exit;
         
         $log->info("Child process running alarms");
         $alarms->checkAlarms();
@@ -58,7 +63,7 @@ sub run {
         $log->error("There was an error forking off the alarm process");
     }
     
-    return $result
+    return $result;
 }
 
     

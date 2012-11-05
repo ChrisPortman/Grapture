@@ -74,7 +74,8 @@ while ($run) {
     if ($reload) { loadConfig(); $reload = 0 }
     
     $logger->info('Input Daemon: Getting polling target metrics');
-    my $polls = $metaDB->getMetricPolls();
+    my $polls  = $metaDB->getMetricPolls();
+    my $alarms = $metaDB->getAlarmRules();
     
     next unless ref $polls eq 'ARRAY';
     
@@ -102,7 +103,7 @@ while ($run) {
             $jobs{$target} = {
                 'process'        => [ 
                     {
-                        'name'    => $job->{'module'},
+                        'name'    => 'FetchSnmp',
                         'options' => {                    
                             'target'    => $target,
                             'version'   => $job->{'snmpversion'},
@@ -111,7 +112,11 @@ while ($run) {
                         },
                     },
                     {
-                        'name'    => $job->{'output'},
+                        'name'    => 'Alarms',
+                        'options' => $alarms,
+                    },
+                    {
+                        'name'    => 'RRDTool',
                         'options' => {},
                     }
                 ],

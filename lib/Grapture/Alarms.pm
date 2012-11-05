@@ -40,7 +40,7 @@ sub new {
         return;
     }
     
-    my $memcache = Grapture::Storage::Memcached->new();
+    my $memcache = Grapture::Storage::Memcached->new() or return;
     my $memKey   = $target;
     $memcache->add($target, {}); #Will add if not exist.
     
@@ -178,9 +178,9 @@ sub checkAlarmThresh {
     my $device     = $metricHash->{'device'};
     my $metric     = $metricHash->{'metric'};
     my $rule       = $self->{'mem'}->{$device}->{$metric}->{'rule'};
-    my $values     = $self->{'mem'}->{$device}->{$metric}->{'vaules'};
+    my $values     = $self->{'mem'}->{$device}->{$metric}->{'values'};
     
-    my $comarisonMethod = $rule->{'comarisonMethod'} || 'average';
+    my $comarisonMethod = $rule->{'comarisontype'} || 'average';
     my $comparisonVal;
     
     if (lc $comarisonMethod eq 'all_over') {

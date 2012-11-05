@@ -4,7 +4,7 @@
 
 -- Dumped from database version 9.1.6
 -- Dumped by pg_dump version 9.1.6
--- Started on 2012-11-05 05:53:37 EST
+-- Started on 2012-11-05 15:58:09 EST
 
 SET statement_timeout = 0;
 SET client_encoding = 'UTF8';
@@ -13,7 +13,7 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
--- TOC entry 1973 (class 1262 OID 17424)
+-- TOC entry 1962 (class 1262 OID 16931)
 -- Name: grapture; Type: DATABASE; Schema: -; Owner: grapture
 --
 
@@ -31,7 +31,7 @@ SET check_function_bodies = false;
 SET client_min_messages = warning;
 
 --
--- TOC entry 170 (class 3079 OID 11681)
+-- TOC entry 169 (class 3079 OID 11681)
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
 --
 
@@ -39,8 +39,8 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
 --
--- TOC entry 1976 (class 0 OID 0)
--- Dependencies: 170
+-- TOC entry 1965 (class 0 OID 0)
+-- Dependencies: 169
 -- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: 
 --
 
@@ -50,12 +50,12 @@ COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 SET search_path = public, pg_catalog;
 
 --
--- TOC entry 183 (class 1255 OID 25628)
--- Dependencies: 530 6
--- Name: add_alarm(character varying, character varying, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: postgres
+-- TOC entry 181 (class 1255 OID 16932)
+-- Dependencies: 524 6
+-- Name: add_alarmdef(character varying, character varying, character varying, integer, character varying, character varying, character varying, integer, integer, boolean); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
-CREATE FUNCTION add_alarm(target character varying, device character varying, metric character varying, severity character varying, value integer) RETURNS integer
+CREATE FUNCTION add_alarmdef(target character varying, device character varying, metric character varying, valspan integer, threshtype character varying, comparisontype character varying, trapdest character varying, warn integer, crit integer, disabled boolean) RETURNS integer
     LANGUAGE plpgsql
     AS $_$
 
@@ -70,45 +70,9 @@ CREATE FUNCTION add_alarm(target character varying, device character varying, me
         --
         -- START adding data
         --
-        EXECUTE 'INSERT INTO alarms ( target, device, metric, severity, value )
-          VALUES ( $1, $2, $3 )'
-          USING target, device, metric, severity, value;
-
-        IF NOT FOUND THEN
-            RAISE EXCEPTION 'Failed to register alarm';
-        END IF;
-
-        RETURN 1;
-    END;
-$_$;
-
-
-ALTER FUNCTION public.add_alarm(target character varying, device character varying, metric character varying, severity character varying, value integer) OWNER TO postgres;
-
---
--- TOC entry 185 (class 1255 OID 25630)
--- Dependencies: 6 530
--- Name: add_alarmdef(character varying, character varying, integer, integer, character varying, character varying, boolean); Type: FUNCTION; Schema: public; Owner: postgres
---
-
-CREATE FUNCTION add_alarmdef(target character varying, metric character varying, warn integer, crit integer, comptype character varying, trapdest character varying, disabled boolean) RETURNS integer
-    LANGUAGE plpgsql
-    AS $_$
-
-    DECLARE
-        
-    BEGIN
-        -- Any errors or inconsistancies raise exceptions so that in
-        -- code we just have to look for a true execute() statement
-        -- without having to actually fetch the result (0, null etc are
-        -- valid returns).
-
-        --
-        -- START adding data
-        --
-        EXECUTE 'INSERT INTO alarmdefs ( target, metric, warn, crit, comptype, trapdest, disabled )
+        EXECUTE 'INSERT INTO alarmdefs ( target, device, metric, valspan, threshtype, comparisontype, trapdest, warn, crit, disabled )
           VALUES ( $1, $2, $3, $4, $5, $6, $7 )'
-          USING target, metric, warn, crit, comptype, trapdest, disabled;
+          USING target, device, metric, valspan, threshtype, comparisontype, trapdest, warn, crit, disabled;
 
         IF NOT FOUND THEN
             RAISE EXCEPTION 'Failed to create trapdest';
@@ -119,11 +83,11 @@ CREATE FUNCTION add_alarmdef(target character varying, metric character varying,
 $_$;
 
 
-ALTER FUNCTION public.add_alarmdef(target character varying, metric character varying, warn integer, crit integer, comptype character varying, trapdest character varying, disabled boolean) OWNER TO postgres;
+ALTER FUNCTION public.add_alarmdef(target character varying, device character varying, metric character varying, valspan integer, threshtype character varying, comparisontype character varying, trapdest character varying, warn integer, crit integer, disabled boolean) OWNER TO grapture;
 
 --
--- TOC entry 182 (class 1255 OID 17464)
--- Dependencies: 530 6
+-- TOC entry 182 (class 1255 OID 16933)
+-- Dependencies: 524 6
 -- Name: add_group(character varying, character varying); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
@@ -166,8 +130,8 @@ $$;
 ALTER FUNCTION public.add_group(new_group character varying, new_memberof character varying) OWNER TO grapture;
 
 --
--- TOC entry 186 (class 1255 OID 17465)
--- Dependencies: 530 6
+-- TOC entry 184 (class 1255 OID 16934)
+-- Dependencies: 6 524
 -- Name: add_or_update_target(character varying, integer, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
@@ -235,12 +199,12 @@ $$;
 ALTER FUNCTION public.add_or_update_target(new_target character varying, new_snmpversion integer, new_snmpcommunity character varying, new_groupname character varying, rediscover integer) OWNER TO grapture;
 
 --
--- TOC entry 187 (class 1255 OID 25632)
--- Dependencies: 530 6
--- Name: add_or_update_target_metric(character varying, character varying, character varying, character varying, integer, character varying, character varying, character varying, character varying, character varying, character varying, character varying, boolean, integer, boolean, character varying); Type: FUNCTION; Schema: public; Owner: grapture
+-- TOC entry 185 (class 1255 OID 16935)
+-- Dependencies: 524 6
+-- Name: add_or_update_target_metric(character varying, character varying, character varying, character varying, integer, character varying, character varying, character varying, character varying, character varying, character varying, boolean, integer, boolean, character varying); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
-CREATE FUNCTION add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean, new_conversion character varying) RETURNS integer
+CREATE FUNCTION add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_modules character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean, new_conversion character varying) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 
@@ -259,15 +223,14 @@ BEGIN
         INSERT INTO targetmetrics 
           (
               target,  device,     metric,  mapbase,    counterbits,
-              module,  output,     valbase, max,        category,
-              valtype, graphgroup, enabled, graphorder, aggregate, conversion
+              modules, valbase,    max,     category,   valtype,
+              graphgroup, enabled, graphorder, aggregate, conversion
           )
         VALUES 
           (
-              new_target,  new_device,     new_metric,  new_mapbase,    new_counterbits,
-              new_module,  new_output,     new_valbase, new_max,        new_category,
-              new_valtype, new_graphgroup, new_enabled, new_graphorder, new_aggregate,
-              new_conversion
+              new_target,  new_device,     new_metric,  new_mapbase,      new_counterbits,
+              new_modules, new_valbase,    new_max,     new_category,     new_valtype,
+              new_graphgroup, new_enabled, new_graphorder, new_aggregate, new_conversion
           );
         
         IF NOT FOUND THEN
@@ -280,12 +243,12 @@ BEGIN
         UPDATE targetmetrics SET 
           target      = new_target,      device     = new_device,
           metric      = new_metric,      mapbase    = new_mapbase,
-          counterbits = new_counterbits, module     = new_module,
-          output      = new_output,      valbase    = new_valbase,
-          max         = new_max,         category   = new_category,
-          valtype     = new_valtype,     graphgroup = new_graphgroup,
-          enabled     = new_enabled,     graphorder = new_graphorder,
-          aggregate   = new_aggregate,   conversion = new_conversion
+          counterbits = new_counterbits, modules    = new_modules,
+          valbase     = new_valbase,     max        = new_max,
+          category    = new_category,    valtype    = new_valtype,
+          graphgroup  = new_graphgroup,  enabled    = new_enabled,
+          graphorder  = new_graphorder,  aggregate  = new_aggregate,
+          conversion  = new_conversion
 
           WHERE target = new_target 
           and device   = new_device 
@@ -303,12 +266,12 @@ END;
 $$;
 
 
-ALTER FUNCTION public.add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_module character varying, new_output character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean, new_conversion character varying) OWNER TO grapture;
+ALTER FUNCTION public.add_or_update_target_metric(new_target character varying, new_device character varying, new_metric character varying, new_mapbase character varying, new_counterbits integer, new_modules character varying, new_valbase character varying, new_max character varying, new_category character varying, new_valtype character varying, new_graphgroup character varying, new_enabled boolean, new_graphorder integer, new_aggregate boolean, new_conversion character varying) OWNER TO grapture;
 
 --
--- TOC entry 184 (class 1255 OID 25629)
--- Dependencies: 6 530
--- Name: add_trapdest(character varying, integer, character varying); Type: FUNCTION; Schema: public; Owner: postgres
+-- TOC entry 186 (class 1255 OID 16936)
+-- Dependencies: 6 524
+-- Name: add_trapdest(character varying, integer, character varying); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
 CREATE FUNCTION add_trapdest(hostname character varying, snmpversion integer, snmpcommunity character varying) RETURNS integer
@@ -339,11 +302,11 @@ CREATE FUNCTION add_trapdest(hostname character varying, snmpversion integer, sn
 $_$;
 
 
-ALTER FUNCTION public.add_trapdest(hostname character varying, snmpversion integer, snmpcommunity character varying) OWNER TO postgres;
+ALTER FUNCTION public.add_trapdest(hostname character varying, snmpversion integer, snmpcommunity character varying) OWNER TO grapture;
 
 --
--- TOC entry 188 (class 1255 OID 17467)
--- Dependencies: 6 530
+-- TOC entry 183 (class 1255 OID 16937)
+-- Dependencies: 524 6
 -- Name: target_discovered(character varying); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
@@ -372,9 +335,9 @@ $$;
 ALTER FUNCTION public.target_discovered(disc_target character varying) OWNER TO grapture;
 
 --
--- TOC entry 189 (class 1255 OID 25633)
--- Dependencies: 6 530
--- Name: update_alarm(character varying, character varying, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: postgres
+-- TOC entry 187 (class 1255 OID 16938)
+-- Dependencies: 6 524
+-- Name: update_alarm(character varying, character varying, character varying, character varying, integer); Type: FUNCTION; Schema: public; Owner: grapture
 --
 
 CREATE FUNCTION update_alarm(target character varying, device character varying, metric character varying, severity character varying, new_value integer) RETURNS integer
@@ -447,75 +410,73 @@ CREATE FUNCTION update_alarm(target character varying, device character varying,
 $$;
 
 
-ALTER FUNCTION public.update_alarm(target character varying, device character varying, metric character varying, severity character varying, new_value integer) OWNER TO postgres;
+ALTER FUNCTION public.update_alarm(target character varying, device character varying, metric character varying, severity character varying, new_value integer) OWNER TO grapture;
 
 SET default_tablespace = '';
 
 SET default_with_oids = false;
 
 --
--- TOC entry 168 (class 1259 OID 25601)
--- Dependencies: 6
--- Name: alarmcomptypes; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
---
-
-CREATE TABLE alarmcomptypes (
-    comptype character varying(255)[] NOT NULL
-);
-
-
-ALTER TABLE public.alarmcomptypes OWNER TO postgres;
-
---
--- TOC entry 166 (class 1259 OID 25567)
--- Dependencies: 1930 6
--- Name: alarmdefs; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 161 (class 1259 OID 16939)
+-- Dependencies: 1924 6
+-- Name: alarmdefs; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE TABLE alarmdefs (
     target character varying(255) NOT NULL,
     metric character varying(255) NOT NULL,
-    device character varying(255) NOT NULL
+    device character varying(255) NOT NULL,
+    valspan integer NOT NULL,
+    threshtype character varying(255) NOT NULL,
+    comparisontype character varying(255) NOT NULL,
+    trapdest character varying(255),
     warn integer NOT NULL,
     crit integer NOT NULL,
-    comptype character varying(255) NOT NULL,
-    trapdest character varying(255),
-    disabled boolean DEFAULT false NOT NULL,
+    disabled boolean DEFAULT false NOT NULL
 );
 
 
-ALTER TABLE public.alarmdefs OWNER TO postgres;
+ALTER TABLE public.alarmdefs OWNER TO grapture;
 
 --
--- TOC entry 1977 (class 0 OID 0)
--- Dependencies: 166
--- Name: COLUMN alarmdefs.comptype; Type: COMMENT; Schema: public; Owner: postgres
+-- TOC entry 1966 (class 0 OID 0)
+-- Dependencies: 161
+-- Name: COLUMN alarmdefs.threshtype; Type: COMMENT; Schema: public; Owner: grapture
 --
 
-COMMENT ON COLUMN alarmdefs.comptype IS 'Type of comparison (Sbsolute, percentage etc)';
+COMMENT ON COLUMN alarmdefs.threshtype IS 'Type of threshold value (percentage)';
 
 
 --
--- TOC entry 169 (class 1259 OID 25617)
--- Dependencies: 1931 6
--- Name: alarms; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1967 (class 0 OID 0)
+-- Dependencies: 161
+-- Name: COLUMN alarmdefs.comparisontype; Type: COMMENT; Schema: public; Owner: grapture
+--
+
+COMMENT ON COLUMN alarmdefs.comparisontype IS 'Type of comparison (average, all_over, majority_over)';
+
+
+--
+-- TOC entry 162 (class 1259 OID 16946)
+-- Dependencies: 1925 6
+-- Name: alarms; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE TABLE alarms (
     target character varying(50) NOT NULL,
     device character varying(50) NOT NULL,
     metric character varying(50) NOT NULL,
-    severity character varying(255) NOT NULL,
     value integer NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
-    active boolean DEFAULT false NOT NULL
+    active boolean DEFAULT false NOT NULL,
+    severity integer NOT NULL
 );
 
 
-ALTER TABLE public.alarms OWNER TO postgres;
+ALTER TABLE public.alarms OWNER TO grapture;
 
 --
--- TOC entry 161 (class 1259 OID 17425)
+-- TOC entry 163 (class 1259 OID 16950)
 -- Dependencies: 6
 -- Name: graphgroupsettings; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
@@ -532,7 +493,7 @@ CREATE TABLE graphgroupsettings (
 ALTER TABLE public.graphgroupsettings OWNER TO grapture;
 
 --
--- TOC entry 162 (class 1259 OID 17428)
+-- TOC entry 164 (class 1259 OID 16953)
 -- Dependencies: 6
 -- Name: groupings; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
@@ -546,7 +507,7 @@ CREATE TABLE groupings (
 ALTER TABLE public.groupings OWNER TO grapture;
 
 --
--- TOC entry 163 (class 1259 OID 17431)
+-- TOC entry 165 (class 1259 OID 16956)
 -- Dependencies: 6
 -- Name: targetmetrics; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
@@ -557,8 +518,7 @@ CREATE TABLE targetmetrics (
     metric character varying(50) NOT NULL,
     mapbase character varying(500),
     counterbits integer,
-    module character varying(50) NOT NULL,
-    output character varying(50) NOT NULL,
+    modules character varying(50) NOT NULL,
     valbase character varying(500) NOT NULL,
     max character varying(50),
     category character varying(50),
@@ -574,7 +534,7 @@ CREATE TABLE targetmetrics (
 ALTER TABLE public.targetmetrics OWNER TO grapture;
 
 --
--- TOC entry 164 (class 1259 OID 17437)
+-- TOC entry 166 (class 1259 OID 16962)
 -- Dependencies: 6
 -- Name: targets; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
@@ -591,9 +551,9 @@ CREATE TABLE targets (
 ALTER TABLE public.targets OWNER TO grapture;
 
 --
--- TOC entry 167 (class 1259 OID 25570)
+-- TOC entry 167 (class 1259 OID 16965)
 -- Dependencies: 6
--- Name: trapdests; Type: TABLE; Schema: public; Owner: postgres; Tablespace: 
+-- Name: trapdests; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE TABLE trapdests (
@@ -603,10 +563,10 @@ CREATE TABLE trapdests (
 );
 
 
-ALTER TABLE public.trapdests OWNER TO postgres;
+ALTER TABLE public.trapdests OWNER TO grapture;
 
 --
--- TOC entry 165 (class 1259 OID 17440)
+-- TOC entry 168 (class 1259 OID 16971)
 -- Dependencies: 6
 -- Name: users; Type: TABLE; Schema: public; Owner: grapture; Tablespace: 
 --
@@ -620,38 +580,29 @@ CREATE TABLE users (
 ALTER TABLE public.users OWNER TO grapture;
 
 --
--- TOC entry 1967 (class 0 OID 25601)
--- Dependencies: 168 1969
--- Data for Name: alarmcomptypes; Type: TABLE DATA; Schema: public; Owner: postgres
+-- TOC entry 1950 (class 0 OID 16939)
+-- Dependencies: 161 1958
+-- Data for Name: alarmdefs; Type: TABLE DATA; Schema: public; Owner: grapture
 --
 
-COPY alarmcomptypes (comptype) FROM stdin;
+COPY alarmdefs (target, metric, device, valspan, threshtype, comparisontype, trapdest, warn, crit, disabled) FROM stdin;
+*	SpaceUsed	*	5	percent	average	\N	50	75	f
 \.
 
 
 --
--- TOC entry 1965 (class 0 OID 25567)
--- Dependencies: 166 1969
--- Data for Name: alarmdefs; Type: TABLE DATA; Schema: public; Owner: postgres
+-- TOC entry 1951 (class 0 OID 16946)
+-- Dependencies: 162 1958
+-- Data for Name: alarms; Type: TABLE DATA; Schema: public; Owner: grapture
 --
 
-COPY alarmdefs (target, metric, warn, crit, comptype, trapdest, disabled, device) FROM stdin;
+COPY alarms (target, device, metric, value, "timestamp", active, severity) FROM stdin;
 \.
 
 
 --
--- TOC entry 1968 (class 0 OID 25617)
--- Dependencies: 169 1969
--- Data for Name: alarms; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-COPY alarms (target, device, metric, severity, value, "timestamp", active) FROM stdin;
-\.
-
-
---
--- TOC entry 1960 (class 0 OID 17425)
--- Dependencies: 161 1969
+-- TOC entry 1952 (class 0 OID 16950)
+-- Dependencies: 163 1958
 -- Data for Name: graphgroupsettings; Type: TABLE DATA; Schema: public; Owner: grapture
 --
 
@@ -668,8 +619,8 @@ SpaceUsedPercent	t	f	f	t
 
 
 --
--- TOC entry 1961 (class 0 OID 17428)
--- Dependencies: 162 1969
+-- TOC entry 1953 (class 0 OID 16953)
+-- Dependencies: 164 1958
 -- Data for Name: groupings; Type: TABLE DATA; Schema: public; Owner: grapture
 --
 
@@ -677,10 +628,19 @@ COPY groupings (groupname, memberof) FROM stdin;
 Unknown	\N
 \.
 
+--
+-- TOC entry 1956 (class 0 OID 16965)
+-- Dependencies: 167 1958
+-- Data for Name: trapdests; Type: TABLE DATA; Schema: public; Owner: grapture
+--
+
+COPY trapdests (hostname, snmpversion, snmpcommunity) FROM stdin;
+\.
+
 
 --
--- TOC entry 1964 (class 0 OID 17440)
--- Dependencies: 165 1969
+-- TOC entry 1957 (class 0 OID 16971)
+-- Dependencies: 168 1958
 -- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: grapture
 --
 
@@ -690,19 +650,9 @@ admin	5f4dcc3b5aa765d61d8327deb882cf99
 
 
 --
--- TOC entry 1950 (class 2606 OID 25610)
--- Dependencies: 168 168 1970
--- Name: alarmcomptypes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
---
-
-ALTER TABLE ONLY alarmcomptypes
-    ADD CONSTRAINT alarmcomptypes_pkey PRIMARY KEY (comptype);
-
-
---
--- TOC entry 1944 (class 2606 OID 25589)
--- Dependencies: 166 166 166 1970
--- Name: alarmdefs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1927 (class 2606 OID 16975)
+-- Dependencies: 161 161 161 1959
+-- Name: alarmdefs_pkey; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
 ALTER TABLE ONLY alarmdefs
@@ -710,9 +660,9 @@ ALTER TABLE ONLY alarmdefs
 
 
 --
--- TOC entry 1952 (class 2606 OID 25621)
--- Dependencies: 169 169 169 169 169 1970
--- Name: alarms_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1930 (class 2606 OID 16977)
+-- Dependencies: 162 162 162 162 162 1959
+-- Name: alarms_pkey; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
 ALTER TABLE ONLY alarms
@@ -720,8 +670,8 @@ ALTER TABLE ONLY alarms
 
 
 --
--- TOC entry 1933 (class 2606 OID 17444)
--- Dependencies: 162 162 1970
+-- TOC entry 1934 (class 2606 OID 16979)
+-- Dependencies: 164 164 1959
 -- Name: groupings_pkey; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -730,8 +680,8 @@ ALTER TABLE ONLY groupings
 
 
 --
--- TOC entry 1940 (class 2606 OID 17446)
--- Dependencies: 164 164 1970
+-- TOC entry 1941 (class 2606 OID 16981)
+-- Dependencies: 166 166 1959
 -- Name: target; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -740,8 +690,8 @@ ALTER TABLE ONLY targets
 
 
 --
--- TOC entry 1936 (class 2606 OID 17448)
--- Dependencies: 163 163 163 163 1970
+-- TOC entry 1937 (class 2606 OID 16983)
+-- Dependencies: 165 165 165 165 1959
 -- Name: target_device_metric; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -750,9 +700,9 @@ ALTER TABLE ONLY targetmetrics
 
 
 --
--- TOC entry 1948 (class 2606 OID 25577)
--- Dependencies: 167 167 1970
--- Name: trapdests_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1943 (class 2606 OID 16985)
+-- Dependencies: 167 167 1959
+-- Name: trapdests_pkey; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
 ALTER TABLE ONLY trapdests
@@ -760,8 +710,8 @@ ALTER TABLE ONLY trapdests
 
 
 --
--- TOC entry 1942 (class 2606 OID 17450)
--- Dependencies: 165 165 1970
+-- TOC entry 1945 (class 2606 OID 16987)
+-- Dependencies: 168 168 1959
 -- Name: username; Type: CONSTRAINT; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -770,35 +720,26 @@ ALTER TABLE ONLY users
 
 
 --
--- TOC entry 1945 (class 1259 OID 25616)
--- Dependencies: 166 1970
--- Name: fki_alarmdefs_alarmcomptypes_fkey; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
---
-
-CREATE INDEX fki_alarmdefs_alarmcomptypes_fkey ON alarmdefs USING btree (comptype);
-
-
---
--- TOC entry 1946 (class 1259 OID 25595)
--- Dependencies: 166 1970
--- Name: fki_alarmdefs_trapdests_fkey; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1928 (class 1259 OID 16988)
+-- Dependencies: 161 1959
+-- Name: fki_alarmdefs_trapdests_fkey; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE INDEX fki_alarmdefs_trapdests_fkey ON alarmdefs USING btree (trapdest);
 
 
 --
--- TOC entry 1953 (class 1259 OID 25627)
--- Dependencies: 169 1970
--- Name: fki_alarms_target_fkey; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1931 (class 1259 OID 16989)
+-- Dependencies: 162 1959
+-- Name: fki_alarms_target_fkey; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE INDEX fki_alarms_target_fkey ON alarms USING btree (target);
 
 
 --
--- TOC entry 1934 (class 1259 OID 17451)
--- Dependencies: 163 1970
+-- TOC entry 1935 (class 1259 OID 16990)
+-- Dependencies: 165 1959
 -- Name: fki_target; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -806,8 +747,8 @@ CREATE INDEX fki_target ON targetmetrics USING btree (target);
 
 
 --
--- TOC entry 1938 (class 1259 OID 17452)
--- Dependencies: 164 1970
+-- TOC entry 1939 (class 1259 OID 16991)
+-- Dependencies: 166 1959
 -- Name: fki_valid_group; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -815,17 +756,17 @@ CREATE INDEX fki_valid_group ON targets USING btree (groupname);
 
 
 --
--- TOC entry 1954 (class 1259 OID 25640)
--- Dependencies: 169 169 169 1970
--- Name: target_device_metric_idx; Type: INDEX; Schema: public; Owner: postgres; Tablespace: 
+-- TOC entry 1932 (class 1259 OID 16992)
+-- Dependencies: 162 162 162 1959
+-- Name: target_device_metric_idx; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
 CREATE INDEX target_device_metric_idx ON alarms USING btree (target, device, metric);
 
 
 --
--- TOC entry 1937 (class 1259 OID 17453)
--- Dependencies: 163 163 1970
+-- TOC entry 1938 (class 1259 OID 16993)
+-- Dependencies: 165 165 1959
 -- Name: target_devices; Type: INDEX; Schema: public; Owner: grapture; Tablespace: 
 --
 
@@ -833,19 +774,9 @@ CREATE INDEX target_devices ON targetmetrics USING btree (target, device);
 
 
 --
--- TOC entry 1958 (class 2606 OID 25611)
--- Dependencies: 168 1949 166 1970
--- Name: alarmdefs_alarmcomptypes_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY alarmdefs
-    ADD CONSTRAINT alarmdefs_alarmcomptypes_fkey FOREIGN KEY (comptype) REFERENCES alarmcomptypes(comptype) ON UPDATE RESTRICT ON DELETE RESTRICT;
-
-
---
--- TOC entry 1957 (class 2606 OID 25596)
--- Dependencies: 1947 166 167 1970
--- Name: alarmdefs_trapdests_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- TOC entry 1946 (class 2606 OID 16994)
+-- Dependencies: 1942 161 167 1959
+-- Name: alarmdefs_trapdests_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grapture
 --
 
 ALTER TABLE ONLY alarmdefs
@@ -853,9 +784,9 @@ ALTER TABLE ONLY alarmdefs
 
 
 --
--- TOC entry 1959 (class 2606 OID 25622)
--- Dependencies: 1939 164 169 1970
--- Name: alarms_target_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- TOC entry 1947 (class 2606 OID 16999)
+-- Dependencies: 1940 166 162 1959
+-- Name: alarms_target_fkey; Type: FK CONSTRAINT; Schema: public; Owner: grapture
 --
 
 ALTER TABLE ONLY alarms
@@ -863,8 +794,8 @@ ALTER TABLE ONLY alarms
 
 
 --
--- TOC entry 1955 (class 2606 OID 17454)
--- Dependencies: 163 1939 164 1970
+-- TOC entry 1948 (class 2606 OID 17004)
+-- Dependencies: 165 166 1940 1959
 -- Name: target; Type: FK CONSTRAINT; Schema: public; Owner: grapture
 --
 
@@ -873,8 +804,8 @@ ALTER TABLE ONLY targetmetrics
 
 
 --
--- TOC entry 1956 (class 2606 OID 17459)
--- Dependencies: 164 1932 162 1970
+-- TOC entry 1949 (class 2606 OID 17009)
+-- Dependencies: 1933 164 166 1959
 -- Name: valid_group; Type: FK CONSTRAINT; Schema: public; Owner: grapture
 --
 
@@ -883,7 +814,7 @@ ALTER TABLE ONLY targets
 
 
 --
--- TOC entry 1975 (class 0 OID 0)
+-- TOC entry 1964 (class 0 OID 0)
 -- Dependencies: 6
 -- Name: public; Type: ACL; Schema: -; Owner: postgres
 --
@@ -894,7 +825,7 @@ GRANT ALL ON SCHEMA public TO postgres;
 GRANT ALL ON SCHEMA public TO PUBLIC;
 
 
--- Completed on 2012-11-05 05:53:37 EST
+-- Completed on 2012-11-05 15:58:10 EST
 
 --
 -- PostgreSQL database dump complete

@@ -123,7 +123,7 @@ sub runFunction {
     my %functionRequiredArgs = (
         'add_group'                   => 2,
         'add_or_update_target'        => 5,
-        'add_or_update_target_metric' => 16,
+        'add_or_update_target_metric' => 15,
         'target_discovered'           => 1,
         'update_alarm'                => 5,
     );
@@ -204,16 +204,33 @@ sub storeDiscovery {
             'add_or_update_target_metric', 
             $result->{'target'},      $result->{'device'}, 
             $result->{'metric'},      $result->{'mapbase'}, 
-            $result->{'counterbits'}, 'FetchSnmp', 
-            'RRDTool',                $result->{'valbase'}, 
-            $result->{'max'},         $result->{'category'}, 
-            $result->{'valtype'},     $result->{'graphgroup'}, 
-            $result->{'enabled'},     $result->{'graphorder'}, 
-            $result->{'aggregate'},   $result->{'conversion'}
+            $result->{'counterbits'}, 'FetchSnmp,Alarms,RRDTool', 
+            $result->{'valbase'},     $result->{'max'},         
+            $result->{'category'},    $result->{'valtype'},
+            $result->{'graphgroup'},  $result->{'enabled'},
+            $result->{'graphorder'},  $result->{'aggregate'},
+            $result->{'conversion'}
         ) or $log->error('Could not add or update a metric');
 	}
 
     return 1;
+}
+
+sub getAlarmRules {
+    my $self = shift;
+    my $dbh   = $self->{'dbh'};
+
+    my @alarmRules;
+    
+    my $query = q/SELECT * from alarmdefs/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute();
+    
+    return unless $self->_checkErrorFree($sth);
+
+    return wantarray ? @{ $sth->fetchall_arrayref( {} ) } 
+                     : $sth->fetchall_arrayref( {} );    
 }
 
 sub getMetricPolls {
@@ -224,7 +241,7 @@ sub getMetricPolls {
     my $query = q/SELECT 
                   a.target,  a.device,      a.metric, a.valbase,
 	              a.mapbase, a.counterbits, a.max,    a.category,
-	              a.module, a.output, a.valtype, a.conversion,
+	              a.modules, a.valtype, a.conversion,
                   b.snmpcommunity, b.snmpversion
                   FROM targetmetrics a
                   JOIN targets b on a.target = b.target

@@ -30,9 +30,6 @@ my $config       = Grapture::Common::Config->new($cfgfile);
 my $metaDB       = Grapture::Storage::MetaDB->new();
 my $jobInterface = Grapture::Common::JobsInterface->new();
 
-my $module = 'Discovery';
-my $output = 'DiscoveryDB';
-
 my $targets = $metaDB->getTargetsForDiscovery();
 
 my @jobList;
@@ -48,7 +45,7 @@ for my $targetRef ( @{ $targets } ) {
       {
         'process'        => [
             {
-                'name'    => $module,
+                'name'    => 'Discovery',
                 'options' => {
                     'target'    => $target,
                     'version'   => $version,
@@ -56,7 +53,7 @@ for my $targetRef ( @{ $targets } ) {
                 },
             },
             {
-                'name'    => $output,
+                'name'    => 'DiscoveryDB',
                 'options' => {},
             },
         ],
