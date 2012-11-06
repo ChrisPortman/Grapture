@@ -453,6 +453,15 @@ sub getMetricMax {
 	return $max;
 }
 
+sub getAlarms {
+    my ($self, $c) = @_;
+    
+    my $metaDB = Grapture::Storage::MetaDB->new();
+    my @alarms = $metaDB->getAlarms();
+    
+    return wantarray ? @alarms : \@alarms;
+}
+
 sub addHosts {
 	my ($self, $c) = @_;
 	my $dbh = $self->dbh;

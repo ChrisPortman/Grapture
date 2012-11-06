@@ -34,6 +34,9 @@ sub graphs        : Local : ActionClass('REST') {}
 sub graphdetails  : Local : ActionClass('REST') {}
 sub graphdata     : Local : ActionClass('REST') {}
 
+#Alarms
+sub alarms        : Local : ActionClass('REST') {}
+
 #CRUD
 sub addhost       : Local : ActionClass('REST') {}
 sub edithost      : Local : ActionClass('REST') {}
@@ -149,6 +152,17 @@ sub graphdata_GET {
 	$self->status_ok(
 	    $c,
 	    entity => { 'success' => 'true', 'data' => \%objsByGroups },
+    );
+}
+
+sub alarms_GET {
+    my ($self, $c) = @_;
+    
+    my @alarms = $c->model('Postgres')->getAlarms($c);
+    
+	$self->status_ok(
+	    $c,
+	    entity => { 'success' => 'true', 'data' => \@alarms },
     );
 }
 

@@ -326,6 +326,25 @@ sub getLastDiscovery {
     return $lastDiscovered;
 }
 
+sub getAlarms {
+    my $self    = shift;
+    my $dbh   = $self->{'dbh'};
+    
+    my $query = q/SELECT 
+                  timestamp, target, device, metric, value, severity, active
+                  FROM alarms
+                  order by timestamp desc--/;
+
+    my $sth = $dbh->prepare($query);
+    my $res = $sth->execute();
+    
+    return unless $self->_checkErrorFree($sth);
+
+    return wantarray ? @{ $sth->fetchall_arrayref( {} ) }
+                     : $sth->fetchall_arrayref( {} );    
+}
+
+
 sub _checkErrorFree {
     my $self   = shift;
     my $handle = shift;
