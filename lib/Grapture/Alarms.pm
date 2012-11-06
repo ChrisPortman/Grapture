@@ -10,9 +10,6 @@ use Grapture::Storage::MetaDB;
 use Data::RoundRobinArray;
 use Log::Any qw ( $log );
 
-my $reloadAlarms = 0;
-$SIG{'HUP'} = sub { $reloadAlarms = 1; };
-
 my %STATES = (
     1 => 'OK',
     2 => 'WARN',
@@ -41,7 +38,6 @@ sub new {
     }
     
     my $memcache = Grapture::Storage::Memcached->new() or return;
-    my $memKey   = $target;
     $memcache->add($target, {}); #Will add if not exist.
     
     my %selfhash = (
@@ -68,24 +64,32 @@ sub checkAlarms {
         
         my $device = $metricResult->{'device'};
         my $metric = $metricResult->{'metric'};
-        next unless $self->{'mem'}->{$device}->{$metric}->{'rule'};
-        next if $self->{'mem'}->{$device}->{$metric}->{'rule'}->{'disabled'};
+        
+        unless ($self->{'mem'}->{$device}) {
+            next;
+        }
+        
+        if ( not $self->{'mem'}->{$device}->{$metric}->{'rule'}
+             or $self->{'mem'}->{$device}->{$metric}->{'rule'}->{'disabled'}) {
+            next;
+        }
         
         $self->storeResult($metricResult) or next;
         my $state = $self->checkAlarmThresh($metricResult) or next;
         
         if ( $state > 1 or
-             ($self->{'mem'}->{$device}->{$metric}->{'state'} > 1
+             (    $self->{'mem'}->{$device}->{$metric}->{'state'}
+              and $self->{'mem'}->{$device}->{$metric}->{'state'} > 1
               and $state == 1 ) ) {
-            
+            $log->info('Updating alarm!!!');
             $self->raiseAlarm($metricResult,$state);
         }
 
-        print Dumper($self->{'mem'});
-     
         $self->{'mem'}->{$device}->{$metric}->{'state'} = $state;
-        $self->{'memObj'}->set($target, $self->{'mem'});
     }
+
+    print Dumper($self->{'mem'});
+    $self->{'memObj'}->set($target, $self->{'mem'});
     
     return 1;
 }
@@ -93,24 +97,24 @@ sub checkAlarms {
 sub processRules {
     my $self       = shift;
     my $metricHash = shift;
-    
-    if ($reloadAlarms) {
-        $self->{'memObj'}->flush_all();
-        $reloadAlarms = 0;
-    }
-    
+
     my $target = $self->{'target'};
     my $device = $metricHash->{'device'};
     my $metric = $metricHash->{'metric'};
+    
+    #~ if ($reloadAlarms) {
+        #~ $log->info('Clearing alarm rules');
+        #~ $self->{'mem'}->{$device}->{$metric}->{'state'} = undef;
+    #~ }
         
-    if ( defined $self->{'mem'}->{$device}->{$metric} ) {
-        return 1;
-    }
+    #~ if ( $self->{'mem'}->{$device}->{$metric}->{'state'} ) {
+        #~ return 1;
+    #~ }
+    #~ 
+    #~ $log->info("Loading alarm rules for $target/$device/$metric");
     
-    $log->info("Loading alarm rules for $target/$device/$metric");
-    
-    $self->{'mem'}->{$device} = {} unless $self->{'mem'}->{$device};
-    $self->{'mem'}->{$device}->{$metric} = { 'state' => 1 };
+    #~ $self->{'mem'}->{$device} = {} unless $self->{'mem'}->{$device};
+    #~ $self->{'mem'}->{$device}->{$metric} = { 'state' => 1 };
     
     for my $rule ( @{$self->{'rules'}} ) {
         my $ruleTarget = $rule->{'target'};
