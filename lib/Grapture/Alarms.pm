@@ -88,7 +88,6 @@ sub checkAlarms {
         $self->{'mem'}->{$device}->{$metric}->{'state'} = $state;
     }
 
-    print Dumper($self->{'mem'});
     $self->{'memObj'}->set($target, $self->{'mem'});
     
     return 1;

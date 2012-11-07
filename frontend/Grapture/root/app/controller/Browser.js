@@ -15,6 +15,8 @@ Ext.define('Grapture.controller.Browser', {
         'deviceList',
         'graphs',
         'login',
+        'alarmList',
+        'filter',
     ],
     
     stores: [
@@ -22,11 +24,13 @@ Ext.define('Grapture.controller.Browser', {
         'searchResultsStore',
         'catTabStore',
         'devicesStore',
+        'alarmsStore',
     ],
     
     models: [
         'tabsModel',
         'devicesModel',
+        'alarmsModel',
 	],
     
     refs: [
@@ -820,7 +824,7 @@ function loadHomeTab (tabPanel) {
             loadSystem();
             break;
         case 'Alarms':
-            loadAlarms();
+            loadAlarms(tab);
             break;
         case 'Log':
             loadLog();
@@ -834,8 +838,10 @@ function loadHomeTab (tabPanel) {
         var tabView = Ext.create('Grapture.view.systemTab');
         tab.add(tabView);
     }
-    function loadAlarms () {
+    function loadAlarms (tab) {
         console.log('switched to the alarms tab');
+        var store = tab.down('#alarmList').getStore();
+        store.load( function(){console.log('Alarm store loaded');} );
     }
     function loadLog () {
         console.log('switched to the log tab');

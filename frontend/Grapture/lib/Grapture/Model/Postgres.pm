@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use base 'Catalyst::Model::DBI';
 use Grapture::Storage::MetaDB;
+use Grapture::Common::Config;
 use Data::Dumper;
 
 my $DBHOST = $Grapture::GHCONFIG->{'DB_HOSTNAME'};

@@ -3,6 +3,7 @@ use Moose;
 use namespace::autoclean;
 
 use Catalyst::Runtime 5.80;
+use Grapture::Common::Config;
 
 # Set flags and add plugins for the application.
 #
@@ -45,21 +46,11 @@ sub getConfig {
 	unless ($cfgFile and -f $cfgFile) {
 		return;
 	}
+    
+    my $configObj = Grapture::Common::Config->new($cfgFile);
+    my $config = $configObj->getAllConfig();
 	
-	open(my $fh, '<', $cfgFile)
-	  or die "Could not open $cfgFile: $!\n";
-	
-	my %config = map  {
-		             $_ =~ s/^\s+//;    #remove leading white space
-		             $_ =~ s/\s+$//;    #remove trailing white space
-		             $_ =~ s/\s*#.*$//; #remove trailing comments 
-		             my ($opt, $val) = split(/\s*=\s*/, $_);
-		             $opt => $val ;
-				 }
-	             grep { $_ !~ /(?:^\s*#)|(?:^\s*$)/ } #ignore comments and blanks
-	             <$fh>;
-	
-	return \%config;
+	return $config;
 }
 
 my $configFile = '../../etc/grapture.cfg';

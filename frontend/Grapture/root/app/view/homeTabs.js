@@ -11,8 +11,16 @@ Ext.define('Grapture.view.homeTabs', {
             layout: 'fit',
         },
         {
-            title: 'Alarms',
-            layout: 'fit',
+            title:  'Alarms',
+            layout: 'auto',
+            items: [
+                {
+                    xtype: 'filter',
+                },
+                {
+                    xtype: 'alarmList',
+                },
+            ],
         },
         {
             title: 'Log',
