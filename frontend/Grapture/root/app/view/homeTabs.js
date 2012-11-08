@@ -13,6 +13,9 @@ Ext.define('Grapture.view.homeTabs', {
         {
             title:  'Alarms',
             layout: 'auto',
+            padding: 5,
+            overflowY: 'auto',
+
             items: [
                 {
                     xtype: 'filter',

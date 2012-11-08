@@ -1,0 +1,7 @@
+.criticalRow .x-grid-cell {
+    background-color: #ffaeae;
+}
+
+.warningRow .x-grid-cell {
+    background-color: #feff99;
+}

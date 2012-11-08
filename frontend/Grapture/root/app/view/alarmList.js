@@ -4,20 +4,28 @@ Ext.define('Grapture.view.alarmList', {
     itemId: 'alarmList',
     store:  'alarmsStore',
     
-    //width    : 500,
-    overflowY: 'auto',
-    
     viewConfig: {
         getRowClass: function(rec, idx, rowPrms, ds) {
             console.log(rec);
-            return rec.raw.severity === 2 ? 'ph-bold-row' : '';
+            var cssClass = '';
+            
+            if (rec.raw.active === 1) {
+                if (rec.raw.severity === 2) {
+                    cssClass = 'warningRow';
+                }
+                else if (rec.raw.severity === 3) {
+                    cssClass = 'criticalRow';
+                }
+            }
+            
+            return cssClass;
         },
     },
     
     columns: [
-        { text: 'Time',     dataIndex: 'timestamp', flex: 1, },
-        { text: 'Host',     dataIndex: 'target', flex: 1, },
-        { text: 'Device',   dataIndex: 'device', flex: 1, },
+        { text: 'Time',     dataIndex: 'timestamp', flex: 2, },
+        { text: 'Host',     dataIndex: 'target', flex: 3, },
+        { text: 'Device',   dataIndex: 'device', flex: 3, },
         { text: 'Metric',   dataIndex: 'metric', flex: 1, },
         { 
             text     : 'Severity', 

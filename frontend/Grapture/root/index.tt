@@ -5,7 +5,8 @@
     <title>Grapture Graphing</title>
 
     <link rel="stylesheet" type="text/css" href="/extjs/resources/css/ext-all.css">
-    
+    <link rel="stylesheet" type="text/css" href="/app/css/custom.css">
+        
     <script>
         document.loggedIn = [% loggedIn %];
     </script>    

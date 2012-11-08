@@ -24,7 +24,7 @@ Ext.define('Grapture.view.filter', {
                     name      : 'dateFilter',
                     //~ fieldLabel: 'Date',
                     //~ labelAlign: 'top',
-                    flex      : 1,
+                    flex      : 2,
                 },
                 {
                     xtype     : 'textfield',
@@ -32,7 +32,7 @@ Ext.define('Grapture.view.filter', {
                     name      : 'hostFilter',
                     //~ fieldLabel: 'Host',
                     //~ labelAlign: 'top',
-                    flex      : 1,
+                    flex      : 3,
                 },
                 {
                     xtype     : 'textfield',
@@ -40,7 +40,7 @@ Ext.define('Grapture.view.filter', {
                     name      : 'deviceFilter',
                     //~ fieldLabel: 'Host',
                     //~ labelAlign: 'top',
-                    flex      : 1,
+                    flex      : 3,
                 },
                 {
                     xtype     : 'textfield',
