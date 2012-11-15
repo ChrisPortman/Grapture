@@ -46,6 +46,9 @@ sub run {
             if ( ref $result eq 'ARRAY' ) {
                 push @metrics, @{$result};
             }
+            elsif ( not defined $result ) {
+                last;
+            }
         }
     }
 
