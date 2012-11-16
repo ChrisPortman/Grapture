@@ -37,6 +37,10 @@ sub bytesToBits {
          $log->debug("Converted $bytes bytes to $bits bits");
          return $bits;
     }
+    elsif ( defined $bytes and $bytes == 0 ) {
+        # 0 bytes is 0 bits
+        return $bytes;
+    }
     
     $log->error('Non-numeric value for bytes supplied to bytesToBits()');
     return;
