@@ -42,6 +42,7 @@ my $bstube;
 my $debug;
 my $cfgfile;
 my $daemon;
+my $threads;
 
 $|++;
 
@@ -56,6 +57,7 @@ $SIG{__DIE__} = \&dieHandle;
 my $optsOk = GetOptions(
     'cfgfile|c=s' => \$cfgfile,
     'daemon|d'    => \$daemon,
+    'threads|t=i' => \$threads,
 ) or die "Invalid options\n";
 
 unless ( $cfgfile and -f $cfgfile ) {
@@ -84,8 +86,9 @@ loadConfig($cfgfile)
 $bsserver .= ':' . $bsport if $bsport;
 my $jobsDoer = Grapture::JobsProcessor->new(
     {
-        'bsserver' => $bsserver,
-        'bstubes'  => [$bstube],
+        'bsserver'   => $bsserver,
+        'bstubes'    => [$bstube],
+        'maxThreads' => $threads,
     }
 );
 
