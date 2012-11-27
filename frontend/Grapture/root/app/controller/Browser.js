@@ -817,7 +817,6 @@ function loadHome () {
 
 function loadHomeTab (tabPanel) {
     var tab = tabPanel.getActiveTab();
-    console.log(tab.title);
     
     switch(tab.title) {
         case 'System':
@@ -834,16 +833,13 @@ function loadHomeTab (tabPanel) {
     }
     
     function loadSystem () {
-        console.log('switched to the system tab');
         var tabView = Ext.create('Grapture.view.systemTab');
         tab.add(tabView);
     }
     function loadAlarms (tab) {
-        console.log('switched to the alarms tab');
         var store = tab.down('#alarmList').getStore();
-        store.load( function(){console.log('Alarm store loaded');} );
+        store.load();
     }
     function loadLog () {
-        console.log('switched to the log tab');
     }
 }

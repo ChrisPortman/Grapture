@@ -29,6 +29,7 @@ sub run {
     }
     
     my @discoveryMods = discoverers();
+    my @metricDefs;
 
     for my $discoverer (@discoveryMods) {
         my $params;
@@ -40,19 +41,159 @@ sub run {
         }
 
         if ( ref $params eq 'ARRAY' ) {
+            push @metricDefs, @{$params};
 
-            my $result = runDiscParams($options, $params);
-
-            if ( ref $result eq 'ARRAY' ) {
-                push @metrics, @{$result};
-            }
-            elsif ( not defined $result ) {
-                last;
-            }
+            #~ my $result = runDiscParams($options, $params);
+#~ 
+            #~ if ( ref $result eq 'ARRAY' ) {
+                #~ push @metrics, @{$result};
+            #~ }
+            #~ elsif ( not defined $result ) {
+                #~ last;
+            #~ }
         }
     }
+    
+    my @metrics = discoverMetrics($options, \@metricDefs);
 
     return wantarray ? @metrics : \@metrics;
+}
+
+sub discoverMetrics {
+    my $targetOptions = shift;
+    my $metricDefs    = ref $_[0] ? shift : \@_;
+    
+    ref $metricDefs eq 'ARRAY' or return;
+
+    my $target  = $targetOptions->{'target'};
+    my $session = Grapture::FetchSnmp->new( $options ) or return;
+    
+    #Try getting the sysdesc to test reachablity.
+    my $sysDesc = $session->getValue( '.1.3.6.1.2.1.1.1.0', 1 ) or return;
+    
+    my %authoritives;
+    my %enabledCache;
+    my @discoveredDeviceMetrics;
+    
+    METRIC:
+    for my $metricDef ( @{$metricDefs} ) {
+        # If we already have an authoritive def for this metric, skip
+        next if $authoritives{ $metricDef->{'metric'} };
+        
+        #test that the valbase is valid on this target
+        $session->getValue( $metricDef->{'valbase'}, 1 ) or next;
+
+        #We have some work to do...
+        #Simplify access to various details for here on...
+        my $metric      = $metricDef->{'metric'};
+        my $valOid      = $metricDef->{'valbase'};
+        my $mapOid      = $metricDef->{'mapbase'};
+        my $max         = $metricDef->{'maxbase'};
+        my $category    = $metricDef->{'category'};
+        my $graphgroup  = $metricDef->{'graphgroup'};
+        my $graphorder  = $metricDef->{'graphorder'};
+        my $counterbits = $metricDef->{'counterbits'};
+        my $conversion  = $metricDef->{'conversion'};
+        my $filtersub   = $metricDef->{'filtersub'};
+        my $valtype     = $metricDef->{'valtype'};
+        my $aggregate   = $metricDef->{'aggregate'};
+        my $authoritive = $metricDef->{'authoritive'};
+        
+        #Get the map table if applicable
+        my %maptable = $session->getMapping( $mapOid, 1 );
+        
+        # Build a list of devices (should be the keys of %maptable OR
+        # the device key in the metric def.  It would be wierd to have both
+        my @devices = ( keys(%maptable), $metricDef->{'device'} );
+
+        DEVICE:
+        for my $device ( @devices ) {
+            #work out if this device should be included
+            my %discMetricDetails = ( 'enabled' => 1 );
+            if ($filtersub and ref $filtersub eq 'CODE') {
+                if ( defined $enabledCache{$device} ) {
+                    $discMetricDetails{'enabled'} = $enabledCache{$device};
+                }
+                else {
+                    my $enable;
+                    eval {
+                        $enable = $filtersub->(
+                            $maptable{$device},
+                            $device,
+                            $metricDef,
+                            $session
+                        );
+                    };
+                    if ($@) {
+                        $log->error("Filter sub for $device/$metric died. Device will be enabled for monitoring");
+                        $enable = 1;
+                    }
+                    $discMetricDetails{'enabled'} = $enable || 0;
+                }
+            }
+            
+            #Try to work out the max val.  It can be:
+            # - an oid that has to be fetched
+            # - a scalar val to be used verbatim
+            # - a sub ref to compute it.
+            if ( $max ) {
+                if ( ref $max and ref $max eq 'CODE' ){
+                    #Run the code ref
+                    my $realMax = $max->(
+                        $maptable{$device},
+                        $device,
+                        $metricDef,
+                        $session
+                    );
+                    if ($@) {
+                        $log->error("Sub for max on $device/$metric died, there will be no max");
+                        $max = undef;
+                    }
+                    $max = $realMax;
+                }
+                elsif ( $max =~ /^.?(?:\d+\.)+\d*$/ ) {
+                    #This is an OID, fetch it.
+                    $max = $session->getValue($max);
+                }
+                elsif ( $max =~ /^\d+(?:\.\d+)?$/ ) {
+                    #This is a number in a scalar, just use it.
+                }
+                else {
+                    #Dont know what to do with this
+                    $log->error("The max ($max) for $device/$metric is not valid");
+                    $max = undef;
+                }
+            }
+            
+            #Store everything
+            
+            #Mandatory
+            $discMetricDetails{'target'}  = $target;
+            $discMetricDetails{'metric'}  = $metric;
+            $discMetricDetails{'valbase'} = $valbase;
+            $discMetricDetails{'device'}  = $device;
+
+            #Optionals
+            $discMetricDetails{'mapbase'}     = $mapOid if $mapOid;
+            $discMetricDetails{'category'}    = $category if $category;
+            $discMetricDetails{'conversion'}  = $conversion if $conversion;
+            $discMetricDetails{'counterbits'} = $counterbits if $counterbits;
+            $discMetricDetails{'max'}         = $max if $max;
+            $discMetricDetails{'valtype'}     = $valtype if $valtype;
+            $discMetricDetails{'graphgroup'}  = $graphgroup if $graphgroup;
+            $discMetricDetails{'graphorder'}  = $graphorder if $graphorder;
+            $discMetricDetails{'aggregate'}   = $aggregate if $aggregate;
+        
+            push @discoveredDeviceMetrics, \%discMetricDetails;
+        }
+        
+        if ($authoritive) {
+            $authoritives{$metric} = 1;
+        }
+    }
+    
+    return wantarray ? @discoveredDeviceMetrics : \@discoveredDeviceMetrics;
+    
 }
 
 sub runDiscParams {

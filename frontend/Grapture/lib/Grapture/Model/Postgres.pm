@@ -23,14 +23,17 @@ sub getTargetTree {
 	my $self = shift;
     my $dbh  = $self->dbh;
     
-    my $targetGroupQuery = q( select target, groupname from targets 
+    my $targetGroupQuery = q( select target, groupname from targets
+                              where lastdiscovered is not NULL 
                               order by target -- );
     my $groupHierachyQuery = q( select * from groupings
                                 order by groupname -- );
-    my $targetsWithAggsQuery = q( select target from targetmetrics 
-                                  where aggregate = true
-                                  and enabled = true
-                                  group by target -- );
+    my $targetsWithAggsQuery = q( select a.target from targetmetrics a 
+                                  join targets b on a.target = b.target
+                                  where b.lastdiscovered is not NULL
+                                  and a.aggregate = true
+                                  and a.enabled = true
+                                  group by a.target -- );
     
     my $targetGroupSth     = $dbh->prepare($targetGroupQuery);
     my $groupHierachySth   = $dbh->prepare($groupHierachyQuery);

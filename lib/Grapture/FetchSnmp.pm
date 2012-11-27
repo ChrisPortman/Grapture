@@ -310,7 +310,7 @@ sub getTable {
 
 sub getValue {
     my $self  = shift;
-    my $oid   =shift || return;
+    my $oid   = shift || return;
     my $quiet = shift;
     
     my $snmpObj = $self->{'snmpSession'};

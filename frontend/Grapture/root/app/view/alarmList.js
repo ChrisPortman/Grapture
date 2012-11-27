@@ -6,7 +6,6 @@ Ext.define('Grapture.view.alarmList', {
     
     viewConfig: {
         getRowClass: function(rec, idx, rowPrms, ds) {
-            console.log(rec);
             var cssClass = '';
             
             if (rec.raw.active === 1) {

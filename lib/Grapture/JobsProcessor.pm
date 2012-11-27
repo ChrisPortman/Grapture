@@ -402,7 +402,7 @@ sub _jobDoerThread {
     };
 
     #Connect to the Beanstalk server.
-    if ( not $self->beanstalkConnect() ) {
+    unless ( $self->beanstalkConnect() ) {
         sleep 10;    #Avoid spamming the CPU if the BS server is down
                      #~ threads->detach();
         return;
@@ -417,7 +417,12 @@ sub _jobDoerThread {
         my $submit;
 
         #Check to see if we are still connected
-        last if not $bsclientObj->socket();
+        unless ( $bsclientObj->socket() ) {
+            unless ( $self->beanstalkConnect() ) {
+                $log->error('Lost connection to Beanstalkd and cant reconnect. Retiring thread');
+                last;
+            }
+        }
 
         #run each step as long as the last returns true.
         $jobObj = $self->getJob();

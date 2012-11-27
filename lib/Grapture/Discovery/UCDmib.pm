@@ -9,6 +9,7 @@ use warnings;
 our $VERSION = (qw$Revision: 1.3 $)[1];
 
 sub discover {
+    my $snmpOptions = shift;
 
     [
         {
@@ -58,19 +59,16 @@ sub discover {
             'graphgroup'  => 'CPUUsage',
             'graphorder'  => 30,
         },
-
-        #Disabled.  I dont think it really adds anything to the info
-        #~ {
-        #~ 'metric'      => 'CpuIdleTime',
-        #~ 'valbase'     => '1.3.6.1.4.1.2021.11.53.0',
-        #~ 'counterbits' => '32',
-        #~ 'munge'       => 'changeSinceLast',
-        #~ 'graphdef'    => 'LinuxCpu',
-        #~ 'valtype'     => 'derive',
-        #~ 'category'    => 'System',
-        #~ 'device'      => 'CPU',
-        #~ 'graphgroup'  => 'CPUUsage',
-        #~ },
+        {
+            'metric'      => 'CpuIdleTime',
+            'valbase'     => '1.3.6.1.4.1.2021.11.53.0',
+            'counterbits' => '32',
+            'valtype'     => 'derive',
+            'category'    => 'System',
+            'device'      => 'CPU',
+            'graphgroup'  => 'CPUUsage',
+            'graphorder'  => 50,
+        },
         {
             'metric'      => 'CpuWaitTime',
             'valbase'     => '1.3.6.1.4.1.2021.11.54.0',
@@ -123,6 +121,26 @@ sub discover {
         },
     ];
 
+}
+
+sub getMaxCpu {
+    my $snmpOptions = shift;
+    my $snmpobj = Grapture::FetchSnmp->new( $options );
+    my %cpus    = $snmpobj->getTable('.1.3.6.1.2.1.25.3.3.1.1', 1);
+    
+    unless (%cpus) {
+        return;
+    }
+    
+    my $numberOfCpus = scalar( keys %cpus );
+    
+    if ( $numberOfCpus ) {
+        return $numberOfCpus * 100;
+    }
+    
+    return;
+}
+    
 }
 
 1;
